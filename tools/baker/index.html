@@ -31,7 +31,8 @@ window.bakeBuilding = async (t, civ, k) => {
   return r;
 };
 // iconița unei clădiri: încadrată strâns, 96 x 96
-window.bakeBldIcon = async (t, civ) => {
+window.bakeBldIcon = async (t, civ, size) => {
+  size = size || 96;
   const b = building(t, civ, TEAM[civ]);
   await texturesReady();
   const box = new THREE.Box3().setFromObject(b.root);
@@ -40,8 +41,8 @@ window.bakeBldIcon = async (t, civ) => {
     const sx = (X - Z) * 32, sy = (X + Z) * 16 - Y * 39.19;
     x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy);
   })));
-  const k = Math.min(86 / (x1 - x0), 86 / (y1 - y0)), ax = (96 - (x1 - x0) * k) / 2 - x0 * k, ay = (96 - (y1 - y0) * k) / 2 - y0 * k;
-  return bakeStill({ root: b.root, W: 96, H: 96, ax, ay, k, ss: 3, shadow: b.info.n * 1.2 + 1.5 });
+  const fit = size * 0.9, k = Math.min(fit / (x1 - x0), fit / (y1 - y0)), ax = (size - (x1 - x0) * k) / 2 - x0 * k, ay = (size - (y1 - y0) * k) / 2 - y0 * k;
+  return bakeStill({ root: b.root, W: size, H: size, ax, ay, k, ss: size > 200 ? 1 : 3, shadow: b.info.n * 1.2 + 1.5 });
 };
 // portretul pentru butoane și panoul de informații
 window.bakeIcon = (type, civ) => {
