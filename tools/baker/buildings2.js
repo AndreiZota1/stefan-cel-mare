@@ -62,7 +62,8 @@ function anvil(g, x, z) {
   g.add(at(cyl(0.05, 0.06, 0.1, TM('medieval_wood', '#8a6a48'), 10, 3), x, 0.05, z));
   g.add(at(box(0.16, 0.05, 0.07, PM('#2e3034', 0.45, 0.85)), x, 0.125, z)); g.add(at(cone(0.035, 0.07, PM('#2e3034', 0.45, 0.85), 6), x + 0.11, 0.135, z, 0, 0, -Math.PI / 2));
 }
-function glow(w, h) { return mesh(new THREE.PlaneGeometry(w, h), PM('#ff8a2a', 0.6, 0, '#ff6a10', 1.6)); }
+let GLOWM = null;
+function glow(w, h) { if (!GLOWM) { GLOWM = PM('#ff8a2a', 0.6, 0, '#ff6a10', 1.6).clone(); GLOWM.userData = { win: true }; } return mesh(new THREE.PlaneGeometry(w, h), GLOWM); }
 function target(g, x, z) {
   const rings = new THREE.MeshStandardMaterial({ map: (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x2 = c.getContext('2d'); [[32, '#e8dcc0'], [24, '#b8302a'], [16, '#e8dcc0'], [8, '#b8302a']].forEach(r => { x2.fillStyle = r[1]; x2.beginPath(); x2.arc(32, 32, r[0], 0, 6.3); x2.fill(); }); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })(), roughness: 0.95 });
   g.add(at(cyl(0.012, 0.012, 0.42, PM('#6e4b2a'), 6), x - 0.06, 0.21, z, 0, 0, 0.12)); g.add(at(cyl(0.012, 0.012, 0.42, PM('#6e4b2a'), 6), x + 0.06, 0.21, z, 0, 0, -0.12));
@@ -246,7 +247,7 @@ B.moara = (g, K, info) => {
 };
 B.ogor = (g, K) => {
   const c = K.civ;
-  const soil = mesh(new THREE.PlaneGeometry(2.9, 2.9), TM('dirt', c === 'tat' || c === 'oto' ? '#e8d0a8' : '#e0c49a', 1)); at(soil, 1.5, 0.003, 1.5, -Math.PI / 2); soil.castShadow = false; g.add(soil);
+  const soil = mesh(new THREE.PlaneGeometry(2.9, 2.9), TM('dirt', c === 'tat' || c === 'oto' ? '#e8d0a8' : '#e0c49a', 1)); at(soil, 1.5, 0.003, 1.5, -Math.PI / 2); soil.castShadow = false; soil.userData.noSnow = true; g.add(soil);
   const uv = soil.geometry.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 3, uv.getY(i) * 3);
   const crop = { mol: ['#d8b850', '#c8a840', '#b8b048'], val: ['#d8b850', '#c8a840', '#d0b048'], ung: ['#d8b850', '#c8a840', '#b8b048'], pol: ['#b8a040', '#a89838', '#c0a848'], oto: ['#5a8a3a', '#6a9a40', '#4a7a30'], tat: ['#d8c060', '#e0c868', '#c8b058'] }[c];
   const mats3 = crop.map(h => PM(h, 0.9));
@@ -784,7 +785,7 @@ B.minune = (g, K) => {
 };
 
 // ---------- zidurile, porțile, ruinele (aceleași pentru toți) ----------
-export function wallPiece(kind, dir) {
+export function wallPiece(kind, dir, civ) {
   const g = new THREE.Group(), stone = TM('castle_wall_slates', '#ece6dc', 0.95, 1.2), wood = TM('medieval_wood', '#a08060'), dark = PM('#4a3020', 0.85);
   // piesa se construiește de-a lungul lui x; pentru „y” se rotește în jurul colțului, cu fața spre +x (spre cameră)
   const along = (fn) => { const s = new THREE.Group(); fn(s); if (dir === 'y') { s.rotation.y = Math.PI / 2; s.position.set(0, 0, 1); } g.add(s); };
@@ -793,14 +794,39 @@ export function wallPiece(kind, dir) {
     else along(s => { for (let i = 0; i < 9; i++) { const x = 0.06 + i * 0.11, h = 0.48 + ((i * 7) % 3) * 0.03; s.add(at(cyl(0.048, 0.052, h, wood, 7, 2), x, h / 2, 0.5)); s.add(at(cone(0.048, 0.09, wood, 7), x, h + 0.045, 0.5)); } [0.14, 0.36].forEach(y => s.add(at(box(1.0, 0.025, 0.02, dark), 0.5, y, 0.555))); });
   } else if (kind === 'ppal') {
     along(s => { [0.06, 0.94].forEach(x => { s.add(at(cyl(0.06, 0.065, 0.78, wood, 8, 2), x, 0.39, 0.5)); s.add(at(cone(0.06, 0.1, wood, 8), x, 0.83, 0.5)); }); s.add(at(box(1.0, 0.06, 0.08, wood, 2), 0.5, 0.7, 0.5)); [0.29, 0.71].forEach(x => { s.add(at(box(0.4, 0.5, 0.04, TM('raw_plank_wall', '#c8a888'), 3), x, 0.3, 0.5)); s.add(at(box(0.4, 0.03, 0.05, dark), x, 0.2, 0.5)); s.add(at(box(0.4, 0.03, 0.05, dark), x, 0.42, 0.5)); }); s.add(at(box(0.22, 0.12, 0.012, team('velvet', 0.8)), 0.5, 0.6, 0.555)); });
-  } else if (kind === 'zid') {
-    if (dir === 'p') { g.add(blk(0.08, 0.08, 0.92, 0.92, 0, 0.82, stone, 1.6)); crenels(g, 0.12, 0.88, 0.88, 0.88, 0.82, stone, 0.13, 0.08); crenels(g, 0.88, 0.12, 0.88, 0.88, 0.82, stone, 0.13, 0.08); crenels(g, 0.12, 0.12, 0.88, 0.12, 0.82, stone, 0.13, 0.08); crenels(g, 0.12, 0.12, 0.12, 0.88, 0.82, stone, 0.13, 0.08); g.add(at(box(0.03, 0.1, 0.03, PM('#120e0a')), 0.93, 0.55, 0.5)); g.add(at(box(0.03, 0.1, 0.03, PM('#120e0a')), 0.5, 0.55, 0.93)); }
-    else along(s => { s.add(blk(0, 0.3, 1, 0.7, 0, 0.66, stone, 1.6)); crenels(s, 0.04, 0.66, 0.96, 0.66, 0.66, stone, 0.12, 0.08); s.add(blk(0, 0.28, 1, 0.3, 0.6, 0.04, stone, 2)); });
-  } else if (kind === 'poarta') {
-    along(s => { [[0, 0.24], [0.76, 1]].forEach(([a, b]) => { s.add(blk(a, 0.22, b, 0.78, 0, 0.92, stone, 1.6)); crenels(s, a + 0.02, 0.76, b - 0.02, 0.76, 0.92, stone, 0.11, 0.08); }); s.add(blk(0.24, 0.24, 0.76, 0.76, 0.62, 0.22, stone, 1.6)); crenels(s, 0.26, 0.74, 0.74, 0.74, 0.84, stone, 0.11, 0.08);
-      const ar = mesh(new THREE.CircleGeometry(0.26, 12, 0, Math.PI), PM('#1a140e')); at(ar, 0.5, 0.36, 0.765); s.add(ar); s.add(at(box(0.52, 0.36, 0.01, PM('#1a140e')), 0.5, 0.18, 0.765));
-      for (let i = 0; i < 5; i++) s.add(at(box(0.012, 0.5, 0.012, PM('#2e3034', 0.5, 0.8)), 0.3 + i * 0.1, 0.32, 0.775)); s.add(at(box(0.5, 0.012, 0.012, PM('#2e3034', 0.5, 0.8)), 0.5, 0.3, 0.775));
-      [0.12, 0.88].forEach(x => { const bn = mesh(new THREE.PlaneGeometry(0.14, 0.3), team('velvet', 0.8)); at(bn, x, 0.68, 0.785); s.add(bn); }); });
+  } else if (kind === 'zid' || kind === 'poarta') {
+    // zidul de piatră în stilul civilizației: Moldova cu galerie acoperită, munteni în benzi, polonezi din cărămidă, otomani cu creneluri ascuțite
+    const K = kit(civ || 'mol'), c = civ || 'all', SM = c === 'pol' ? K.brick : c === 'all' ? stone : K.stone;
+    const body = (s, x0, z0, x1, z1, h, y0 = 0) => { if (c === 'val') banded(s, x0, z0, x1, z1, y0, h, K.stone, K.brick, 0.07); else s.add(blk(x0, z0, x1, z1, y0, h, SM, 1.6)); };
+    const merl = (s, x0, z0, x1, z1, y, step = 0.12) => {
+      if (c === 'oto') { const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.floor(len / step)); for (let i = 0; i < n; i += 2) { const t = (i + 0.5) / n; s.add(at(box(0.09, 0.05, 0.09, SM, 1.5), x0 + (x1 - x0) * t, y + 0.025, z0 + (z1 - z0) * t)); s.add(at(cone(0.064, 0.07, SM, 4), x0 + (x1 - x0) * t, y + 0.085, z0 + (z1 - z0) * t, 0, Math.PI / 4, 0)); } }
+      else crenels(s, x0, z0, x1, z1, y, c === 'val' ? K.brick : SM, step, 0.08);
+    };
+    const cap = (s, x0, z0, x1, z1, y) => {
+      if (c === 'mol') { posts(s, [x0 + 0.06, (x0 + x1) / 2, x1 - 0.06], (z0 + z1) / 2 + 0.12, 0.14, K.timber, 0.014); s.children.slice(-3).forEach(o => o.position.y += y); s.add(gableRoof(x0, z0, x1, z1, y + 0.14, 0.16, K.roof, true, null, 0.05)); }
+      else if (c === 'pol') { s.add(blk(x0, z0 - 0.01, x1, z1 + 0.01, y, 0.03, PM('#efe8dc', 0.9))); merl(s, x0 + 0.04, z1 - 0.04, x1 - 0.04, z1 - 0.04, y + 0.03); }
+      else if (c === 'tat') { merl(s, x0 + 0.04, z1 - 0.04, x1 - 0.04, z1 - 0.04, y); s.add(blk(x0, z1 - 0.01, x1, z1 + 0.012, y - 0.06, 0.04, PM('#2a5a8a', 0.7))); }
+      else merl(s, x0 + 0.04, z1 - 0.04, x1 - 0.04, z1 - 0.04, y);
+    };
+    if (kind === 'zid') {
+      if (dir === 'p') {
+        const h = 0.84; if (c === 'val') banded(g, 0.08, 0.08, 0.92, 0.92, 0, h, K.stone, K.brick, 0.07); else g.add(blk(0.08, 0.08, 0.92, 0.92, 0, h, SM, 1.6));
+        if (c === 'mol') g.add(hipRoof(0.02, 0.02, 0.98, 0.98, h, 0.5, K.roof)); else if (c === 'ung') g.add(hipRoof(0.04, 0.04, 0.96, 0.96, h, 0.6, K.roof)); else if (c === 'pol') { g.add(blk(0.06, 0.06, 0.94, 0.94, h, 0.04, PM('#efe8dc', 0.9))); g.add(hipRoof(0.06, 0.06, 0.94, 0.94, h + 0.04, 0.62, K.roof)); }
+        else { merl(g, 0.12, 0.88, 0.88, 0.88, h, 0.13); merl(g, 0.88, 0.12, 0.88, 0.88, h, 0.13); merl(g, 0.12, 0.12, 0.88, 0.12, h, 0.13); merl(g, 0.12, 0.12, 0.12, 0.88, h, 0.13); }
+        g.add(at(box(0.03, 0.1, 0.03, PM('#120e0a')), 0.93, 0.55, 0.5)); g.add(at(box(0.03, 0.1, 0.03, PM('#120e0a')), 0.5, 0.55, 0.93));
+      } else along(s => { body(s, 0, 0.3, 1, 0.7, 0.66); cap(s, 0, 0.3, 1, 0.7, 0.66); s.add(blk(0, 0.28, 1, 0.3, 0.6, 0.04, SM, 2)); });
+    } else {
+      along(s => {
+        [[0, 0.24], [0.76, 1]].forEach(([a, b]) => { body(s, a, 0.22, b, 0.78, 0.92); if (c === 'mol' || c === 'ung' || c === 'pol') s.add(hipRoof(a - 0.03, 0.19, b + 0.03, 0.81, 0.92, c === 'mol' ? 0.36 : 0.44, K.roof)); else merl(s, a + 0.02, 0.76, b - 0.02, 0.76, 0.92, 0.11); });
+        body(s, 0.24, 0.24, 0.76, 0.76, 0.22, 0.62);
+        merl(s, 0.26, 0.74, 0.74, 0.74, 0.84, 0.11);
+        const dark = PM('#1a140e'), ar = mesh(new THREE.CircleGeometry(0.26, 12, 0, Math.PI), dark); at(ar, 0.5, 0.36, 0.765); s.add(ar); s.add(at(box(0.52, 0.36, 0.01, dark), 0.5, 0.18, 0.765));
+        if (c === 'oto') for (let i = 0; i < 9; i++) { const a2 = i / 8 * Math.PI; s.add(at(box(0.05, 0.06, 0.012, PM(i % 2 ? '#a8402a' : '#f2ead8', 0.8)), 0.5 + Math.cos(a2) * 0.29, 0.36 + Math.sin(a2) * 0.29, 0.772, 0, 0, a2 - Math.PI / 2)); }
+        if (c === 'tat') s.add(blk(0.2, 0.75, 0.8, 0.79, 0.64, 0.05, PM('#2a5a8a', 0.7)));
+        for (let i = 0; i < 5; i++) s.add(at(box(0.012, 0.5, 0.012, PM('#2e3034', 0.5, 0.8)), 0.3 + i * 0.1, 0.32, 0.775)); s.add(at(box(0.5, 0.012, 0.012, PM('#2e3034', 0.5, 0.8)), 0.5, 0.3, 0.775));
+        [0.12, 0.88].forEach(x => { const bn = mesh(new THREE.PlaneGeometry(0.14, 0.3), team('velvet', 0.8)); at(bn, x, 0.68, 0.785); s.add(bn); });
+      });
+    }
   }
   return g;
 }

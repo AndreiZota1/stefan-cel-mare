@@ -30,7 +30,12 @@ var G = globalThis.G || (globalThis.G = {});
     }).join('') + '</div>';
     var C0 = G.CIVS[cfg.civ];
     html += '<div class="civinfo"><img src="' + G.R.icon('u', C0.uniq, cfg.civ) + '" alt=""><div><b>' + esc(C0.name) + '</b> — ' + esc(C0.year) + '<ul>' + C0.bonus.map(function (b) { return '<li>' + esc(b) + '</li>'; }).join('') +
-      '<li>Puterea eroului: <b>' + esc(G.POWERS[C0.power].name) + '</b> — ' + esc(G.POWERS[C0.power].desc) + '</li></ul></div></div>';
+      '<li>Puterea eroului: <b>' + esc(G.POWERS[C0.power].name) + '</b> — ' + esc(G.POWERS[C0.power].desc) + '</li></ul>' +
+      // cum arată civilizația: clădirile și oamenii ei
+      '<div class="civlook">' + [['b', 'cetate'], ['b', 'casa'], ['b', 'manastire'], ['b', 'fortareata'], ['b', 'minune'], ['u', 'vil'], ['u', 'mil3'], ['u', 'arc2'], ['u', 'kni2'], ['u', C0.uniq + '2']].map(function (q) {
+        var t = q[1], d = q[0] === 'b' ? G.BLDS[t] : G.UNITS[t], nm = d ? G.nm(d, cfg.civ) : t;
+        return '<img src="' + G.R.icon(q[0], t, cfg.civ) + '" title="' + esc(nm) + '" alt="">';
+      }).join('') + '</div></div></div>';
     html += '<div class="grid2">';
     html += '<label>Jucători<select data-k="mode">' + MODES.map(function (m) { return opt(m[0], m[1], cfg.mode); }).join('') + '</select></label>';
     mode[2].forEach(function (team, i) {

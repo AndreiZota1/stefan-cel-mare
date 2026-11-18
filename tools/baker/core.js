@@ -108,6 +108,32 @@ function maskOn(root) {
   ground.visible = false; renderer.shadowMap.autoUpdate = false;
   return () => { saved.forEach(([o, m, v]) => { o.material = m; o.visible = v; }); ground.visible = true; renderer.shadowMap.autoUpdate = true; };
 }
+// treceri suplimentare pentru clădiri: ferestrele care se aprind noaptea (userData.win) și zăpada de pe fețele de sus
+const WHITE = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, toneMapped: false });
+const BLACKM = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, toneMapped: false });
+const SNOW = new THREE.ShaderMaterial({
+  vertexShader: 'varying vec3 vN; void main(){ vN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: 'varying vec3 vN; void main(){ vec3 n = normalize(vN); if (!gl_FrontFacing) n = -n; float s = smoothstep(0.42, 0.74, n.y); gl_FragColor = vec4(s, s, s, 1.0); }',
+  side: THREE.DoubleSide
+});
+export function hasFlag(root, key) {
+  let t = false;
+  root.traverse(o => { if (o.isMesh && o.visible) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.userData && m.userData[key]) t = true; }); });
+  return t;
+}
+function passOn(root, pick) {
+  const saved = [];
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    saved.push([o, o.material, o.visible]);
+    if (mats.some(m => m.transparent && !m.depthWrite) || (o.userData && o.userData.noSnow && pick === snowPick)) { o.visible = false; return; }
+    o.material = Array.isArray(o.material) ? o.material.map(pick) : pick(o.material);
+  });
+  ground.visible = false; renderer.shadowMap.autoUpdate = false;
+  return () => { saved.forEach(([o, m, v]) => { o.material = m; o.visible = v; }); ground.visible = true; renderer.shadowMap.autoUpdate = true; };
+}
+const litPick = m => (m.userData && m.userData.win ? WHITE : BLACKM), snowPick = () => SNOW;
 // alfa măștii = acoperirea materialelor de echipă (roșul premultiplicat), RGB alb
 function finishMask(c) {
   const ctx = c.getContext('2d'), im = ctx.getImageData(0, 0, c.width, c.height), d = im.data;
@@ -180,9 +206,12 @@ export function bakeStill(spec) {
   if (team) { mc = mkCanvas(W, H); const undo = maskOn(spec.root); renderTo(mc.getContext('2d'), 0, 0, W, H, ss); undo(); finishMask(mc); }
   const meta = { W, H, ax, ay, k };
   if (team) meta.mask = true;
+  let lc = null, sc2 = null;
+  if (spec.lit && hasFlag(spec.root, 'win')) { lc = mkCanvas(W, H); const undo = passOn(spec.root, litPick); renderTo(lc.getContext('2d'), 0, 0, W, H, ss); undo(); finishMask(lc); meta.lit = true; }
+  if (spec.snow) { sc2 = mkCanvas(W, H); const undo = passOn(spec.root, snowPick); renderTo(sc2.getContext('2d'), 0, 0, W, H, ss); undo(); finishMask(sc2); meta.snow = true; }
   const proj = p => { const v = new THREE.Vector3(p[0], p[1], p[2]).project(camera); return [+(((v.x + 1) / 2 * W) / k).toFixed(1), +(((1 - v.y) / 2 * H) / k).toFixed(1)]; };
   scene.remove(spec.root);
-  return { webp: c.toDataURL('image/webp', Q), mask: team ? mc.toDataURL('image/webp', Q) : null, meta, proj, canvas: c, mcanvas: mc };
+  return { webp: c.toDataURL('image/webp', Q), mask: team ? mc.toDataURL('image/webp', Q) : null, lit: lc ? lc.toDataURL('image/webp', Q) : null, snow: sc2 ? sc2.toDataURL('image/webp', Q) : null, meta, proj, canvas: c, mcanvas: mc };
 }
 
 // nuanțarea cu culoarea jucătorului, exact cum o va face jocul: baza × culoare acolo unde e masca

@@ -244,7 +244,11 @@ var G = globalThis.G || (globalThis.G = {});
   }
   function bkey2(t, civ, b, o) {
     var d = G.BLDS[t];
-    if (d.wall) { var base = d.gate ? (d.wall === 'pal' ? 'ppal' : 'poarta') : d.wall; return 'b/' + base + '_' + (b ? wallDir(b) : (d.gate ? 'x' : 'p')) + '_all'; }
+    if (d.wall) {
+      // zidurile de piatră au forma civilizației; gardul de pari e același la toți
+      var base = d.gate ? (d.wall === 'pal' ? 'ppal' : 'poarta') : d.wall, wk = 'b/' + base + '_' + (b ? wallDir(b) : (d.gate ? 'x' : 'p'));
+      return G.BAKED2 && G.BAKED2[wk + '_' + civ] ? wk + '_' + civ : wk + '_all';
+    }
     if (t === 'turn') { var P = G.S && G.S.players[b ? b.o : (o || 0)]; return 'b/turn' + (P && P.techs.turn2 ? 2 : 1) + '_' + civ; }
     return 'b/' + t + '_' + civ;
   }
@@ -260,12 +264,33 @@ var G = globalThis.G || (globalThis.G = {});
     for (var i = 0; i < 3; i++) { g.fillStyle = '#6b4626'; g.beginPath(); g.ellipse(20 + i * 22, 96 - i * 3, 12, 4.5, -0.3, 0, 6.3); g.fill(); g.fillStyle = '#c99a62'; g.beginPath(); g.ellipse(9 + i * 22, 99 - i * 3, 3.5, 3.5, 0, 0, 6.3); g.fill(); }
     return (capS = { c: c, w: 90, h: 110, ax: 45, ay: 78, baked: 0 });
   }
+  // zăpada de pe acoperișuri: o copie albită a clădirii, pusă doar unde masca de zăpadă spune că fața privește în sus
+  function snowOn(base, snow) {
+    var w = base.width || base.naturalWidth, h = base.height || base.naturalHeight;
+    var c = document.createElement('canvas'); c.width = w; c.height = h; var g = c.getContext('2d');
+    g.drawImage(base, 0, 0);
+    var s = document.createElement('canvas'); s.width = w; s.height = h; var sg = s.getContext('2d');
+    sg.drawImage(base, 0, 0);
+    sg.globalCompositeOperation = 'saturation'; sg.fillStyle = '#808080'; sg.fillRect(0, 0, w, h);
+    sg.globalCompositeOperation = 'screen'; sg.fillStyle = '#c4cad2'; sg.fillRect(0, 0, w, h);
+    sg.globalCompositeOperation = 'destination-in'; sg.drawImage(snow, 0, 0);
+    g.drawImage(s, 0, 0);
+    return c;
+  }
   var bcache = {};
   function bldSprite(t, civ, b, o) {
     var key2 = bkey2(t, civ, b, o), owner = b ? b.o : (o || 0), sh = sheet2(key2);
     if (sh) {
-      var col = pcol(owner).color, ck = key2 + '|' + col, o2 = bcache[ck];
-      if (!o2) { var B2 = sh.B; o2 = bcache[ck] = { c: sh.mask ? tintRect(sh.img, sh.mask, 0, 0, sh.img.naturalWidth, sh.img.naturalHeight, col) : sh.img, w: B2.W / B2.k, h: B2.H / B2.k, ax: B2.ax / B2.k, ay: B2.ay / B2.k, hub: B2.hub, chimney: B2.chimney, baked: 2 }; }
+      var B2 = sh.B, winter = !!(G.S && G.S.map && G.S.map.season === 'iarna' && B2.snow), snowImg = winter ? loadImg('assets/' + key2 + '_s.webp') : null;
+      if (winter && !imgOk(snowImg) && !snowImg.bad) winter = false;
+      var col = pcol(owner).color, ck = key2 + '|' + col + (winter ? '|z' : ''), o2 = bcache[ck];
+      if (!o2) {
+        var c0 = sh.mask ? tintRect(sh.img, sh.mask, 0, 0, sh.img.naturalWidth, sh.img.naturalHeight, col) : sh.img;
+        if (winter) c0 = snowOn(c0, snowImg);
+        o2 = { c: c0, w: B2.W / B2.k, h: B2.H / B2.k, ax: B2.ax / B2.k, ay: B2.ay / B2.k, hub: B2.hub, chimney: B2.chimney, baked: 2, lit: B2.lit ? 'assets/' + key2 + '_l.webp' : null };
+        // cât timp masca de zăpadă nu s-a încărcat, nu păstrăm varianta fără zăpadă
+        if (!(G.S && G.S.map && G.S.map.season === 'iarna' && B2.snow) || winter) bcache[ck] = o2;
+      }
       return o2;
     }
     if (G.BLDS[t].wall) return null;
@@ -878,6 +903,17 @@ var G = globalThis.G || (globalThis.G = {});
       S.fx.forEach(function (f) { if ((f.k === 'boom' || f.k === 'fire') && S.t - f.t < 1.5) light(f.x, f.y, 90 * z, 0.8); });
       G.C.blds.forEach(function (b) { if (!b.dead && b.built && b.hp < (b.mhp || 1) * 0.55 && G.C.vis[Math.floor(b.y) * S.N + Math.floor(b.x)]) light(b.x, b.y, 110 * z * fl, 0.9); });
       ctx.drawImage(nightC, 0, 0, W, H);
+      // ferestrele aprinse: lumină caldă, care pâlpâie ușor, la toate clădirile văzute
+      ctx.globalCompositeOperation = 'lighter';
+      G.C.blds.forEach(function (b) {
+        if (b.dead || !b.built || !S.exp[Math.floor(b.y) * S.N + Math.floor(b.x)]) return;
+        var sp = bldSprite(b.t, S.players[b.o].civ, b); if (!sp || !sp.lit) return;
+        if (!sp.litC) { var li = loadImg(sp.lit); if (!imgOk(li)) return; var lc = document.createElement('canvas'); lc.width = li.naturalWidth; lc.height = li.naturalHeight; var lg = lc.getContext('2d'); lg.drawImage(li, 0, 0); lg.globalCompositeOperation = 'source-in'; lg.fillStyle = '#ffb04a'; lg.fillRect(0, 0, lc.width, lc.height); sp.litC = lc; }
+        var top = R.w2s(b.tx, b.ty); if (top[0] < -300 || top[0] > W + 300 || top[1] < -300 || top[1] > H + 300) return;
+        ctx.globalAlpha = Math.min(1, S.night) * (0.82 + 0.12 * Math.sin(clock * 3 + b.id));
+        ctx.drawImage(sp.litC, top[0] - sp.ax * z, top[1] - sp.ay * z, sp.w * z, sp.h * z);
+      });
+      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
     }
     if (S.fog) {
       ctx.fillStyle = 'rgba(205,210,214,' + (0.26 * S.fog) + ')'; ctx.fillRect(0, 0, W, H);

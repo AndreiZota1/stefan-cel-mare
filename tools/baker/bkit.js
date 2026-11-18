@@ -86,8 +86,11 @@ export function stepGable(g, M, face, fixed, a, b, y, h, steps = 4, t = 0.06) {
 function onFace(g, face, o, c, y, fixed, off = 0.006) { if (face === 'z') at(o, c, y, fixed + off); else at(o, fixed + off, y, c, 0, Math.PI / 2, 0); g.add(o); return o; }
 function flat(w, h, m) { return mesh(new THREE.PlaneGeometry(w, h), m); }
 // stil: rect | arch | lancet | slit
+// sticla ferestrelor: aceeași culoare, dar marcată ca să se aprindă noaptea
+const WINM = {};
+export function winM(hex, lit = true) { const k = hex + lit; if (!WINM[k]) { const m = PM(hex, 0.9).clone(); if (lit) m.userData = { win: true }; WINM[k] = m; } return WINM[k]; }
 export function win(g, face, a, b, fixed, y0, y1, o = {}) {
-  const st = o.style || 'rect', w = b - a, c = (a + b) / 2, col = PM(o.col || '#1e1812', 0.9), fr = o.frame ? PM(o.frame, 0.8) : null;
+  const st = o.style || 'rect', w = b - a, c = (a + b) / 2, col = winM(o.col || '#1e1812', o.lit !== false), fr = o.frame ? PM(o.frame, 0.8) : null;
   const top = st === 'rect' || st === 'slit' ? y1 : y1 - w / 2;
   onFace(g, face, flat(w, top - y0, col), c, (y0 + top) / 2, fixed);
   if (st === 'arch') onFace(g, face, mesh(new THREE.CircleGeometry(w / 2, 10, 0, Math.PI), col), c, top, fixed);
@@ -101,7 +104,7 @@ export function win(g, face, a, b, fixed, y0, y1, o = {}) {
   if (o.bars) for (let i = 1; i < 3; i++) onFace(g, face, box(0.008, top - y0, 0.01, PM(o.bars, 0.7)), a + w * i / 3, (y0 + top) / 2, fixed, 0.01);
 }
 export function door(g, face, a, b, fixed, h, o = {}) {
-  win(g, face, a, b, fixed, o.y0 || 0, h, { style: o.style || 'rect', col: o.col || '#3a2414', frame: o.frame });
+  win(g, face, a, b, fixed, o.y0 || 0, h, { style: o.style || 'rect', col: o.col || '#3a2414', frame: o.frame, lit: false });
   if (o.planks !== false) { const w = b - a; for (let i = 1; i < 3; i++) onFace(g, face, box(0.006, (o.style === 'arch' ? h - w / 2 : h) - (o.y0 || 0), 0.008, PM('#1a1008', 0.9)), a + w * i / 3, ((o.y0 || 0) + (o.style === 'arch' ? h - w / 2 : h)) / 2, fixed, 0.009); }
 }
 // steag pe catarg, culoarea echipei
@@ -298,7 +301,7 @@ export function kit(civ) {
       roof: TM('grey_roof_tiles', '#94785e', 0.95, 1.2), timber: PM('#4e3420', 0.85), trim: '#f0eadc', shut: '#3d6fb0', winStyle: 'rect', winCol: '#26303c',
       pitch: 1.5, eave: 0.13, roofKind: 'hip', towerRound: true, towerTop: 'cone', towerPitch: 2.3, fin: 'cross', accent: '#a01c1c' }); break;
     case 'val': Object.assign(K, {
-      wall: TM('plastered_wall', '#f6efe4', 0.95, 0.8), brick: TM('castle_brick_07', '#ffffff', 0.9, 1.2), base: TM('castle_wall_slates', '#e8e2d6', 0.95, 1.2), stone: TM('old_stone_wall', '#f2e8dc', 0.95, 1.2),
+      wall: TM('plastered_wall', '#f6efe4', 0.95, 0.8), brick: TM('castle_brick_07', '#ffffff', 0.9, 1.2), base: TM('castle_wall_slates', '#e8e2d6', 0.95, 1.2), stone: TMb('old_stone_wall', '#f4eee4', 1.45, 0.95, 1.2),
       roof: TM('clay_roof_tiles', '#e8a088', 0.85, 1.1), timber: PM('#5a3424', 0.85), trim: '#c8b8a0', shut: '#7a1a14', winStyle: 'arch', winCol: '#1e1a20', bandedWalls: true,
       pitch: 0.95, eave: 0.09, roofKind: 'hip', towerRound: true, towerTop: 'gallery', towerPitch: 1.7, fin: 'cross', accent: '#8c1418' }); break;
     case 'ung': Object.assign(K, {
