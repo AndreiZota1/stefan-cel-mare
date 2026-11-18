@@ -119,7 +119,7 @@ var G = globalThis.G || (globalThis.G = {});
     var qs = new URLSearchParams(location.search);
     if (qs.get('spectate')) G.spectate = true;
     G.R.init($('cv')); G.R.initMini($('mini')); G.UI.init(); G.Input.init($('cv'));
-    G.R.preloadBaked(); G.R.preloadBld();
+    G.R.preloadBaked(); G.R.preloadBld(); G.R.preloadNature(); G.Terrain.loadTextures();
     function layout() {
       var desk = window.matchMedia('(pointer: fine)').matches && window.innerWidth >= 900 && window.innerHeight >= 520;
       document.body.classList.toggle('desk', desk);

@@ -203,17 +203,20 @@ var G = globalThis.G || (globalThis.G = {});
 
   function findEnemy(u, r) {
     var st = ust(u), best = null, bd = 1e9;
+    var ign = u.ign;
+    if (ign) for (var k in ign) if (ign[k] < S.t) delete ign[k];
     if (!st.onlyBld) forUnitsNear(u.x, u.y, r, function (e) {
-      if (e.o === u.o || e.dead) return;
+      if (e.o === u.o || e.dead || (ign && ign[e.id])) return;
       var d = (e.x - u.x) * (e.x - u.x) + (e.y - u.y) * (e.y - u.y);
       if (d > r * r) return;
       if (e.t === 'vil') d += 6;
       if (d < bd) { bd = d; best = e; }
     });
     if (best) return best;
+    if (st.proj === 'arrow') return null; // arcașii nu trag singuri în ziduri: săgețile nu le fac aproape nimic
     for (var i = 0; i < C.blds.length; i++) {
       var b = C.blds[i];
-      if (b.o === u.o || b.dead || (G.BLDS[b.t].farm && !st.onlyBld)) continue;
+      if (b.o === u.o || b.dead || (G.BLDS[b.t].farm && !st.onlyBld) || (ign && ign[b.id])) continue;
       var dd = distRect(u.x, u.y, rectOf(b));
       if (dd <= r && dd < bd) { bd = dd; best = b; }
     }
@@ -257,10 +260,15 @@ var G = globalThis.G || (globalThis.G = {});
     if (u.gk !== key || moved || (!u.path && u.rp <= 0)) {
       if (C.budget <= 0) return false;
       C.budget--;
-      if (u.gk !== key) u.fails = 0;
-      else if (!moved && !u.path) u.fails = (u.fails || 0) + 1;
-      if (u.fails > 6) return 'fail';
-      var p = G.findPath(u.x, u.y, goalFor(e, reach), 2500);
+      if (u.gk !== key) { u.fails = 0; u.np = 0; u.pd = dist; }
+      else {
+        if (!moved && !u.path) u.fails = (u.fails || 0) + 1;
+        // nu se mai apropie de țintă (de ex. e peste râu): renunță
+        if (dist > (u.pd === undefined ? 1e9 : u.pd) - 0.25) u.np = (u.np || 0) + 1; else u.np = 0;
+        if (dist < u.pd) u.pd = dist;
+      }
+      if (u.fails > 6 || u.np > 7) return 'fail';
+      var p = G.findPath(u.x, u.y, goalFor(e, reach), 5200);
       u.gk = key; u.gx = e.x; u.gy = e.y; u.rp = 0.7; u.pi = 0;
       if (p === null) { u.path = null; return 'fail'; }
       if (p.length === 0) {
@@ -286,7 +294,7 @@ var G = globalThis.G || (globalThis.G = {});
       C.budget--;
       if (u.gk === key) T.n = (T.n || 0) + 1;
       if (T.n > 4) { finish(u, T); return; }
-      var p = G.findPath(u.x, u.y, { x: Math.floor(T.x), y: Math.floor(T.y), r: 0 }, 3000);
+      var p = G.findPath(u.x, u.y, { x: Math.floor(T.x), y: Math.floor(T.y), r: 0 }, 5200);
       u.gk = key; u.rp = 0.8; u.pi = 0;
       if (p === null) { finish(u, T); return; }
       if (p.length) {
@@ -323,7 +331,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (T.auto && G.dist(u, e) > st.los + 3) { finish(u, T); return; }
     var reach = st.rng > 0 ? st.rng : (e.k === 'u' ? st.r + G.UNITS[e.t].r + 0.3 : 0.75);
     var r = approach(u, e, reach, dt);
-    if (r === 'fail') { finish(u, T); return; }
+    if (r === 'fail') { (u.ign || (u.ign = {}))[e.id] = S.t + 25; finish(u, T); return; }
     if (!r) return;
     faceTo(u, e.x - u.x, e.y - u.y);
     u.wk = 0.25;
@@ -464,7 +472,7 @@ var G = globalThis.G || (globalThis.G = {});
       if (C.budget <= 0) return false;
       C.budget--;
       if (u.gk === key) { u.fails = (u.fails || 0) + 1; if (u.fails > 3) { T.slot = null; u.fails = 0; return approach(u, e, 0.75, dt); } }
-      var p = G.findPath(u.x, u.y, { x: Math.floor(T.slot[0]), y: Math.floor(T.slot[1]), r: 0 }, 2500);
+      var p = G.findPath(u.x, u.y, { x: Math.floor(T.slot[0]), y: Math.floor(T.slot[1]), r: 0 }, 5200);
       u.gk = key; u.rp = 0.8; u.pi = 0;
       if (p === null) return 'fail';
       if (p.length) { var l = p[p.length - 1]; if (Math.floor(l[0]) === Math.floor(T.slot[0]) && Math.floor(l[1]) === Math.floor(T.slot[1])) { l[0] = T.slot[0]; l[1] = T.slot[1]; } u.path = p; }
@@ -764,7 +772,7 @@ var G = globalThis.G || (globalThis.G = {});
   G.update = function (dt) {
     if (!S || S.over) return;
     S.t += dt;
-    C.budget = 14;
+    C.budget = 10;
     refreshLists();
     for (var i = 0; i < C.units.length; i++) { var u = C.units[i]; if (!u.dead) updUnit(u, dt); }
     separate(dt);

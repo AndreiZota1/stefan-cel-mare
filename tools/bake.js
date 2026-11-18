@@ -46,6 +46,15 @@ const MIME = { '.js': 'text/javascript', '.html': 'text/html', '.json': 'applica
     meta['j_' + t + '_' + civ] = { W: 96, H: 96 };
     console.log(key, (Date.now() - t0) + ' ms', r.meta.W + 'x' + r.meta.H);
   }
+  const NAT = [['tree', 0], ['tree', 1], ['tree', 2], ['tree', 3], ['tree', 4], ['tree', 5], ['tree', 6], ['tree', 7], ['gold', 0], ['stone', 0], ['berry', 0], ['sheep', 0], ['sheep', 1]];
+  for (const [kind, v] of NAT) {
+    const key = 'n_' + kind + v;
+    if (only.length && !only.includes(key) && !only.includes('natura')) continue;
+    const r = await page.evaluate(([k2, v2]) => window.bakeNature(k2, v2), [kind, v]);
+    fs.writeFileSync(path.join(OUT, key + '.png'), Buffer.from(r.png.split(',')[1], 'base64'));
+    meta[key] = r.meta;
+    console.log(key, r.meta.W + 'x' + r.meta.H);
+  }
   fs.writeFileSync(metaFile, JSON.stringify(meta));
   fs.writeFileSync(path.join(OUT, 'sprites.js'), '// Generat de tools/bake.js\nvar G = globalThis.G || (globalThis.G = {});\nG.BAKED = ' + JSON.stringify(meta) + ';\n');
   await browser.close();

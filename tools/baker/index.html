@@ -6,6 +6,7 @@
 import { bakeSheet, bakeStill, faceDir } from './core.js';
 import { unitModel } from './units.js';
 import { building, texturesReady } from './buildings.js';
+import { tree, mine, berry, sheep } from './nature.js';
 import { camera, THREE } from './core.js';
 const TEAM = { mol: '#2f6fd6', oto: '#d23b2e' };
 // celule la zoom 1 (pixeli CSS); se înmulțesc cu k
@@ -48,6 +49,15 @@ window.bakeIcon = (type, civ) => {
   m.reset(); faceDir(m.root, 1);
   const cav = m.cell !== 'foot', k = cav ? 2.6 : 3.6;
   return bakeStill({ root: m.root, W: 96, H: 96, ax: cav ? 46 : 46, ay: cav ? 86 : 88, k, ss: 2, shadow: 1 });
+};
+// natura: copaci, mine, tufe, oi (o singură imagine, privite dinspre sud-vest)
+window.bakeNature = async (kind, v) => {
+  const m = kind === 'tree' ? tree(v) : kind === 'gold' || kind === 'stone' ? mine(kind) : kind === 'berry' ? berry() : sheep(v);
+  await new Promise(r => setTimeout(r, 300));
+  await texturesReady();
+  if (kind === 'sheep') faceDir(m.root, 1);
+  const k = 2, cell = kind === 'tree' ? [112, 144, 42, 116] : kind === 'sheep' ? [44, 40, 18, 26] : [84, 64, 34, 38];
+  return bakeStill({ root: m.root, W: cell[0] * k, H: cell[1] * k, ax: cell[2] * k, ay: cell[3] * k, k, ss: 2, shadow: kind === 'tree' ? 2.2 : 1.2 });
 };
 window.ready = true;
 </script>

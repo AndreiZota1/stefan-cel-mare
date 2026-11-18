@@ -169,9 +169,87 @@ var G = globalThis.G || (globalThis.G = {});
     return c;
   }
 
+  // ---------- terenul cu texturi foto (Poly Haven, CC0) ----------
+  var TX = null;
+  T.loadTextures = function () {
+    if (TX || !G.TEX || typeof document === 'undefined') return Promise.resolve();
+    var out = {};
+    return Promise.all(Object.keys(G.TEX).map(function (k) {
+      return new Promise(function (res) {
+        var img = new Image();
+        img.onload = function () {
+          var c = document.createElement('canvas'); c.width = c.height = 512;
+          var g = c.getContext('2d'); g.drawImage(img, 0, 0, 512, 512);
+          out[k] = g.getImageData(0, 0, 512, 512).data; res();
+        };
+        img.onerror = function () { res(); };
+        img.src = G.TEX[k];
+      });
+    })).then(function () { if (out.grass && out.dirt) { TX = out; cache.clear(); } });
+  };
+  function ti(x, y, sc) { var u = x * sc, v = y * sc; u -= Math.floor(u); v -= Math.floor(v); return ((((v * 512) | 0) << 9) + ((u * 512) | 0)) << 2; }
+  function genChunkTex(k, cx, cy) {
+    var c = document.createElement('canvas'); c.width = CS; c.height = CS;
+    var g = c.getContext('2d'), img = g.createImageData(CS, CS), d = img.data;
+    var offX = N * 32 * k, X0 = cx * CS, Y0 = cy * CS, i32 = 1 / (32 * k), i16 = 1 / (16 * k);
+    var Fd = F.d, Fw = F.w, Ff = F.f, Fdep = F.dep, Ffo = F.fo, Fsh = F.sh, Nm = N - 0.001;
+    var TG = TX.grass, TG2 = TX.grass2 || TX.grass, TF = TX.forest || TX.grass, TD = TX.dirt, TS = TX.sand || TX.dirt, TR = TX.rocks || TX.dirt;
+    for (var py = 0; py < CS; py += 2) {
+      var Yc = Y0 + py + 1, b = Yc * i16;
+      for (var px = 0; px < CS; px += 2) {
+        var Xc = X0 + px + 1, a = (Xc - offX) * i32;
+        var x = (a + b) * 0.5, y = (b - a) * 0.5;
+        if (x < -0.05 || y < -0.05 || x >= N + 0.05 || y >= N + 0.05) continue;
+        var nm = bil(nMid, x * 9, y * 9), nm2 = bil(nMid, x * 9 + 131, y * 9 + 57);
+        var sx = x + (nm - 0.5) * 0.75, sy = y + (nm2 - 0.5) * 0.75;
+        if (sx < 0) sx = 0; else if (sx > Nm) sx = Nm;
+        if (sy < 0) sy = 0; else if (sy > Nm) sy = Nm;
+        var ix = sx | 0, iy = sy | 0, fx = sx - ix, fy = sy - iy;
+        var j0 = iy * V + ix, j1 = j0 + 1, j2 = j0 + V, j3 = j2 + 1;
+        var w0 = (1 - fx) * (1 - fy), w1 = fx * (1 - fy), w2 = (1 - fx) * fy, w3 = fx * fy;
+        var ww = Fw[j0] * w0 + Fw[j1] * w1 + Fw[j2] * w2 + Fw[j3] * w3;
+        var wd = Fd[j0] * w0 + Fd[j1] * w1 + Fd[j2] * w2 + Fd[j3] * w3;
+        var wf = Ff[j0] * w0 + Ff[j1] * w1 + Ff[j2] * w2 + Ff[j3] * w3;
+        var fo = Ffo[j0] * w0 + Ffo[j1] * w1 + Ffo[j2] * w2 + Ffo[j3] * w3;
+        var sh = Fsh[j0] * w0 + Fsh[j1] * w1 + Fsh[j2] * w2 + Fsh[j3] * w3;
+        var nl = bil(nLow, x * 4, y * 4);
+        var t2 = sm(0.42, 0.78, nl) * 0.55, fq = fo > 0.01 ? Math.min(1, fo * 1.5) * 0.85 : 0;
+        var dm = wd > 0.01 ? sm(0.15, 0.55, wd + (nm - 0.5) * 0.5) : 0;
+        var wet = ww + wf, sand = wet > 0.02 ? sm(0.05, 0.3, wet + (nm - 0.5) * 0.3) * 0.9 : 0;
+        var wm = ww > 0.02 ? sm(0.3, 0.58, ww + (nm - 0.5) * 0.22) : 0;
+        var fm = wf > 0.02 ? sm(0.3, 0.65, wf + (nm - 0.5) * 0.2) : 0;
+        var wr = 0, wg = 0, wb = 0;
+        if (wm > 0) { var dep = Fdep[j0] * w0 + Fdep[j1] * w1 + Fdep[j2] * w2 + Fdep[j3] * w3, dd = sm(0, 2.6, dep); wr = 66 - 36 * dd; wg = 118 - 50 * dd; wb = 150 - 30 * dd; }
+        var tint = 0.94 + nl * 0.14;
+        for (var oy = 0; oy < 2; oy++) {
+          var Yp = Y0 + py + oy + 0.5, bp = Yp * i16;
+          for (var ox = 0; ox < 2; ox++) {
+            var Xp = X0 + px + ox + 0.5, ap = (Xp - offX) * i32, xx = (ap + bp) * 0.5, yy = (bp - ap) * 0.5;
+            if (xx < 0 || yy < 0 || xx >= N || yy >= N) continue;
+            var o = ((py + oy) * CS + px + ox) << 2;
+            var i1 = ti(xx, yy, 0.34), i2 = ti(yy + 7.3, xx + 3.1, 0.22);
+            // iarba: două texturi amestecate, aduse spre verdele din AoE
+            var r = TG[i1] * (1 - t2) + TG2[i2] * t2, gg = TG[i1 + 1] * (1 - t2) + TG2[i2 + 1] * t2, bb = TG[i1 + 2] * (1 - t2) + TG2[i2 + 2] * t2;
+            r = r * 0.86 * tint; gg = (gg * 1.18 + 8) * tint; bb = bb * 0.7 * tint;
+            if (fq > 0) { var i3 = ti(xx, yy, 0.42); r += (TF[i3] * 0.82 - r) * fq; gg += (TF[i3 + 1] * 0.86 - gg) * fq; bb += (TF[i3 + 2] * 0.7 - bb) * fq; }
+            if (dm > 0) { var i4 = ti(xx + 1.7, yy, 0.3); r += (TD[i4] * 1.12 + 10 - r) * dm; gg += (TD[i4 + 1] * 1.02 + 6 - gg) * dm; bb += (TD[i4 + 2] * 0.88 - bb) * dm; }
+            r *= sh; gg *= sh; bb *= sh;
+            if (sand > 0) { var i5 = ti(xx, yy, 0.36); r += (TS[i5] * 1.08 - r) * sand; gg += (TS[i5 + 1] * 1.04 - gg) * sand; bb += (TS[i5 + 2] * 0.92 - bb) * sand; }
+            if (fm > 0) { var i6 = ti(xx, yy, 0.6); r += (TR[i6] * 0.72 + 8 - r) * fm; gg += (TR[i6 + 1] * 0.82 + 18 - gg) * fm; bb += (TR[i6 + 2] * 0.9 + 32 - bb) * fm; }
+            if (wm > 0) { var i7 = ti(xx, yy, 0.5), rip = (TR[i7 + 1] - 110) * 0.08; r += (wr + rip - r) * wm; gg += (wg + rip - gg) * wm; bb += (wb + rip - bb) * wm; }
+            d[o] = r; d[o + 1] = gg; d[o + 2] = bb; d[o + 3] = 255;
+          }
+        }
+      }
+    }
+    g.putImageData(img, 0, 0);
+    decals(g, k, X0, Y0, offX, true);
+    return c;
+  }
+
   // flori, smocuri, pietricele și podul, desenate peste textură
   var FLOWERS = ['#d8392b', '#f3efe4', '#e8d24a', '#5b7bd8', '#a060c0', '#d8392b'];
-  function decals(g, k, X0, Y0, offX) {
+  function decals(g, k, X0, Y0, offX, photo) {
     var S = G.S, ter = S.ter;
     var pts = [[X0, Y0], [X0 + CS, Y0], [X0, Y0 + CS], [X0 + CS, Y0 + CS]].map(function (p) {
       var a = (p[0] - offX) / (32 * k), b = p[1] / (16 * k); return [(a + b) / 2, (b - a) / 2];
@@ -193,7 +271,7 @@ var G = globalThis.G || (globalThis.G = {});
       }
       var h = G.hash2(tx, ty, 17);
       if (t === 0) {
-        var nt = 3 + ((h * 4) | 0);
+        var nt = photo ? 0 : 3 + ((h * 4) | 0);
         for (var i = 0; i < nt; i++) {
           var hx = G.hash2(tx * 7 + i, ty * 3, 19), hy = G.hash2(tx * 5, ty * 11 + i, 23);
           var p = P(tx + hx, ty + hy);
@@ -279,7 +357,7 @@ var G = globalThis.G || (globalThis.G = {});
       if (!ch) {
         if (!explored(k, cx, cy)) continue;
         if (!gen || performance.now() > budgetEnd) { missing++; continue; }
-        ch = { c: genChunk(k, cx, cy), used: frameNo };
+        ch = { c: TX ? genChunkTex(k, cx, cy) : genChunk(k, cx, cy), used: frameNo };
         cache.set(key, ch);
       }
       ch.used = frameNo;

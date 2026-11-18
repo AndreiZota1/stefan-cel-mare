@@ -732,13 +732,29 @@ var G = globalThis.G || (globalThis.G = {});
     ctx.fillStyle = f > 0.6 ? '#4cd964' : f > 0.3 ? '#f5c542' : '#ff4b3e';
     ctx.fillRect(x - w / 2, y, w * f, 2.5);
   }
+  var natC = {};
+  function natSprite(kind, v) {
+    var key = 'n_' + kind + v, B = G.BAKED && G.BAKED[key];
+    if (!B) return null;
+    var o = natC[key];
+    if (!o) { var img = new Image(); img.src = 'assets/' + key + '.png'; o = natC[key] = { c: img, w: B.W / B.k, h: B.H / B.k, ax: B.ax / B.k, ay: B.ay / B.k }; }
+    return o.c.complete && o.c.naturalWidth ? o : null;
+  }
+  R.preloadNature = function () { for (var v = 0; v < 8; v++) natSprite('tree', v); ['gold', 'stone', 'berry'].forEach(function (k) { natSprite(k, 0); }); natSprite('sheep', 0); natSprite('sheep', 1); };
   function drawRes(e) {
     var p = R.w2s(e.x, e.y), z = cam.z;
     if (p[0] < -90 || p[0] > W + 90 || p[1] < -20 || p[1] > H + 140) return;
-    if (e.t === 'sheep') { drawSheep(ctx, e, p[0], p[1], z); return; }
+    if (e.t === 'sheep') {
+      var sp = natSprite('sheep', Math.sin(clock * 0.7 + e.id * 1.7) > 0.3 ? 1 : 0);
+      if (!sp) { drawSheep(ctx, e, p[0], p[1], z); return; }
+      var ks = z * 1.1;
+      if (e.id % 2) { ctx.save(); ctx.translate(p[0], p[1]); ctx.scale(-1, 1); ctx.drawImage(sp.c, -sp.ax * ks, -sp.ay * ks, sp.w * ks, sp.h * ks); ctx.restore(); }
+      else ctx.drawImage(sp.c, p[0] - sp.ax * ks, p[1] - sp.ay * ks, sp.w * ks, sp.h * ks);
+      return;
+    }
     var s, scl;
-    if (e.t === 'tree') { s = G.Spr.tree((G.hash2(e.tx, e.ty, 3) * 8) | 0); scl = 0.86 + G.hash2(e.tx, e.ty, 4) * 0.28; }
-    else { s = G.Spr.res(e.t); scl = Math.max(0.6, Math.min(1, 0.5 + e.amt / G.RESD[e.t].amt * 0.5)); }
+    if (e.t === 'tree') { s = natSprite('tree', (G.hash2(e.tx, e.ty, 3) * 8) | 0) || G.Spr.tree((G.hash2(e.tx, e.ty, 3) * 8) | 0); scl = 0.86 + G.hash2(e.tx, e.ty, 4) * 0.28; }
+    else { s = natSprite(e.t, 0) || G.Spr.res(e.t); scl = Math.max(0.6, Math.min(1, 0.5 + e.amt / G.RESD[e.t].amt * 0.5)); }
     var k = z * scl;
     ctx.drawImage(s.c, p[0] - s.ax * k, p[1] - s.ay * k, s.w * k, s.h * k);
     if (G.UI && G.UI.selSet()[e.id]) { ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(p[0], p[1], 14 * z, 7 * z, 0, 0, 6.3); ctx.stroke(); }
@@ -803,7 +819,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (!img) { img = bakedImgs[key] = new Image(); img.src = 'assets/u_' + key + '.png'; }
     return img.complete && img.naturalWidth ? { B: B, img: img } : null;
   }
-  function unitKeys() { return G.BAKED ? Object.keys(G.BAKED).filter(function (k) { return !/^[bij]_/.test(k); }) : []; }
+  function unitKeys() { return G.BAKED ? Object.keys(G.BAKED).filter(function (k) { return !/^[bijn]_/.test(k); }) : []; }
   R.preloadBaked = function () { unitKeys().forEach(bakedSheet); };
   R.bakedReady = function () { return unitKeys().every(function (k) { return !!bakedSheet(k); }); };
   var TOOLACT = { axe: 'axe', pick: 'pick', hammer: 'hammer', sickle: 'sickle' };
@@ -845,7 +861,7 @@ var G = globalThis.G || (globalThis.G = {});
       if (u.carry && u.carry.n > 0.5) {
         var cc = { w: '#7a5130', f: '#b8433a', g: '#e6c24a', s: '#a7a59e' }[u.carry.r], bk = (u.dir8 || 0) > 4 ? 1 : -1;
         ctx.fillStyle = cc; ctx.strokeStyle = 'rgba(20,12,6,0.7)'; ctx.lineWidth = 0.8;
-        ctx.beginPath(); ctx.ellipse(p[0] + bk * 4 * z, p[1] - 17 * z, 3.2 * z, 2.6 * z, 0, 0, 6.3); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.ellipse(p[0] + bk * 3.5 * z, p[1] - 16 * z, 2.2 * z, 1.8 * z, 0, 0, 6.3); ctx.fill(); ctx.stroke();
       }
     } else drawUnitAt(ctx, u, civ, p[0], p[1], z * 1.1 * (d.hero ? 1.1 : 1));
     if (selected || (u.hit && S.t - u.hit < 2.5)) hpBar(u, p[0], p[1] - (d.cls === 'cav' ? 40 : d.cls === 'sie' ? 28 : 33) * z, d.cls === 'vil' ? 16 : 20);
