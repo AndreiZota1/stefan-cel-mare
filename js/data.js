@@ -221,6 +221,7 @@ G.BLDS = {
                n: 5, hp: 4800, cost: { f: 1000, w: 1000, g: 1000, s: 1000 }, time: 300, age: 3, los: 6, wonder: true,
                desc: 'Minunea civilizației tale. Dacă o ții în picioare 5 minute, câștigi (la victoria prin minune).' }
 };
+G.BLDS.capcana = { name: 'Copaci tăiați', n: 1, hp: 120, cost: {}, time: 12, age: 0, los: 3, walk: true, trap: true, desc: 'Copacii tăiați pe jumătate: când trece dușmanul, cad peste el.' };
 G.BUILD_ECO = ['casa', 'joagar', 'mina', 'moara', 'ogor', 'targ', 'manastire', 'universitate', 'cetate', 'minune'];
 G.BUILD_MIL = ['cazarma', 'poligon', 'grajd', 'fierarie', 'atelier', 'fortareata', 'turn', 'palisada', 'poartal', 'zid', 'poarta'];
 G.BUILD_LIST = G.BUILD_ECO.concat(G.BUILD_MIL);

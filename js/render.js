@@ -249,6 +249,18 @@ var G = globalThis.G || (globalThis.G = {});
     if (t === 'minune') return 'b/minune_' + civ;
     return 'b/' + t + '_' + st;
   }
+  // capcana din Codrii Cosminului: un trunchi tăiat și bușteni
+  var capS = null;
+  function capSprite() {
+    if (capS) return capS;
+    var c = document.createElement('canvas'); c.width = 90; c.height = 110; var g = c.getContext('2d');
+    g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(45, 92, 30, 11, 0, 0, 6.3); g.fill();
+    g.fillStyle = '#5a3a1e'; g.fillRect(37, 20, 16, 72); g.fillStyle = '#7a5230'; g.fillRect(37, 20, 6, 72);
+    g.fillStyle = '#2f5a24'; g.beginPath(); g.arc(45, 22, 22, 0, 6.3); g.fill(); g.fillStyle = '#3f7230'; g.beginPath(); g.arc(38, 16, 13, 0, 6.3); g.fill();
+    g.fillStyle = '#d8b07a'; g.beginPath(); g.moveTo(37, 66); g.lineTo(53, 60); g.lineTo(53, 68); g.lineTo(37, 74); g.closePath(); g.fill();
+    for (var i = 0; i < 3; i++) { g.fillStyle = '#6b4626'; g.beginPath(); g.ellipse(20 + i * 22, 96 - i * 3, 12, 4.5, -0.3, 0, 6.3); g.fill(); g.fillStyle = '#c99a62'; g.beginPath(); g.ellipse(9 + i * 22, 99 - i * 3, 3.5, 3.5, 0, 0, 6.3); g.fill(); }
+    return (capS = { c: c, w: 90, h: 110, ax: 45, ay: 78, baked: 0 });
+  }
   var bcache = {};
   function bldSprite(t, civ, b, o) {
     var key2 = bkey2(t, civ, b, o), owner = b ? b.o : (o || 0), sh = sheet2(key2);
@@ -258,6 +270,7 @@ var G = globalThis.G || (globalThis.G = {});
       return o2;
     }
     if (G.BLDS[t].wall) return null;
+    if (t === 'capcana') return capSprite(b);
     var ac = artCiv(civ), ot = OLDB[t] || t, key = 'b_' + ot + '_' + ac, B = G.BAKED && G.BAKED[key];
     if (B) {
       var ob = bakedB[key];
@@ -726,9 +739,25 @@ var G = globalThis.G || (globalThis.G = {});
         var Rn = G.rng(Math.floor(f.x * 31 + f.y * 17));
         for (var q = 0; q < 6 + n * 3; q++) ell(ctx, p[0] + (Rn() - 0.5) * hw * 1.4, p[1] + (Rn() - 0.5) * hh * 1.2, (2 + Rn() * 3) * z, (1.5 + Rn() * 2) * z, Rn() < 0.5 ? '#8a8174' : '#3a3028');
         ctx.globalAlpha = 1;
+      } else if (f.k === 'fire') {
+        var fa = Math.max(0, Math.min(1, ((f.life || 45) - age) / 8)), Rf = G.rng(Math.floor(f.x * 13 + f.y * 7));
+        for (var fi = 0; fi < 3; fi++) {
+          var fx2 = p[0] + (Rf() - 0.5) * 34 * z, fy2 = p[1] - Rf() * 10 * z, fl2 = (0.75 + Math.sin(clock * 12 + fi * 2.1) * 0.25) * fa;
+          ell(ctx, fx2, fy2 - 8 * z, 6 * z * fl2, 10 * z * fl2, 'rgba(255,110,25,0.85)'); ell(ctx, fx2, fy2 - 5 * z, 3.5 * z * fl2, 6 * z * fl2, 'rgba(255,225,100,0.9)');
+          var sp3 = (clock * 0.5 + fi * 0.33) % 1; ctx.globalAlpha = 0.4 * (1 - sp3) * fa; ell(ctx, fx2 + sp3 * 10 * z, fy2 - (16 + sp3 * 34) * z, (5 + sp3 * 8) * z, (4 + sp3 * 6) * z, '#4e4944'); ctx.globalAlpha = 1;
+        }
       } else if (f.k === 'stump') {
         ell(ctx, p[0], p[1] - 1 * z, 3.5 * z, 2 * z, '#6b4a2a'); ell(ctx, p[0], p[1] - 1.8 * z, 2.6 * z, 1.3 * z, '#c99a62');
       }
+    });
+    // semnele misiunii
+    if (S.scen && S.scen.marks) S.scen.marks.forEach(function (m) {
+      var p = R.w2s(m.x, m.y); if (p[0] < -60 || p[0] > W + 60 || p[1] < -60 || p[1] > H + 60) return;
+      var bob = Math.sin(clock * 3 + m.x) * 2 * z;
+      ctx.globalAlpha = 0.5 + 0.2 * Math.sin(clock * 4); ell(ctx, p[0], p[1], 16 * z, 8 * z, m.col); ctx.globalAlpha = 1;
+      ln(ctx, p[0], p[1], p[0], p[1] - 34 * z, '#3a2a18', 2);
+      ctx.fillStyle = m.col; ctx.beginPath(); ctx.moveTo(p[0], p[1] - 34 * z + bob); ctx.lineTo(p[0] + 16 * z, p[1] - 29 * z + bob); ctx.lineTo(p[0], p[1] - 23 * z + bob); ctx.closePath(); ctx.fill();
+      if (m.label) { ctx.font = 'bold ' + Math.round(12 * Math.max(0.85, z)) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillText(m.label, p[0] + 1, p[1] - 39 * z + 1); ctx.fillStyle = '#fff2c8'; ctx.fillText(m.label, p[0], p[1] - 39 * z); ctx.textAlign = 'start'; }
     });
     // marcaje de comandă
     R.marks = R.marks.filter(function (m) { return clock - m.t < 0.7; });

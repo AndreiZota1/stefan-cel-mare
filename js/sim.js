@@ -27,6 +27,7 @@ var G = globalThis.G || (globalThis.G = {});
   G.nm = function (d, civ) { return typeof d.name === 'string' ? d.name : (d.name[civ] || d.name.def || d.name.mol); };
   G.ename = function (e) {
     if (e.k === 'r') return G.RESD[e.t].name;
+    if (e.name) return e.name;
     var P = S.players[e.o];
     if (e.k === 'u' && G.UNITS[e.t].hero) return P.heroName || G.CIVS[P.civ].hero;
     return G.nm(def(e), P.civ);
@@ -956,6 +957,14 @@ var G = globalThis.G || (globalThis.G = {});
     if (S.players[u.o].techs.corbul && u.hp < u.mhp && inAura(u)) u.hp = Math.min(u.mhp, u.hp + 0.5 * dt);
     var T = u.task;
     if (!T) { doIdle(u, dt); return; }
+    // paza contra blocajelor: are drum, nu muncește, dar nu înaintează
+    if (u.wk <= 0) {
+      u.pt = (u.pt || 0) + dt;
+      if (u.pt >= 2) {
+        if (u.path && Math.abs(u.x - (u.px || 0)) + Math.abs(u.y - (u.py || 0)) < 0.12) { u.stk = (u.stk || 0) + 1; unstick(u, T); } else u.stk = 0;
+        u.pt = 0; u.px = u.x; u.py = u.y;
+      }
+    }
     switch (T.k) {
       case 'move': doMove(u, T, dt); break;
       case 'amove': doAMove(u, T, dt); break;
@@ -968,6 +977,22 @@ var G = globalThis.G || (globalThis.G = {});
       case 'gar': doGar(u, T, dt); break;
       case 'trade': doTrade(u, T, dt); break;
       default: u.task = null;
+    }
+  }
+  function unstick(u, T) {
+    u.path = null; u.gk = null; u.rp = 0;
+    if (T.slot) T.slot = null;
+    if (T.back && T.back.slot) T.back.slot = null;
+    // un pas mic într-o parte, ca să iasă din înghesuială
+    var N = S.N, pass = C.pp[u.o] || C.pass;
+    for (var k = 0; k < 6; k++) {
+      var a = Math.random() * 6.283, nx = u.x + Math.cos(a) * 0.4, ny = u.y + Math.sin(a) * 0.4;
+      if (nx > 0 && ny > 0 && nx < N && ny < N && pass[Math.floor(ny) * N + Math.floor(nx)]) { u.x = nx; u.y = ny; break; }
+    }
+    if (u.stk >= 4) {
+      u.stk = 0;
+      if (T.k === 'gat') { T.id = 0; T.slot = null; }
+      else if (T.k === 'move' || T.k === 'amove' || T.k === 'atk') finish(u, T);
     }
   }
   function separate(dt) {
@@ -1189,7 +1214,7 @@ var G = globalThis.G || (globalThis.G = {});
         if (e.built) { cap[e.o] += G.BLDS[e.t].pop || 0; if (TEPE_B[e.t] && S.players[e.o].techs.tepe) C.tepe.push(e); }
       }
     }
-    for (p = 0; p < nP; p++) { S.players[p].pop = pop[p]; S.players[p].cap = Math.min(S.opt.popMax, cap[p]); }
+    for (p = 0; p < nP; p++) { S.players[p].pop = pop[p]; S.players[p].cap = Math.min(S.opt.popMax, cap[p] + (S.players[p].capBonus || 0)); }
     buildGrid();
     var gc = C.gcount = {};
     for (var j = 0; j < us.length; j++) {
@@ -1205,8 +1230,8 @@ var G = globalThis.G || (globalThis.G = {});
     S.dirty = 0;
   }
   function cleanFx() {
-    var life = { corpse: 16, rubble: 900, stump: 150, dust: 1.5, boom: 0.9, smoke: 1.6, heal: 1, aura: 1.6, coin: 1.4, fire: 2 };
-    S.fx = S.fx.filter(function (f) { return S.t - f.t < (life[f.k] || 2); });
+    var life = { corpse: 16, rubble: 900, stump: 150, dust: 1.5, boom: 0.9, smoke: 1.6, heal: 1, aura: 1.6, coin: 1.4, fire: 45 };
+    S.fx = S.fx.filter(function (f) { return S.t - f.t < (f.life || life[f.k] || 2); });
     if (S.fx.length > 900) S.fx.splice(0, S.fx.length - 900);
   }
   function score(P) {

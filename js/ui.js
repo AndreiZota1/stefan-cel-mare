@@ -85,7 +85,7 @@ var G = globalThis.G || (globalThis.G = {});
     UI.place = null; UI.rallyMode = false; UI.amove = false; lastSig = ''; acc = 1;
     if (ents.length) G.sfx('select');
   };
-  UI.reset = function () { UI.sel = []; UI.place = null; UI.rallyMode = false; lastSig = ''; msgIdx = G.msgQ.length; els.msgs.innerHTML = ''; };
+  UI.reset = function () { UI.sel = []; UI.place = null; UI.rallyMode = false; UI.amove = false; UI.bpage = 0; lastSig = ''; msgIdx = G.msgQ.length; els.msgs.innerHTML = ''; if (G.Camp && G.Camp.reset) G.Camp.reset(); };
   function idleVils() { return G.C.units.filter(function (u) { return u.o === 0 && !u.dead && u.t === 'vil' && !u.task; }); }
   function mark(x, y, c) { G.R.marks.push({ x: x, y: y, t: performanceClock(), c: c }); }
   function performanceClock() { return G.R.clock ? G.R.clock() : 0; }
@@ -492,6 +492,12 @@ var G = globalThis.G || (globalThis.G = {});
   }
   function hint() {
     var S = G.S, P = S.players[0], C = G.C;
+    if (S.scen) {
+      var m = G.MISSIONS[S.scen.id], open = S.scen.obj.filter(function (o) { return !o.st && !o.sec; })[0];
+      var idleS = idleVils().length;
+      if (idleS && C.blds.some(function (b) { return b.o === 0; })) return 'Ai ' + idleS + (idleS === 1 ? ' țăran fără treabă.' : ' țărani fără treabă.') + ' Apasă punct (.) sau 💤.';
+      return (m && m.hint) || (open ? 'Obiectiv: ' + open.text : 'Alege oștenii (tras cu mouse-ul) și dă-le ordine cu clic dreapta.');
+    }
     var vils = C.units.filter(function (u) { return u.o === 0 && u.t === 'vil'; });
     var working = vils.filter(function (u) { return u.task; }).length;
     if (S.t < 90 && working < 2) return 'Atinge un țăran, apoi o oaie sau o tufă de mure: se apucă de strâns hrană.';
@@ -518,6 +524,7 @@ var G = globalThis.G || (globalThis.G = {});
   UI.tick = function (dt) {
     acc += dt; miniAcc += dt;
     flushMsgs();
+    if (G.Camp && G.Camp.tick) G.Camp.tick(dt);
     if (miniAcc > 0.3) { miniAcc = 0; G.R.drawMini(); }
     if (acc < 0.2) return;
     acc = 0;
