@@ -653,6 +653,10 @@ var G = globalThis.G || (globalThis.G = {});
       else if (o.k === 'b') drawBld(o, sel[o.id]);
       else drawUnit(o, sel[o.id]);
     }
+    // oamenii ascunși după copaci și clădiri rămân vizibili ca siluete străvezii, ca în AoE
+    ctx.globalAlpha = 0.34;
+    for (var jg = 0; jg < list.length; jg++) { var og = list[jg]; if (og.k === 'u') ghostUnit(og); }
+    ctx.globalAlpha = 1;
 
     // proiectile
     S.proj.forEach(function (p) {
@@ -840,6 +844,14 @@ var G = globalThis.G || (globalThis.G = {});
   }
   R.bakedFrame = function (g, key, act, frame, d8, sx, sy, scale) { var sh = bakedSheet(key); if (!sh) return false; bakedFrame(g, sh, act, frame, d8, sx, sy, scale); return true; };
   var USCALE = 1.1;
+  function ghostUnit(u) {
+    var p = R.w2s(u.x, u.y);
+    if (p[0] < -40 || p[0] > W + 40 || p[1] < -10 || p[1] > H + 50) return;
+    var civ = G.S.players[u.o].civ, sh = bakedSheet(u.t + '_' + civ);
+    if (!sh) return;
+    var ua = unitAction(u, sh.B.actions);
+    bakedFrame(ctx, sh, ua[0], ua[1], u.dir8 || 0, p[0], p[1], cam.z * USCALE * (G.UNITS[u.t].hero ? 1.08 : 1) / sh.B.k);
+  }
   function drawUnit(u, selected) {
     var S = G.S, z = cam.z, p = R.w2s(u.x, u.y), d = G.UNITS[u.t], civ = S.players[u.o].civ;
     if (p[0] < -40 || p[0] > W + 40 || p[1] < -10 || p[1] > H + 50) return;
