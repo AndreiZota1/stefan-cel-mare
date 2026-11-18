@@ -183,7 +183,16 @@ Campania ține minte ce misiuni ai terminat și pe ce greutate.
 
 ### 2.11 Grafica
 
-- Clădirile în 4 stiluri: moldovenesc, central-european gotic, otoman, al stepei.
+- **Fiecare din cele 6 civilizații are clădirile și oamenii ei** (cerința lui Andrei din 19.11, noaptea), nu 4 stiluri comune:
+  - Moldova: var alb, stuf și șindrilă abruptă, biserică pictată cu turla pe stea, turnuri cu hurdă; cămăși albe, cușme, cojoace, solzi.
+  - Țara Românească: benzi de cărămidă și piatră, țiglă, arcade, turnul Chindiei; negru și grena, calpace cu pană, sabie, lamele.
+  - Ungaria: case săsești cu bârne, țiglă roșie, coifuri gotice smălțuite; pălării de fier, plăci, pavăze.
+  - Polonia: cărămidă roșie, frontoane în trepte, turle de cupru verde; salade, plăci, scuturi gotice.
+  - Otomani: piatră, cupole de plumb, minarete, chiparoși; turbane mari, caftane, kilij, scut kalkan.
+  - Tătari: iurte, corturi în dungi, streșini pictate, tugi; malahai, haine matlasate, lamele, cai mici.
+- Minunile: Putna, Curtea de Argeș, Castelul Huniazilor, Wawel, Hagia Sofia, Palatul Hanului.
+- Zidurile de piatră și porțile au forma civilizației; carul de negoț la fel (boi, coviltir, cămilă, chibitcă).
+- Iarna, acoperișurile prind zăpadă (masca `_s`); noaptea, ferestrele se aprind (masca `_l`).
 - Toți oștenii pe trepte vizuale (armura crește cu upgrade-ul) și cei 6 eroi.
 - **Culoarea jucătorului printr-o mască:** orice civilizație poate avea orice culoare, cum face AoE2. Imaginile sunt în WebP și se încarcă doar stilurile din joc.
 - Focul pe clădirile avariate, dărâmăturile, fumul de praf de pușcă, praful de sub pași, stolurile de păsări.
@@ -268,7 +277,7 @@ Fiecare etapă se termină cu testele verzi, commit și publicare. Jocul rămân
 
 - [x] Muzica (doina, lupta), apoi câte un stil pe civilizație (doină, modul unguresc, scara orientală cu zurna, stepa în galop)
 - [x] Etapa 1 — motorul: 2–4 jucători și echipe, 6 civilizații, 5 epoci, liniile de upgrade, ~85 de tehnologii, adăpostire și clopot, ziduri și porți, puterile eroilor, târg și care de negoț, moaște, victorii (cucerire, minune, regicid), salvarea v2
-- [ ] Etapa 2 — grafica 3D (ajutorul de grafică lucrează; până atunci, imaginile vechi țin locul celor noi)
+- [x] Etapa 2 — grafica 3D pe civilizații (19.11): `tools/baker/{units2,bkit,buildings2}.js`, randate cu `node tools/bake2.js [--civ mol] [--grp u,b,i,j] [--only casa]`; 180 de foi de oameni, 152 de clădiri cu zăpadă și ferestre, 300 de iconițe; verificate cu `test/contact.js`, `test/anim.js`, `test/civ-shots.js`
 - [ ] Etapa 3 — hărțile (ajutorul de hărți lucrează; până atunci, harta râului și pictorul de rezervă pentru misiuni)
 - [x] Etapa 4 — calculatorul: epocile 3–4, upgrade-uri, universitate, fortăreață, contre după armata dușmanului, ajutor pentru aliați, clopot, piață, moaște, puteri, sparge zidurile; gândește pe rând (fără sacadări)
 - [x] Etapa 5 — interfața: meniul nou cu bătălie demonstrativă în spate, bătălia liberă, arborele tehnologiilor, ecranul de final cu grafic, butoanele noi, lista jucătorilor
@@ -288,3 +297,6 @@ Fiecare etapă se termină cu testele verzi, commit și publicare. Jocul rămân
 | `node test/camp-smoke.js [id...]` | fiecare misiune pornește în browser, capturi |
 | `node test/smoke-v2.js` | meniul, bătălia 2v2, arborele, finalul |
 | `node test/desk-flows.js`, `node test/flows-test.js` | mouse și telefon |
+| `node test/contact.js b casa,cetate out.png` | planșă: aceeași clădire sau unitate la cele 6 civilizații, cu culorile echipelor |
+| `node test/anim.js u/vil_mol,u/treb_all out.png` | toate cadrele animațiilor, rând cu rând |
+| `node test/civ-shots.js` | poze din joc cu toate clădirile și oastea fiecărei civilizații (`test/out/civ-*.png`) |
