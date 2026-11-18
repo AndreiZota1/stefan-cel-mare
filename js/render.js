@@ -187,7 +187,18 @@ var G = globalThis.G || (globalThis.G = {});
 
   var HEAD = { cetate: 128, turn: 120, manastire: 110, moara: 92, casa: 62, cazarma: 74, grajd: 74, poligon: 62, fierarie: 92, joagar: 56, mina: 56, ogor: 6 };
 
-  function bldSprite(t, civ) { return G.Spr.bld(t, civ); }
+  var bakedB = {};
+  function bldSprite(t, civ) {
+    var key = 'b_' + t + '_' + civ, B = G.BAKED && G.BAKED[key];
+    if (B) {
+      var o = bakedB[key];
+      if (!o) { var img = new Image(); img.src = 'assets/' + key + '.png'; o = bakedB[key] = { c: img, w: B.W / B.k, h: B.H / B.k, ax: B.ax / B.k, ay: B.ay / B.k, hub: B.hub, chimney: B.chimney, baked: 1 }; }
+      if (o.c.complete && o.c.naturalWidth) return o;
+    }
+    return G.Spr.bld(t, civ);
+  }
+  R.bakedBldReady = function () { return !G.BAKED || Object.keys(G.BAKED).filter(function (k) { return k.indexOf('b_') === 0; }).every(function (k) { var o = bakedB[k]; return o && o.c.complete && o.c.naturalWidth; }); };
+  R.preloadBld = function () { Object.keys(G.BLDS).forEach(function (t) { bldSprite(t, 'mol'); bldSprite(t, 'oto'); }); };
   function bldSpriteOld(t, civ) {
     var key = t + '_' + civ;
     if (spr[key]) return spr[key];
@@ -605,7 +616,9 @@ var G = globalThis.G || (globalThis.G = {});
       if (p[0] < -80 || p[0] > W + 80 || p[1] < -80 || p[1] > H + 80) return;
       if (!exp[Math.floor(f.y) * N + Math.floor(f.x)]) return;
       if (f.k === 'corpse') {
-        ctx.globalAlpha = Math.max(0, 1 - age / 14);
+        ctx.globalAlpha = Math.max(0, Math.min(1, (14 - age) / 4));
+        var csh = bakedSheet(f.ut + '_' + S.players[f.o].civ);
+        if (csh) { var dA = csh.B.actions.die; bakedFrame(ctx, csh, 'die', Math.min(dA.frames - 1, Math.floor(age / 0.14)), f.d8 || 0, p[0], p[1], z * USCALE / csh.B.k); ctx.globalAlpha = 1; return; }
         var cav = G.UNITS[f.ut].cls === 'cav';
         if (cav) ell(ctx, p[0], p[1] - 3 * z, 10 * z, 3.6 * z, '#5a3d28');
         ell(ctx, p[0] + (f.face || 1) * 2 * z, p[1] - (cav ? 6 : 2) * z, 6.5 * z, 2.4 * z, G.UNITS[f.ut].cls === 'vil' ? '#d8cfbd' : G.CIVS[S.players[f.o].civ].color);
@@ -751,9 +764,9 @@ var G = globalThis.G || (globalThis.G = {});
       });
     }
     if (b.built && b.t === 'moara' && s.hub) {
-      var hx = dx + s.hub[0] * z, hy = dy + s.hub[1] * z, ang = clock * 1.4;
+      var hx = dx + s.hub[0] * z, hy = dy + s.hub[1] * z, ang = clock * 1.4, sl = s.baked ? 30 : 22;
       for (var i = 0; i < 4; i++) {
-        var a = ang + i * Math.PI / 2, ex = hx + Math.cos(a) * 22 * z, ey = hy + Math.sin(a) * 22 * z;
+        var a = ang + i * Math.PI / 2, ex = hx + Math.cos(a) * sl * z, ey = hy + Math.sin(a) * sl * z;
         ln(ctx, hx, hy, ex, ey, '#5a4028', 1.6 * z);
         var nx = -Math.sin(a) * 4 * z, ny = Math.cos(a) * 4 * z;
         ctx.fillStyle = 'rgba(240,232,210,0.92)'; ctx.beginPath();
@@ -782,6 +795,35 @@ var G = globalThis.G || (globalThis.G = {});
       ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(top[0] - 21, by - 1, 42, 4.5); ctx.fillStyle = '#7fb6ff'; ctx.fillRect(top[0] - 20, by, 40 * pr, 2.5);
     }
   }
+  // ---------- oamenii randați 3D (assets/u_*.png) ----------
+  var bakedImgs = {};
+  function bakedSheet(key) {
+    var B = G.BAKED && G.BAKED[key]; if (!B) return null;
+    var img = bakedImgs[key];
+    if (!img) { img = bakedImgs[key] = new Image(); img.src = 'assets/u_' + key + '.png'; }
+    return img.complete && img.naturalWidth ? { B: B, img: img } : null;
+  }
+  function unitKeys() { return G.BAKED ? Object.keys(G.BAKED).filter(function (k) { return !/^[bij]_/.test(k); }) : []; }
+  R.preloadBaked = function () { unitKeys().forEach(bakedSheet); };
+  R.bakedReady = function () { return unitKeys().every(function (k) { return !!bakedSheet(k); }); };
+  var TOOLACT = { axe: 'axe', pick: 'pick', hammer: 'hammer', sickle: 'sickle' };
+  function unitAction(u, A) {
+    if (u.sw > 0) {
+      var at = A.atk ? 'atk' : 'hammer', p = 1 - u.sw / 0.4;
+      return [at, Math.min(A[at].frames - 1, Math.floor(p * A[at].frames))];
+    }
+    if (u.t === 'vil' && u.wk > 0) { var nm = TOOLACT[vilTool(u)]; if (nm && A[nm]) return [nm, Math.floor(u.an * 5.5) % A[nm].frames]; }
+    if (u.mv > 0 && A.walk) return ['walk', Math.floor(u.an * G.UNITS[u.t].spd * (G.UNITS[u.t].cls === 'cav' ? 5 : 7)) % A.walk.frames];
+    return ['idle', 0];
+  }
+  function bakedFrame(g, sh, act, frame, d8, sx, sy, scale) {
+    var B = sh.B, A = B.actions[act] || B.actions.idle, d = d8 <= 4 ? d8 : 8 - d8;
+    var cx = Math.min(frame, A.frames - 1) * B.W, cy = (A.row + d) * B.H, w = B.W * scale, h = B.H * scale;
+    if (d8 > 4) { g.save(); g.translate(sx, sy); g.scale(-1, 1); g.drawImage(sh.img, cx, cy, B.W, B.H, -B.ax * scale, -B.ay * scale, w, h); g.restore(); }
+    else g.drawImage(sh.img, cx, cy, B.W, B.H, sx - B.ax * scale, sy - B.ay * scale, w, h);
+  }
+  R.bakedFrame = function (g, key, act, frame, d8, sx, sy, scale) { var sh = bakedSheet(key); if (!sh) return false; bakedFrame(g, sh, act, frame, d8, sx, sy, scale); return true; };
+  var USCALE = 1.1;
   function drawUnit(u, selected) {
     var S = G.S, z = cam.z, p = R.w2s(u.x, u.y), d = G.UNITS[u.t], civ = S.players[u.o].civ;
     if (p[0] < -40 || p[0] > W + 40 || p[1] < -10 || p[1] > H + 50) return;
@@ -790,8 +832,22 @@ var G = globalThis.G || (globalThis.G = {});
       var rx = (d.cls === 'cav' ? 12 : d.cls === 'sie' ? 14 : 8) * z;
       ctx.beginPath(); ctx.ellipse(p[0], p[1], rx, rx * 0.5, 0, 0, 6.3); ctx.stroke();
     }
+    else if (G.UI && G.UI.hover === u.id) {
+      ctx.strokeStyle = u.o === 0 ? 'rgba(255,255,255,0.5)' : 'rgba(255,110,90,0.6)'; ctx.lineWidth = 1.2;
+      var hr = (d.cls === 'cav' ? 12 : d.cls === 'sie' ? 14 : 8) * z;
+      ctx.beginPath(); ctx.ellipse(p[0], p[1], hr, hr * 0.5, 0, 0, 6.3); ctx.stroke();
+    }
     if (d.hero) { ctx.fillStyle = 'rgba(255,215,90,0.18)'; ctx.beginPath(); ctx.ellipse(p[0], p[1], 15 * z, 7.5 * z, 0, 0, 6.3); ctx.fill(); }
-    drawUnitAt(ctx, u, civ, p[0], p[1], z * 1.1 * (d.hero ? 1.1 : 1));
+    var sh = bakedSheet(u.t + '_' + civ);
+    if (sh) {
+      var ua = unitAction(u, sh.B.actions);
+      bakedFrame(ctx, sh, ua[0], ua[1], u.dir8 || 0, p[0], p[1], z * USCALE * (d.hero ? 1.08 : 1) / sh.B.k);
+      if (u.carry && u.carry.n > 0.5) {
+        var cc = { w: '#7a5130', f: '#b8433a', g: '#e6c24a', s: '#a7a59e' }[u.carry.r], bk = (u.dir8 || 0) > 4 ? 1 : -1;
+        ctx.fillStyle = cc; ctx.strokeStyle = 'rgba(20,12,6,0.7)'; ctx.lineWidth = 0.8;
+        ctx.beginPath(); ctx.ellipse(p[0] + bk * 4 * z, p[1] - 17 * z, 3.2 * z, 2.6 * z, 0, 0, 6.3); ctx.fill(); ctx.stroke();
+      }
+    } else drawUnitAt(ctx, u, civ, p[0], p[1], z * 1.1 * (d.hero ? 1.1 : 1));
     if (selected || (u.hit && S.t - u.hit < 2.5)) hpBar(u, p[0], p[1] - (d.cls === 'cav' ? 40 : d.cls === 'sie' ? 28 : 33) * z, d.cls === 'vil' ? 16 : 20);
   }
 
@@ -883,8 +939,13 @@ var G = globalThis.G || (globalThis.G = {});
   };
 
   // ---------- iconițe pentru butoane ----------
+  // imaginile randate se folosesc direct ca fișiere: copierea lor printr-un canvas e interzisă când jocul rulează din file://
   var icons = {};
   R.icon = function (kind, t, civ) {
+    if (G.BAKED) {
+      if (kind === 'u' && G.BAKED['i_' + t + '_' + civ]) return 'assets/i_' + t + '_' + civ + '.png';
+      if (kind === 'b' && G.BAKED['j_' + t + '_' + civ]) return 'assets/j_' + t + '_' + civ + '.png';
+    }
     var key = kind + t + civ;
     if (icons[key]) return icons[key];
     var c = document.createElement('canvas'); c.width = c.height = 96;
@@ -894,10 +955,9 @@ var G = globalThis.G || (globalThis.G = {});
       var cls = G.UNITS[t].cls;
       drawUnitAt(g, fake, civ, cls === 'sie' ? 44 : 46, cls === 'cav' ? 86 : 84, cls === 'cav' ? 2.15 : cls === 'sie' ? 2.6 : 2.7);
     } else {
-      var s = bldSprite(t, civ), sc = Math.min(92 / s.w, 92 / s.h);
+      var s = G.Spr.bld(t, civ), sc = Math.min(92 / s.w, 92 / s.h);
       g.drawImage(s.c, (96 - s.w * sc) / 2, (96 - s.h * sc) / 2, s.w * sc, s.h * sc);
     }
-    icons[key] = c.toDataURL();
-    return icons[key];
+    return icons[key] = c.toDataURL();
   };
 })();

@@ -23,7 +23,7 @@ var G = globalThis.G || (globalThis.G = {});
   function afterLoad(camSaved) {
     var tc = G.C.blds.find(function (b) { return b.o === 0 && b.t === 'cetate'; });
     if (camSaved) { G.cam.x = camSaved.x; G.cam.y = camSaved.y; G.cam.z = camSaved.z; }
-    else if (tc) { G.cam.z = 1.15; G.R.resize(); G.R.center(tc.x + 0.8, tc.y + 0.8); }
+    else if (tc) { G.cam.z = document.body.classList.contains('desk') ? 1.25 : 1.15; G.R.resize(); G.R.center(tc.x + 0.8, tc.y + 0.8); }
     G.UI.reset();
     G.running = true; G.paused = false;
     show('start', false); show('menu', false); show('end', false); show('help', false);
@@ -108,6 +108,7 @@ var G = globalThis.G || (globalThis.G = {});
       endCheck();
     }
     if (G.S && (G.running || G.S.over)) {
+      G.Input.tick(dt);
       G.R.frame(G.paused ? 0 : dt);
       G.UI.tick(dt);
     }
@@ -118,7 +119,14 @@ var G = globalThis.G || (globalThis.G = {});
     var qs = new URLSearchParams(location.search);
     if (qs.get('spectate')) G.spectate = true;
     G.R.init($('cv')); G.R.initMini($('mini')); G.UI.init(); G.Input.init($('cv'));
-    window.addEventListener('resize', function () { G.R.resize(); G.R.resizeMini(); });
+    G.R.preloadBaked(); G.R.preloadBld();
+    function layout() {
+      var desk = window.matchMedia('(pointer: fine)').matches && window.innerWidth >= 900 && window.innerHeight >= 520;
+      document.body.classList.toggle('desk', desk);
+      G.R.resize(); G.R.resizeMini(); G.UI.forceRefresh();
+    }
+    layout();
+    window.addEventListener('resize', layout);
     document.addEventListener('visibilitychange', function () { if (document.hidden && G.running && !G.paused) G.pause(); });
     document.querySelectorAll('[data-diff]').forEach(function (b) { b.addEventListener('click', function () { G.startGame(b.dataset.diff); }); });
     $('bContinue').addEventListener('click', G.continueGame);

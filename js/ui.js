@@ -18,6 +18,18 @@ var G = globalThis.G || (globalThis.G = {});
       if (!c.enabled) { if (c.err) G.msg(c.err, 'warn'); G.sfx('err'); return; }
       c.act(); lastSig = '';
     });
+    var tip = $('tip');
+    els.cmds.addEventListener('mouseover', function (ev) {
+      var bt = ev.target.closest('button'); if (!bt || !tip) return;
+      var c = cmdList[+bt.dataset.i]; if (!c) return;
+      var hk = G.Input && G.Input.GRID[+bt.dataset.i] ? ' <kbd>' + G.Input.GRID[+bt.dataset.i].toUpperCase() + '</kbd>' : '';
+      tip.innerHTML = '<b>' + esc(c.label) + '</b>' + hk + (c.cost ? '<div class="tc">' + costHTML(c.cost) + '</div>' : '') + (c.tip ? '<div>' + esc(c.tip) + '</div>' : '') + (!c.enabled && c.err ? '<div class="te">' + esc(c.err) + '</div>' : '');
+      var r = bt.getBoundingClientRect();
+      tip.style.display = 'block';
+      tip.style.left = Math.max(6, Math.min(window.innerWidth - tip.offsetWidth - 6, r.left + r.width / 2 - tip.offsetWidth / 2)) + 'px';
+      tip.style.top = (r.top - tip.offsetHeight - 8) + 'px';
+    });
+    els.cmds.addEventListener('mouseout', function (ev) { if (tip && !ev.relatedTarget || (ev.relatedTarget && !ev.relatedTarget.closest('#cmds button'))) tip.style.display = 'none'; });
     els.info.addEventListener('pointerdown', function (ev) {
       var q = ev.target.closest('[data-q]'); if (!q) return;
       var b = UI.selOne(); if (!b || b.k !== 'b' || b.o !== 0) return;
@@ -44,11 +56,7 @@ var G = globalThis.G || (globalThis.G = {});
       var tc = G.C.blds.find(function (b) { return b.o === 0 && b.t === 'cetate' && !b.dead; });
       if (tc) { UI.select([tc]); G.R.center(tc.x + 1, tc.y + 1); }
     });
-    els.bSpeed.addEventListener('click', function () {
-      var sp = [1, 1.5, 2], i = (sp.indexOf(G.speed) + 1) % sp.length;
-      G.speed = sp[i]; els.bSpeed.textContent = (G.speed === 1.5 ? '1,5' : G.speed) + '×';
-      try { localStorage.setItem('scm_speed', G.speed); } catch (e) {}
-    });
+    els.bSpeed.addEventListener('click', function () { if (G.speed >= 2) { G.speed = 1; UI.speed(0); } else UI.speed(1); });
     els.bSound.addEventListener('click', function () {
       G.Audio.toggle(); els.bSound.textContent = G.Audio.on ? '🔊' : '🔇';
     });
@@ -67,7 +75,7 @@ var G = globalThis.G || (globalThis.G = {});
   UI.selOne = function () { return UI.sel.length === 1 ? G.getE(UI.sel[0]) : null; };
   UI.select = function (ents) {
     UI.sel = ents.map(function (e) { return e.id; });
-    UI.place = null; UI.rallyMode = false; lastSig = '';
+    UI.place = null; UI.rallyMode = false; lastSig = ''; acc = 1;
     if (ents.length) G.sfx('select');
   };
   UI.reset = function () { UI.sel = []; UI.place = null; UI.rallyMode = false; lastSig = ''; msgIdx = G.msgQ.length; els.msgs.innerHTML = ''; };
@@ -75,49 +83,74 @@ var G = globalThis.G || (globalThis.G = {});
   function mark(x, y, c) { G.R.marks.push({ x: x, y: y, t: performanceClock(), c: c }); }
   function performanceClock() { return G.R.clock ? G.R.clock() : 0; }
 
-  // ---------- atingeri pe hartă ----------
+  // ---------- ordinele date oamenilor aleși ----------
+  var RED = 'rgba(255,80,60,0.95)', YEL = 'rgba(255,224,102,0.95)';
+  function mineSel() { return UI.selEnts().filter(function (x) { return x.k === 'u' && x.o === 0; }); }
+  function orderUnits(mine, w, e) {
+    var vils = mine.filter(function (u) { return u.t === 'vil'; });
+    if (!e) { G.cmdMove(mine, w[0], w[1]); mark(w[0], w[1]); G.voice && G.voice(mine, 'ack'); G.sfx('ack'); return; }
+    if (e.o === 1) { G.cmdAttack(mine, e); mark(e.x, e.y, RED); G.voice && G.voice(mine, 'atk'); G.sfx('ack'); return; }
+    if (e.k === 'r') { G.cmdGather(mine, e); mark(e.x, e.y, YEL); G.voice && G.voice(mine, 'ack'); G.sfx('ack'); return; }
+    if (e.k === 'b' && e.o === 0) {
+      var d = G.BLDS[e.t], rest = mine.filter(function (u) { return u.t !== 'vil'; });
+      if (vils.length && (!e.built || e.hp < d.hp)) { G.cmdBuild(vils, e); if (rest.length) G.cmdMove(rest, e.x, e.ty + e.n + 0.6); mark(e.x, e.y, YEL); G.voice && G.voice(vils, 'build'); G.sfx('ack'); return; }
+      if (vils.length && d.farm) { G.cmdGather(vils, e); mark(e.x, e.y, YEL); G.voice && G.voice(vils, 'ack'); G.sfx('ack'); return; }
+      if (vils.length && d.drop && vils.some(function (u) { return u.carry && u.carry.n > 0; })) { G.cmdReturn(vils); G.voice && G.voice(vils, 'ack'); G.sfx('ack'); return; }
+      G.cmdMove(mine, e.x, e.ty + e.n + 0.6); mark(e.x, e.ty + e.n + 0.6); G.voice && G.voice(mine, 'ack'); G.sfx('ack'); return;
+    }
+    G.cmdMove(mine, e.x, e.y); mark(e.x, e.y); G.voice && G.voice(mine, 'ack'); G.sfx('ack');
+  }
+  function setRally(b, w, e) {
+    G.cmdRally(b, w[0], w[1], e && (e.k === 'r' || (e.k === 'b' && e.o === 0)) ? e.id : 0);
+    mark(w[0], w[1], 'rgba(127,182,255,0.95)'); G.sfx('click'); lastSig = '';
+  }
+
+  // ---------- telefonul: o atingere alege sau dă ordinul ----------
   UI.tapWorld = function (sx, sy, dbl) {
     var S = G.S; if (!S || S.over) return;
     var w = G.R.s2w(sx, sy);
     if (UI.place) { setPlace(w); return; }
     var e = G.R.pick(sx, sy);
-    if (UI.rallyMode) {
-      var rb = UI.selOne();
-      if (rb && rb.k === 'b') {
-        G.cmdRally(rb, w[0], w[1], e && (e.k === 'r' || (e.k === 'b' && e.o === 0)) ? e.id : 0);
-        mark(w[0], w[1], 'rgba(127,182,255,0.95)');
-        G.sfx('click');
-      }
-      UI.rallyMode = false; lastSig = '';
-      return;
-    }
-    var mine = UI.selEnts().filter(function (x) { return x.k === 'u' && x.o === 0; });
+    if (UI.rallyMode) { var rb = UI.selOne(); if (rb && rb.k === 'b') setRally(rb, w, e); UI.rallyMode = false; lastSig = ''; return; }
+    var mine = mineSel();
     if (dbl && e && e.k === 'u' && e.o === 0) { selectSame(e); return; }
     if (mine.length) {
-      if (!e) { G.cmdMove(mine, w[0], w[1]); mark(w[0], w[1]); G.sfx('ack'); return; }
-      if (e.k === 'u' && e.o === 0) { UI.select([e]); return; }
-      if (e.o === 1) { G.cmdAttack(mine, e); mark(e.x, e.y, 'rgba(255,80,60,0.95)'); G.sfx('ack'); return; }
-      if (e.k === 'r') { G.cmdGather(mine, e); mark(e.x, e.y, 'rgba(255,224,102,0.95)'); G.sfx('ack'); return; }
-      if (e.k === 'b' && e.o === 0) {
-        var vils = mine.filter(function (u) { return u.t === 'vil'; }), d = G.BLDS[e.t];
-        if (vils.length && (!e.built || e.hp < d.hp)) { G.cmdBuild(vils, e); mark(e.x, e.y, 'rgba(255,224,102,0.95)'); G.sfx('ack'); return; }
-        if (vils.length && d.farm) { G.cmdGather(vils, e); mark(e.x, e.y, 'rgba(255,224,102,0.95)'); G.sfx('ack'); return; }
-        if (vils.length && d.drop && vils.some(function (u) { return u.carry && u.carry.n > 0; })) { G.cmdReturn(vils); G.sfx('ack'); return; }
-        UI.select([e]); return;
+      if (e && e.k === 'u' && e.o === 0) { UI.select([e]); return; }
+      if (e && e.k === 'b' && e.o === 0) {
+        var d = G.BLDS[e.t], vils = mine.filter(function (u) { return u.t === 'vil'; });
+        var useful = vils.length && (!e.built || e.hp < d.hp || d.farm || (d.drop && vils.some(function (u) { return u.carry && u.carry.n > 0; })));
+        if (!useful) { UI.select([e]); return; }
       }
+      orderUnits(mine, w, e); return;
     }
     UI.select(e ? [e] : []);
   };
-  // clic dreapta pe calculator: doar comandă
-  UI.commandAt = function (sx, sy) {
-    var mine = UI.selEnts().filter(function (x) { return x.k === 'u' && x.o === 0; });
-    if (!mine.length) return;
+
+  // ---------- calculatorul: clic stânga alege, clic dreapta dă ordinul ----------
+  UI.clickSelect = function (sx, sy, m) {
+    if (!G.S || G.S.over) return;
     var w = G.R.s2w(sx, sy), e = G.R.pick(sx, sy);
-    if (!e) { G.cmdMove(mine, w[0], w[1]); mark(w[0], w[1]); return; }
-    if (e.o === 1) { G.cmdAttack(mine, e); return; }
-    if (e.k === 'r' || (e.k === 'b' && G.BLDS[e.t].farm)) { G.cmdGather(mine, e); return; }
-    if (e.k === 'b' && e.o === 0) G.cmdBuild(mine, e);
+    if (UI.rallyMode) { var rb = UI.selOne(); if (rb && rb.k === 'b') setRally(rb, w, e); UI.rallyMode = false; lastSig = ''; return; }
+    if (m.dbl && e && e.k === 'u' && e.o === 0) { selectSame(e); return; }
+    if (m.shift && e && e.k === 'u' && e.o === 0) {
+      var mine = mineSel();
+      if (!mine.length) { UI.select([e]); return; }
+      var i = UI.sel.indexOf(e.id);
+      if (i >= 0) UI.sel.splice(i, 1); else UI.sel.push(e.id);
+      lastSig = ''; G.sfx('select');
+      return;
+    }
+    UI.select(e ? [e] : []);
+    if (e && e.k === 'u' && e.o === 0 && G.voice) G.voice([e], 'sel');
   };
+  UI.commandAt = function (sx, sy) {
+    if (!G.S || G.S.over) return;
+    var w = G.R.s2w(sx, sy), e = G.R.pick(sx, sy), mine = mineSel();
+    if (mine.length) { orderUnits(mine, w, e); return; }
+    var b = UI.selOne();
+    if (b && b.k === 'b' && b.o === 0 && b.built && G.BLDS[b.t].train) setRally(b, w, e);
+  };
+  UI.orderTo = function (x, y) { var mine = mineSel(); if (mine.length) { G.cmdMove(mine, x, y); G.sfx('ack'); } };
   function selectSame(e) {
     var W = G.R.W, H = G.R.H;
     var all = G.C.units.filter(function (u) {
@@ -125,15 +158,104 @@ var G = globalThis.G || (globalThis.G = {});
       var p = G.R.w2s(u.x, u.y); return p[0] > 0 && p[0] < W && p[1] > 0 && p[1] < H;
     });
     UI.select(all);
+    if (G.voice) G.voice(all, 'sel');
   }
-  UI.boxSelect = function (x0, y0, x1, y1) {
+  UI.boxSelect = function (x0, y0, x1, y1, add) {
     var a = Math.min(x0, x1), b = Math.max(x0, x1), c = Math.min(y0, y1), d = Math.max(y0, y1);
     var out = G.C.units.filter(function (u) {
       if (u.o !== 0 || u.dead) return false;
-      var p = G.R.w2s(u.x, u.y), py = p[1] - 10 * G.cam.z;
-      return p[0] >= a - 6 && p[0] <= b + 6 && py >= c - 10 && py <= d + 10;
+      var p = G.R.w2s(u.x, u.y), py = p[1] - 12 * G.cam.z;
+      return p[0] >= a - 5 && p[0] <= b + 5 && py >= c - 12 && py <= d + 12;
     });
-    if (out.length) UI.select(out);
+    if (add) { var cur = mineSel(); out.forEach(function (u) { if (cur.indexOf(u) < 0) cur.push(u); }); out = cur; }
+    if (out.length) { UI.select(out); if (G.voice) G.voice(out, 'sel'); }
+    else if (!add) UI.select([]);
+  };
+
+  // ---------- mouse-ul deasupra hărții ----------
+  var CURS = {};
+  function cursor(kind) {
+    if (CURS[kind] !== undefined) return CURS[kind];
+    var em = { atk: '⚔️', tree: '🪓', gold: '⛏️', stone: '⛏️', berry: '🧺', sheep: '🧺', farm: '🌾', build: '🔨', rally: '🚩' }[kind];
+    if (!em) return CURS[kind] = 'default';
+    var c = document.createElement('canvas'); c.width = c.height = 32;
+    var g = c.getContext('2d'); g.font = '24px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textBaseline = 'top';
+    g.shadowColor = 'rgba(0,0,0,0.6)'; g.shadowBlur = 3; g.fillText(em, 2, 3);
+    return CURS[kind] = 'url(' + c.toDataURL() + ') 6 6, pointer';
+  }
+  UI.hover = 0;
+  UI.hoverAt = function (sx, sy) {
+    if (!G.S) return;
+    var cv = document.getElementById('cv');
+    if (UI.place) { cv.style.cursor = 'crosshair'; return; }
+    var e = G.R.pick(sx, sy), kind = 'default';
+    UI.hover = e ? e.id : 0;
+    var mine = mineSel(), hasVil = mine.some(function (u) { return u.t === 'vil'; });
+    if (mine.length && e) {
+      if (e.o === 1) kind = 'atk';
+      else if (e.k === 'r' && hasVil) kind = e.t;
+      else if (e.k === 'b' && e.o === 0 && hasVil && (!e.built || e.hp < G.BLDS[e.t].hp)) kind = 'build';
+      else if (e.k === 'b' && e.o === 0 && hasVil && G.BLDS[e.t].farm) kind = 'farm';
+    } else if (!mine.length && UI.selOne() && UI.selOne().k === 'b' && UI.selOne().o === 0 && G.BLDS[UI.selOne().t].train && !e) kind = 'rally';
+    cv.style.cursor = e && kind === 'default' ? 'pointer' : cursor(kind);
+  };
+
+  // ---------- comenzi rapide ----------
+  UI.groups = {};
+  var grpTap = {};
+  UI.setGroup = function (n) {
+    var ents = UI.selEnts().filter(function (e) { return e.o === 0; });
+    if (!ents.length) return;
+    UI.groups[n] = ents.map(function (e) { return e.id; });
+    G.msg('Grupul ' + n + ': ' + ents.length + (ents.length === 1 ? ' ales.' : ' aleși.'), 'info');
+  };
+  UI.getGroup = function (n) {
+    var ids = (UI.groups[n] || []).filter(function (id) { return G.getE(id); });
+    UI.groups[n] = ids;
+    if (!ids.length) return;
+    var ents = ids.map(G.getE);
+    UI.select(ents);
+    if (grpTap[n] && Date.now() - grpTap[n] < 450) { var cx = 0, cy = 0; ents.forEach(function (e) { cx += e.x; cy += e.y; }); G.R.center(cx / ents.length, cy / ents.length); }
+    grpTap[n] = Date.now();
+  };
+  var homeTap = 0;
+  UI.goHome = function () {
+    var tc = G.C.blds.find(function (b) { return b.o === 0 && b.t === 'cetate' && !b.dead; });
+    if (!tc) return;
+    UI.select([tc]);
+    if (Date.now() - homeTap < 600) G.R.center(tc.x + 1, tc.y + 1);
+    homeTap = Date.now();
+  };
+  UI.nextIdle = function (mil) {
+    var list = G.C.units.filter(function (u) { return u.o === 0 && !u.dead && !u.task && (mil ? u.t !== 'vil' : u.t === 'vil'); });
+    if (!list.length) { G.msg(mil ? 'Toată oastea are treabă.' : 'Toți țăranii au treabă.', 'info'); return; }
+    idleIdx = (idleIdx + 1) % list.length;
+    var u = list[idleIdx]; UI.select([u]); G.R.center(u.x, u.y);
+  };
+  UI.alertPos = null;
+  UI.lastAlert = function () { if (UI.alertPos) G.R.center(UI.alertPos.x, UI.alertPos.y); };
+  UI.deleteSel = function () {
+    var one = UI.selOne();
+    if (!one || one.o !== 0) return;
+    if (one.k === 'u') { G.cmdDelete(one); UI.select([]); }
+    else if (one.t !== 'cetate') confirmDel(one);
+  };
+  UI.speed = function (dir) {
+    var sp = [1, 1.5, 2], i = sp.indexOf(G.speed);
+    i = Math.max(0, Math.min(sp.length - 1, (i < 0 ? 0 : i) + dir));
+    G.speed = sp[i]; els.bSpeed.textContent = (G.speed === 1.5 ? '1,5' : G.speed) + '×';
+    try { localStorage.setItem('scm_speed', G.speed); } catch (e) {}
+  };
+  UI.hotkey = function (i) {
+    cmdList = commandsFor(UI.selEnts());
+    var c = cmdList[i]; if (!c) return;
+    if (!c.enabled) { if (c.err) G.msg(c.err, 'warn'); G.sfx('err'); return; }
+    c.act(); lastSig = '';
+  };
+  UI.escape = function () {
+    if (UI.place) { UI.cancelPlace(); return; }
+    if (UI.rallyMode) { UI.rallyMode = false; lastSig = ''; return; }
+    UI.select([]);
   };
 
   // ---------- construire ----------
@@ -143,13 +265,14 @@ var G = globalThis.G || (globalThis.G = {});
     UI.place = { t: t };
     var vils = UI.selEnts().filter(function (u) { return u.t === 'vil'; });
     var w = G.R.s2w(G.R.W / 2, G.R.H * 0.42);
-    if (vils.length) {
+    if (G.Input && G.Input.mouse) w = G.R.s2w(G.Input.mouse.x, G.Input.mouse.y);
+    else if (vils.length) {
       var p = G.R.w2s(vils[0].x, vils[0].y);
       if (p[0] > 60 && p[0] < G.R.W - 60 && p[1] > 60 && p[1] < G.R.H - 120) w = [vils[0].x + 1.5, vils[0].y + 1.5];
     }
     setPlace(w);
     lastSig = '';
-    G.msg('Atinge harta unde vrei ' + G.nm(G.BLDS[t], 'mol') + ', apoi apasă ✔.', 'info');
+    G.msg(document.body.classList.contains('desk') ? 'Clic stânga pune ' + G.nm(G.BLDS[t], 'mol') + ' (Shift: mai pune una). Clic dreapta renunță.' : 'Atinge harta unde vrei ' + G.nm(G.BLDS[t], 'mol') + ', apoi apasă ✔.', 'info');
   };
   function setPlace(w) {
     var n = G.BLDS[UI.place.t].n;
@@ -162,9 +285,17 @@ var G = globalThis.G || (globalThis.G = {});
     if (err) { G.msg(err, 'warn'); G.sfx('err'); return; }
     if (!G.canPlace(0, pl.t, pl.tx, pl.ty)) { G.msg('Nu se poate construi aici. Alege alt loc.', 'warn'); G.sfx('err'); return; }
     var b = G.cmdPlace(0, pl.t, pl.tx, pl.ty, vils);
-    if (b) { G.sfx('place'); UI.place = null; lastSig = ''; }
+    if (b) { G.sfx('place'); if (G.voice) G.voice(vils, 'build'); UI.place = null; lastSig = ''; }
   };
   UI.cancelPlace = function () { UI.place = null; lastSig = ''; };
+  UI.placeHover = function (sx, sy) { if (UI.place) setPlace(G.R.s2w(sx, sy)); };
+  UI.placeAt = function (sx, sy, keep) {
+    if (!UI.place) return;
+    var t = UI.place.t;
+    setPlace(G.R.s2w(sx, sy));
+    UI.confirmPlace();
+    if (!UI.place && keep && !G.placeError(0, t)) { UI.place = { t: t }; setPlace(G.R.s2w(sx, sy)); lastSig = ''; }
+  };
 
   function confirmDel(e) {
     if (delArm === e.id && Date.now() - delT < 2500) { G.cmdDelete(e); UI.select([]); delArm = 0; return; }
@@ -222,8 +353,9 @@ var G = globalThis.G || (globalThis.G = {});
   function btnHTML(c, i) {
     var ic = c.img ? '<img src="' + c.img + '" alt="">' : '<span class="em">' + c.icon + '</span>';
     var sub = c.locked ? '<u>🔒 ' + esc(c.lockTxt) + '</u>' : '<s>' + costHTML(c.cost) + '</s>';
-    return '<button class="cb' + (c.enabled ? '' : ' dis') + (c.locked ? ' lock' : '') + (c.cls ? ' ' + c.cls : '') + '" data-i="' + i + '" title="' + esc(c.label + (c.tip ? ': ' + c.tip : '')) + '">' +
-      ic + '<b>' + esc(c.label) + '</b>' + sub + '</button>';
+    var hk = G.Input && G.Input.GRID[i] ? '<em class="hk">' + G.Input.GRID[i].toUpperCase() + '</em>' : '';
+    return '<button class="cb' + (c.enabled ? '' : ' dis') + (c.locked ? ' lock' : '') + (c.cls ? ' ' + c.cls : '') + '" data-i="' + i + '" aria-label="' + esc(c.label) + '">' +
+      hk + ic + '<b>' + esc(c.label) + '</b>' + sub + '</button>';
   }
 
   // ---------- panoul de informații ----------
@@ -266,7 +398,8 @@ var G = globalThis.G || (globalThis.G = {});
       var rd = G.RESD[e.t];
       return '<div class="nm">' + esc(rd.name) + '</div><div class="st">' + G.RES_ICON[rd.r] + ' ' + Math.ceil(e.amt) + ' rămas</div><div class="st dim">Alege un țăran și atinge-o ca s-o strângă.</div>';
     }
-    var owner = e.o === 0 ? '' : ' <em>(otomani)</em>';
+    var owner = e.o === 0 ? '' : ' <em>(otomani)</em>', civ0 = S.players[e.o].civ;
+    html += '<img class="portrait" src="' + G.R.icon(e.k === 'u' ? 'u' : 'b', e.t, civ0) + '">';
     html += '<div class="nm">' + esc(G.ename(e)) + owner + '</div>' + hpHTML(e);
     if (e.k === 'u') {
       var st = G.ust(e);
@@ -346,7 +479,7 @@ var G = globalThis.G || (globalThis.G = {});
       div.dataset.t = m.text;
       div.className = 'msg ' + m.kind;
       div.textContent = m.text;
-      if (m.pos) { div.dataset.x = m.pos.x; div.dataset.y = m.pos.y; div.textContent += ' 👁️'; }
+      if (m.pos) { div.dataset.x = m.pos.x; div.dataset.y = m.pos.y; div.textContent += ' 👁️'; if (m.kind === 'alert') UI.alertPos = m.pos; }
       els.msgs.appendChild(div);
       while (els.msgs.children.length > 3) els.msgs.removeChild(els.msgs.firstChild);
       div._tm = setTimeout(fade(div), m.kind === 'alert' ? 6000 : 4000);

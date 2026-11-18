@@ -228,7 +228,7 @@ var G = globalThis.G || (globalThis.G = {});
     while (sp > 0 && u.pi < u.path.length) {
       var w = u.path[u.pi], dx = w[0] - u.x, dy = w[1] - u.y, dd = Math.sqrt(dx * dx + dy * dy);
       if (!C.pass[Math.floor(w[1]) * N + Math.floor(w[0])]) { u.path = null; u.rp = 0; return true; }
-      if (dd > 0.01) u.face = (dx - dy) >= 0 ? 1 : -1;
+      if (dd > 0.01) faceTo(u, dx, dy);
       if (dd <= sp) { u.x = w[0]; u.y = w[1]; sp -= dd; u.pi++; }
       else { u.x += dx / dd * sp; u.y += dy / dd * sp; sp = 0; }
     }
@@ -236,6 +236,9 @@ var G = globalThis.G || (globalThis.G = {});
     if (u.pi >= u.path.length) { u.path = null; return true; }
     return false;
   }
+  function dir8(dx, dy) { var i = Math.round((Math.atan2(dy, dx) - Math.PI / 4) / (Math.PI / 4)); return ((i % 8) + 8) % 8; }
+  function faceTo(u, dx, dy) { if (dx * dx + dy * dy < 1e-6) return; u.face = (dx - dy) >= 0 ? 1 : -1; u.dir8 = dir8(dx, dy); }
+  G.faceTo = faceTo;
   function setTask(u, T) { u.task = T; u.path = null; u.gk = null; u.fails = 0; u.rp = 0; }
   G.setTask = setTask;
   function finish(u, T) { u.task = T ? (T.then || null) : null; u.path = null; u.gk = null; }
@@ -322,7 +325,7 @@ var G = globalThis.G || (globalThis.G = {});
     var r = approach(u, e, reach, dt);
     if (r === 'fail') { finish(u, T); return; }
     if (!r) return;
-    u.face = ((e.x - u.x) - (e.y - u.y)) >= 0 ? 1 : -1;
+    faceTo(u, e.x - u.x, e.y - u.y);
     u.wk = 0.25;
     if (u.cd <= 0) { u.cd = st.rof; u.sw = 0.4; strike(u, e, st); }
   }
@@ -372,7 +375,7 @@ var G = globalThis.G || (globalThis.G = {});
     e.dead = 1; e.hp = 0; S.dirty = 1;
     if (blocks(e)) occupy(e, false);
     if (e.k === 'u') {
-      S.fx.push({ k: 'corpse', x: e.x, y: e.y, t: S.t, ut: e.t, o: e.o, face: e.face });
+      S.fx.push({ k: 'corpse', x: e.x, y: e.y, t: S.t, ut: e.t, o: e.o, face: e.face, d8: e.dir8 || 0 });
       S.players[e.o].st.lost++;
       if (by && by.o !== undefined && by.o !== e.o && S.players[by.o]) S.players[by.o].st.killed++;
       if (G.UNITS[e.t].hero && C.hero[e.o] === e.id) {
@@ -434,6 +437,43 @@ var G = globalThis.G || (globalThis.G = {});
   }
   G.findDrop = findDrop;
 
+  // un loc liber lângă resursă, ca țăranii să nu stea unul peste altul
+  function slotFor(u, e) {
+    var best = null, bd = 1e9, N = S.N;
+    for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      var x = e.tx + dx, y = e.ty + dy;
+      if (x < 0 || y < 0 || x >= N || y >= N || !C.pass[y * N + x]) continue;
+      if (dx && dy && !C.pass[e.ty * N + x] && !C.pass[y * N + e.tx]) continue;
+      var cx = x + 0.5, cy = y + 0.5, d = (cx - u.x) * (cx - u.x) + (cy - u.y) * (cy - u.y), taken = 0;
+      forUnitsNear(cx, cy, 0.8, function (o) {
+        if (o === u || o.o !== u.o || o.t !== 'vil' || !o.task) return;
+        var ot = o.task.k === 'gat' ? o.task : (o.task.k === 'ret' ? o.task.back : null);
+        if (ot && ot.slot && Math.abs(ot.slot[0] - cx) < 0.1 && Math.abs(ot.slot[1] - cy) < 0.1) taken++;
+      });
+      d += taken * 30;
+      if (d < bd) { bd = d; best = [cx, cy]; }
+    }
+    return best;
+  }
+  function approachSlot(u, e, T, dt) {
+    if (G.distTo(u, e) <= 0.78) { u.path = null; u.fails = 0; return true; }
+    if (!T.slot || T.slotFor !== e.id) { T.slot = slotFor(u, e); T.slotFor = e.id; u.gk = null; if (!T.slot) return approach(u, e, 0.75, dt); }
+    var key = 's' + e.id + ',' + T.slot[0];
+    if (u.gk !== key || (!u.path && u.rp <= 0)) {
+      if (C.budget <= 0) return false;
+      C.budget--;
+      if (u.gk === key) { u.fails = (u.fails || 0) + 1; if (u.fails > 3) { T.slot = null; u.fails = 0; return approach(u, e, 0.75, dt); } }
+      var p = G.findPath(u.x, u.y, { x: Math.floor(T.slot[0]), y: Math.floor(T.slot[1]), r: 0 }, 2500);
+      u.gk = key; u.rp = 0.8; u.pi = 0;
+      if (p === null) return 'fail';
+      if (p.length) { var l = p[p.length - 1]; if (Math.floor(l[0]) === Math.floor(T.slot[0]) && Math.floor(l[1]) === Math.floor(T.slot[1])) { l[0] = T.slot[0]; l[1] = T.slot[1]; } u.path = p; }
+      else u.path = [[T.slot[0], T.slot[1]]];
+    }
+    u.rp -= dt;
+    moveAlong(u, dt);
+    return false;
+  }
   function doGat(u, T, dt) {
     var P = S.players[u.o], st = ust(u), e = getE(T.id);
     if (e && e.k === 'b' && (e.o !== u.o || !e.built)) e = null;
@@ -445,12 +485,11 @@ var G = globalThis.G || (globalThis.G = {});
     var rt = resType(e);
     if (u.carry && u.carry.r !== rt) u.carry = null;
     if (u.carry && u.carry.n >= st.cap) { setTask(u, { k: 'ret', back: T }); return; }
-    var reach = e.k === 'b' ? 0.05 : (G.RESD[e.t].block ? 0.75 : 0.4);
-    var r = approach(u, e, reach, dt);
+    var r = e.k === 'r' && G.RESD[e.t].block ? approachSlot(u, e, T, dt) : approach(u, e, e.k === 'b' ? 0.05 : 0.4, dt);
     if (r === 'fail') { u.task = null; u.path = null; return; }
     if (!r) return;
     u.wk = 0.25;
-    if (e.k !== 'b') u.face = ((e.x - u.x) - (e.y - u.y)) >= 0 ? 1 : -1;
+    if (e.k !== 'b') faceTo(u, e.x - u.x, e.y - u.y);
     var kind = resKind(e);
     var rate = (kind === 'farm' ? G.FARM_RATE : G.RESD[kind].rate) * P.gm * techMul(P, kind);
     var amt = rate * dt;
@@ -488,7 +527,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (r === 'fail') { u.task = null; return; }
     if (!r) return;
     u.wk = 0.25;
-    if (!d.walk) u.face = ((b.x - u.x) - (b.y - u.y)) >= 0 ? 1 : -1;
+    if (!d.walk) faceTo(u, b.x - u.x, b.y - u.y);
     if (Math.random() < dt * 1.5) G.sfx('build', b.x, b.y);
     if (!b.built) {
       var inc = dt / d.time;
@@ -565,10 +604,14 @@ var G = globalThis.G || (globalThis.G = {});
         if (b.id <= a.id || b.dead) return;
         var rr = ra + G.UNITS[b.t].r, dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy;
         if (d2 >= rr * rr) return;
+        // cei care merg trec unii prin alții (ca în AoE), ca să nu se blocheze pe drum
+        var am = a.mv > 0 && a.path, bm = b.mv > 0 && b.path;
+        if (am && bm) return;
         var d = Math.sqrt(d2);
         if (d < 1e-4) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d = Math.sqrt(dx * dx + dy * dy) || 1; }
         var over = (rr - d) * k, nx = dx / d, ny = dy / d;
-        var wa = (a.wk > 0 ? 0.2 : 1) * (a.mv > 0 ? 0.6 : 1), wb = (b.wk > 0 ? 0.2 : 1) * (b.mv > 0 ? 0.6 : 1), s = wa + wb;
+        var wa = a.wk > 0 ? 0.04 : am ? 0.12 : 1, wb = b.wk > 0 ? 0.04 : bm ? 0.12 : 1, s = wa + wb;
+        if (a.wk > 0 && b.wk > 0) return;
         shift(a, -nx * over * wa / s, -ny * over * wa / s);
         shift(b, nx * over * wb / s, ny * over * wb / s);
       });

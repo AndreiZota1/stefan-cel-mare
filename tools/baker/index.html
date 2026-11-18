@@ -1,0 +1,54 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<script type="importmap">{ "imports": { "three": "/node_modules/three/build/three.module.js" } }</script>
+</head><body>
+<script type="module">
+import { bakeSheet, bakeStill, faceDir } from './core.js';
+import { unitModel } from './units.js';
+import { building, texturesReady } from './buildings.js';
+import { camera, THREE } from './core.js';
+const TEAM = { mol: '#2f6fd6', oto: '#d23b2e' };
+// celule la zoom 1 (pixeli CSS); se înmulțesc cu k
+const CELLS = { foot: [54, 50, 23, 39], cav: [76, 66, 33, 51], siege: [76, 60, 34, 45] };
+window.bakeUnit = (type, civ, k) => {
+  const m = unitModel(type, civ, TEAM[civ]), c = CELLS[m.cell];
+  const r = bakeSheet({ root: m.root, reset: m.reset, actions: m.actions, W: Math.round(c[0] * k), H: Math.round(c[1] * k), ax: Math.round(c[2] * k), ay: Math.round(c[3] * k), k, ss: 2, shadow: 1.2 });
+  r.meta.cell = m.cell;
+  return r;
+};
+// spațiul de deasupra amprentei (pixeli CSS la zoom 1)
+const HEAD = { cetate: 118, turn: 112, manastire: 96, moara: 72, casa: 52, cazarma: 62, grajd: 56, poligon: 44, fierarie: 72, joagar: 40, mina: 36, ogor: 12 };
+window.bakeBuilding = async (t, civ, k) => {
+  const b = building(t, civ, TEAM[civ]);
+  await texturesReady();
+  const n = b.info.n, W = n * 64 + 16 + 70, H = n * 32 + HEAD[t] + 30, ax = 16 + n * 32, ay = HEAD[t];
+  const r = bakeStill({ root: b.root, W: Math.round(W * k), H: Math.round(H * k), ax: Math.round(ax * k), ay: Math.round(ay * k), k, ss: 2, shadow: n * 1.2 + 1.5 });
+  const proj = p => { const v = new THREE.Vector3(p[0], p[1], p[2]).project(camera); return [((v.x + 1) / 2 * W), ((1 - v.y) / 2 * H)]; };
+  if (b.info.hub) r.meta.hub = proj(b.info.hub);
+  if (b.info.chimney) r.meta.chimney = proj(b.info.chimney);
+  r.meta.n = n;
+  return r;
+};
+// iconița unei clădiri: încadrată strâns, 96 x 96
+window.bakeBldIcon = async (t, civ) => {
+  const b = building(t, civ, TEAM[civ]);
+  await texturesReady();
+  const box = new THREE.Box3().setFromObject(b.root);
+  let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+  [box.min.x, box.max.x].forEach(X => [box.min.y, box.max.y].forEach(Y => [box.min.z, box.max.z].forEach(Z => {
+    const sx = (X - Z) * 32, sy = (X + Z) * 16 - Y * 39.19;
+    x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy);
+  })));
+  const k = Math.min(86 / (x1 - x0), 86 / (y1 - y0)), ax = (96 - (x1 - x0) * k) / 2 - x0 * k, ay = (96 - (y1 - y0) * k) / 2 - y0 * k;
+  return bakeStill({ root: b.root, W: 96, H: 96, ax, ay, k, ss: 3, shadow: b.info.n * 1.2 + 1.5 });
+};
+// portretul pentru butoane și panoul de informații
+window.bakeIcon = (type, civ) => {
+  const m = unitModel(type, civ, TEAM[civ]);
+  m.reset(); faceDir(m.root, 1);
+  const cav = m.cell !== 'foot', k = cav ? 2.6 : 3.6;
+  return bakeStill({ root: m.root, W: 96, H: 96, ax: cav ? 46 : 46, ay: cav ? 86 : 88, k, ss: 2, shadow: 1 });
+};
+window.ready = true;
+</script>
+</body></html>
