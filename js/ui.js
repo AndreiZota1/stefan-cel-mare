@@ -535,6 +535,17 @@ var G = globalThis.G || (globalThis.G = {});
     els.age.textContent = G.AGES[P.age];
     var m = Math.floor(S.t / 60), s = Math.floor(S.t % 60);
     els.clock.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+    // jucătorii: culoare, civilizație, aliat sau dușman; minunea care numără
+    var pl = $('plist');
+    if (pl) {
+      var ph = S.players.map(function (Q, i) {
+        if (S.scen && i > 0 && !G.enemy(0, i) && !G.ally(0, i)) return '';
+        return '<span class="' + (Q.alive ? '' : 'dead') + '" title="' + (i === 0 ? 'Tu' : (G.ally(0, i) ? 'Aliat: ' : 'Dușman: ') + G.ppl(i)) + '"><i style="background:' + G.R.pcol(i).color + '"></i>' + G.CIVS[Q.civ].flag + '<b>' + (i === 0 ? 'Tu' : (G.ally(0, i) ? '🤝 ' : '') + G.CIVS[Q.civ].name.replace(/^(Regatul|Imperiul|Hanatul) /, '')) + '</b></span>';
+      }).join('');
+      if (S.wonder && S.opt.victory === 'minune') { var wl = Math.max(0, Math.ceil(300 - (S.t - S.wonder.t0))); ph += '<span class="wt">🏛 ' + Math.floor(wl / 60) + ':' + ('0' + wl % 60).slice(-2) + '</span>'; }
+      if (S.opt.peace && S.t < S.opt.peace) { var pz = Math.ceil(S.opt.peace - S.t); ph += '<span class="wt">🕊 ' + Math.floor(pz / 60) + ':' + ('0' + pz % 60).slice(-2) + '</span>'; }
+      if (pl._h !== ph) { pl._h = ph; pl.innerHTML = ph; }
+    }
     var idle = idleVils().length;
     if (G.Music && G.Music.setMood) {
       var near = 0;

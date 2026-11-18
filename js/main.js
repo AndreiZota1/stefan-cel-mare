@@ -91,6 +91,9 @@ var G = globalThis.G || (globalThis.G = {});
     goFull();
     try { G.deserialize(str); } catch (e) { alert('Salvarea nu s-a putut citi.'); return; }
     afterLoad(meta && meta.cam);
+    if (G.Voci && G.Voci.load) G.S.players.forEach(function (P) { G.Voci.load(P.civ); });
+    if (G.Music && G.Music.setCiv) G.Music.setCiv(G.S.players[0].civ);
+    if (G.S.scen && G.Camp && G.Camp.loadNar) G.Camp.loadNar(G.S.scen.id, function () {});
     G.msg('Continuăm de unde ai rămas.', 'info');
   };
   G.saveGame = function () {

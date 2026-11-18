@@ -39,28 +39,33 @@ G.MISSIONS = G.MISSIONS || {};
   T.WHO = WHO;
 
   // ---------- pornirea unei misiuni ----------
-  T.start = function (id, diff) {
+  T.options = function (id, diff) {
     var m = G.MISSIONS[id];
     var players = m.players.map(function (p, i) { return Object.assign({ ai: i !== 0 }, p); });
-    var o = {
+    return {
       diff: diff || 'normal', seed: m.seed || 1000 + id.length * 77, players: players, mapSpec: m.map, noBases: true, victory: 'scenariu',
       popMax: m.popMax || 120, startAge: m.startAge || 0, maxAge: m.maxAge, noBuild: m.noBuild, noUnits: m.noUnits, reveal: m.reveal || 'normal',
       scen: { id: id, title: m.title, obj: [], fired: {}, vars: {}, marks: [], done: 0 },
       setup: function (S, gm) { if (m.setup) m.setup(S, T); }
     };
-    G.startGame(o);
-    var S = G.S;
+  };
+  T.begin = function (id) {
+    var m = G.MISSIONS[id], S = G.S;
     if (m.night) S.night = m.night;
     if (m.fog) { S.fog = m.fog; }
     if (m.losMul) S.losMul = m.losMul;
     if (m.noHero) S.opt.noHero = true;
     S.players.forEach(function (P, i) { var p = m.players[i]; if (p.res) G.RES.forEach(function (r) { if (p.res[r] !== undefined) P.res[r] = p.res[r]; }); if (p.techs) p.techs.forEach(function (t) { G.finishTech(i, t); }); });
-    G.msgQ.length = 0; G.UI.reset();
+    G.msgQ.length = 0; if (G.UI && G.UI.reset) G.UI.reset();
     // oastea dată la început nu are case: îi lăsăm loc, plus câteva locuri libere
     G.refreshLists();
     S.players.forEach(function (P) { var built = 0; G.C.blds.forEach(function (b) { if (b.o === P.id && b.built) built += G.BLDS[b.t].pop || 0; }); P.capBonus = Math.max(0, P.pop - built) + (P.id === 0 ? 8 : 20); });
     if (m.start) m.start(S, T);
     G.refreshLists(); G.updFog();
+  };
+  T.start = function (id, diff) {
+    G.startGame(T.options(id, diff));
+    T.begin(id);
     var hero = G.heroOf(0) || G.C.blds.find(function (b) { return b.o === 0; }) || G.C.units.find(function (u) { return u.o === 0; });
     if (hero) G.R.center(hero.x, hero.y);
   };
@@ -136,8 +141,9 @@ G.MISSIONS = G.MISSIONS || {};
   // ---------- oaste nouă, atacuri ----------
   // comp: [['mil', 5], ['arc', 3]]; tipurile de bază se transformă în treapta jucătorului
   T.spawn = function (o, comp, x, y, tag) {
-    var out = [];
+    var out = [], s = S(), mul = G.enemy(0, o) ? ({ usor: 0.7, normal: 1, greu: 1.25, foarte: 1.5 }[s.diff] || 1) : 1;
     comp.forEach(function (c) {
+      if (mul !== 1 && c[1] > 1 && c[0] !== 'vil') c = [c[0], Math.max(1, Math.round(c[1] * mul))];
       var d0 = G.UNITS[c[0]], t = d0.line && G.LINES[d0.line][0] === c[0] ? G.curType(o, c[0]) : c[0];
       G.placeUnits(o, t, c[1], x, y).forEach(function (u) { if (tag) u.tag = tag; out.push(u); });
     });
