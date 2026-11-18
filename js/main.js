@@ -136,7 +136,11 @@ var G = globalThis.G || (globalThis.G = {});
     $('mHelp').addEventListener('click', function () { show('help', true); });
     $('mExit').addEventListener('click', G.toStart);
     $('eAgain').addEventListener('click', function () { show('end', false); refreshStart(); show('start', true); });
-    $('helpList').innerHTML = G.HELP.map(function (h) { return '<li><span>' + h[0] + '</span>' + h[1] + '</li>'; }).join('');
+    function fillHelp() {
+      var desk = document.body.classList.contains('desk');
+      $('helpList').innerHTML = (desk ? G.HELP_DESK : G.HELP).map(function (h) { return '<li><span>' + h[0] + '</span><div>' + h[1] + '</div></li>'; }).join('');
+    }
+    fillHelp(); window.addEventListener('resize', fillHelp);
     $('intro').textContent = G.INTRO;
     $('startArt').innerHTML = '<img src="' + G.R.icon('u', 'hero', 'mol') + '"><img class="big" src="' + G.R.icon('b', 'cetate', 'mol') + '"><img src="' + G.R.icon('u', 'mil', 'mol') + '">';
     refreshStart();

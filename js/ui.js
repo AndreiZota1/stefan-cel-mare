@@ -61,6 +61,11 @@ var G = globalThis.G || (globalThis.G = {});
       G.Audio.toggle(); els.bSound.textContent = G.Audio.on ? '🔊' : '🔇';
     });
     els.bMenu.addEventListener('click', function () { G.pause(); });
+    $('bZin').addEventListener('click', function () { G.Input.zoomBy(1.2); });
+    $('bZout').addEventListener('click', function () { G.Input.zoomBy(1 / 1.2); });
+    $('bFull').addEventListener('click', function () {
+      if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(function () {});
+    });
     els.bSpeed.textContent = (G.speed === 1.5 ? '1,5' : G.speed) + '×';
     els.bSound.textContent = G.Audio && G.Audio.on ? '🔊' : '🔇';
   };
@@ -248,7 +253,7 @@ var G = globalThis.G || (globalThis.G = {});
   };
   UI.hotkey = function (i) {
     cmdList = commandsFor(UI.selEnts());
-    var c = cmdList[i]; if (!c) return;
+    var c = cmdList[i]; if (!c || c.id === 'del') return;
     if (!c.enabled) { if (c.err) G.msg(c.err, 'warn'); G.sfx('err'); return; }
     c.act(); lastSig = '';
   };
@@ -353,7 +358,7 @@ var G = globalThis.G || (globalThis.G = {});
   function btnHTML(c, i) {
     var ic = c.img ? '<img src="' + c.img + '" alt="">' : '<span class="em">' + c.icon + '</span>';
     var sub = c.locked ? '<u>🔒 ' + esc(c.lockTxt) + '</u>' : '<s>' + costHTML(c.cost) + '</s>';
-    var hk = G.Input && G.Input.GRID[i] ? '<em class="hk">' + G.Input.GRID[i].toUpperCase() + '</em>' : '';
+    var hk = G.Input && G.Input.GRID[i] && c.id !== 'del' ? '<em class="hk">' + G.Input.GRID[i].toUpperCase() + '</em>' : (c.id === 'del' ? '<em class="hk">Del</em>' : '');
     return '<button class="cb' + (c.enabled ? '' : ' dis') + (c.locked ? ' lock' : '') + (c.cls ? ' ' + c.cls : '') + '" data-i="' + i + '" aria-label="' + esc(c.label) + '">' +
       hk + ic + '<b>' + esc(c.label) + '</b>' + sub + '</button>';
   }
@@ -432,8 +437,10 @@ var G = globalThis.G || (globalThis.G = {});
     var working = vils.filter(function (u) { return u.task; }).length;
     if (S.t < 90 && working < 2) return 'Atinge un țăran, apoi o oaie sau o tufă de mure: se apucă de strâns hrană.';
     if (P.pop >= P.cap - 1 && !C.blds.some(function (b) { return b.o === 0 && b.t === 'casa' && !b.built; })) return 'Nu mai ai loc pentru oameni. Alege un țăran și construiește o casă 🏠.';
-    var idle = idleVils().length;
-    if (idle) return 'Ai ' + idle + (idle === 1 ? ' țăran fără treabă' : ' țărani fără treabă') + '. Apasă 💤 din dreapta.';
+    var idleL = idleVils(), idle = idleL.length;
+    if (idle && idleL.some(function (u) { return /berry|sheep/.test(u.why || ''); }) && !C.blds.some(function (b) { return b.o === 0 && b.t === 'ogor'; }))
+      return 'S-au terminat oile și murele din jur. Construiește o moară și ogoare: hrană fără sfârșit.';
+    if (idle) return 'Ai ' + idle + (idle === 1 ? ' țăran fără treabă' : ' țărani fără treabă') + (document.body.classList.contains('desk') ? '. Apasă tasta punct (.) sau 💤.' : '. Apasă 💤 din dreapta.');
     if (!C.blds.some(function (b) { return b.o === 0 && b.t === 'joagar'; }) && S.t > 120) return 'Construiește un joagăr lângă pădure: țăranii nu vor mai merge departe cu lemnul.';
     if (P.age === 0 && P.res.f >= 500) return 'Ai 500 de hrană: atinge Cetatea și intră în Epoca Feudală ⬆️.';
     if (!C.blds.some(function (b) { return b.o === 0 && b.t === 'cazarma'; }) && S.t > 240) return 'Construiește o cazarmă. Otomanii vor ataca în curând.';

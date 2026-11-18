@@ -97,6 +97,16 @@ G.FACTS = [
 G.INTRO = 'Moldova, 1475. Oastea lui Soliman Pașa a trecut Dunărea și vine spre Suceava. ' +
   'Strânge-ți țăranii, ridică-ți oastea și apără Moldova. Câștigi dacă dărâmi Cetatea Otomană. Dacă îți cade Cetatea de Scaun, ai pierdut.';
 
+G.HELP_DESK = [
+  ['🖱️', '<b>Clic stânga</b> pe un om sau o clădire: îl alegi. <b>Tras cu clic stânga</b>: alegi tot ce prinde pătratul (cu Shift adaugi). Dublu clic: toți de același fel de pe ecran.'],
+  ['👉', '<b>Clic dreapta</b> dă ordinul: pe pământ merg, pe copac, mină sau oaie strâng, pe dușman atacă, pe o clădire neterminată construiesc. Cu o clădire aleasă, clic dreapta pune locul de adunare.'],
+  ['🗺️', '<b>Mută harta</b>: ține apăsat clic dreapta și trage, Spațiu + clic stânga și trage, du mouse-ul la marginea ecranului sau folosește săgețile. Pe trackpad: două degete. <b>Zoom</b>: rotița, ciupit pe trackpad, PageUp/PageDown sau butoanele ＋ －.'],
+  ['🔨', '<b>Construiești</b>: alegi un țăran, apeși clădirea (sau litera ei), apoi clic stânga pe hartă (cu Shift mai pui una). Clic dreapta renunță.'],
+  ['⌨️', 'Butoanele de jos au litere: Q W E R T, A S D F G, Z X C V B. <b>H</b> = cetatea (de două ori te duce acolo). <b>Punct</b> = țăranul fără treabă. <b>Ctrl+1…9</b> salvezi un grup, <b>1…9</b> îl alegi. <b>Esc</b> renunți, <b>Delete</b> dărâmi, <b>P</b> pauză, <b>+/−</b> viteza, <b>Spațiu</b> ultimul atac.'],
+  ['🏠', 'Fiecare casă îți dă 5 locuri pentru oameni. Fără case nu mai poți face oameni.'],
+  ['⚔️', 'Lăncierii bat călăreții, călăreții bat arcașii, arcașii bat pedestrașii.'],
+  ['🏰', 'Câștigi dacă dărâmi Cetatea Otomană. Păzește-ți Cetatea de Scaun.']
+];
 G.HELP = [
   ['👆', 'Atinge un om ca să-l alegi. Apoi atinge locul unde vrei să meargă, un copac, o mină sau un dușman.'],
   ['✋', 'Ține degetul apăsat pe hartă și apoi trage: alegi mai mulți oameni deodată.'],

@@ -6,7 +6,7 @@ var G = globalThis.G || (globalThis.G = {});
   'use strict';
   var In = G.Input = { box: null, mouse: null };
   var cv, pts = new Map(), mode = 'none', start = null, lpTimer = 0, last = null, pinch = null, lastTap = null, lastClick = null;
-  var keys = {}, hoverT = 0;
+  var keys = {}, hoverT = 0, spaceAt = 0;
   var MOVE_TOL = 10, LONG_MS = 380, GRID = ['q', 'w', 'e', 'r', 't', 'a', 's', 'd', 'f', 'g', 'z', 'x', 'c', 'v', 'b'];
   In.GRID = GRID;
 
@@ -21,11 +21,21 @@ var G = globalThis.G || (globalThis.G = {});
     cv.addEventListener('auxclick', function (e) { e.preventDefault(); });
     cv.addEventListener('wheel', function (e) {
       e.preventDefault();
-      zoomAt(e.offsetX, e.offsetY, G.cam.z * Math.pow(1.0015, -e.deltaY));
+      var dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaY, dx = e.deltaMode === 1 ? e.deltaX * 33 : e.deltaX;
+      var trackpad = !e.ctrlKey && e.deltaMode === 0 && (Math.abs(dx) > 0.5 || Math.abs(dy) % 1 !== 0 || Math.abs(dy) < 40);
+      if (trackpad) pan(-dx, -dy);
+      else zoomAt(e.offsetX, e.offsetY, G.cam.z * Math.pow(e.ctrlKey ? 1.01 : 1.0015, -dy));
     }, { passive: false });
+    // poziția mouse-ului oriunde în fereastră (și peste bare), pentru derularea la margini
+    window.addEventListener('pointermove', function (e) { if (e.pointerType === 'mouse') In.mouseWin = { x: e.clientX, y: e.clientY }; });
+    document.addEventListener('mouseleave', function () { In.mouseWin = null; });
+    document.addEventListener('contextmenu', function (e) { if (G.running) e.preventDefault(); });
     window.addEventListener('blur', function () { keys = {}; In.mouse = null; });
     window.addEventListener('keydown', keydown);
-    window.addEventListener('keyup', function (e) { keys[e.key] = false; });
+    window.addEventListener('keyup', function (e) {
+      keys[e.key] = false;
+      if (e.key === ' ' && performance.now() - spaceAt < 250 && G.running && mode !== 'mpan') G.UI.lastAlert();
+    });
     var mini = document.getElementById('mini'), miniDrag = false;
     function miniW(e) { var r = mini.getBoundingClientRect(); return G.R.miniToWorld(e.clientX - r.left, e.clientY - r.top); }
     mini.addEventListener('contextmenu', function (e) { e.preventDefault(); });
@@ -55,15 +65,16 @@ var G = globalThis.G || (globalThis.G = {});
     G.R.clampCam();
   }
   In.pan = pan;
+  In.zoomBy = function (f) { zoomAt(G.R.W / 2, G.R.H / 2, G.cam.z * f); };
 
   // derularea hărții: săgeți și marginile ecranului
   In.tick = function (dt) {
     if (!G.S || !G.running || G.paused) return;
     var vx = 0, vy = 0, sp = 950 * dt;
     if (keys.ArrowLeft) vx -= sp; if (keys.ArrowRight) vx += sp; if (keys.ArrowUp) vy -= sp; if (keys.ArrowDown) vy += sp;
-    var m = In.mouse;
-    if (m && mode !== 'mpan' && document.hasFocus()) {
-      var W = G.R.W, H = G.R.H, e = 6;
+    var m = In.mouseWin || In.mouse;
+    if (m && mode !== 'mpan' && mode !== 'rpan' && document.hasFocus()) {
+      var W = window.innerWidth, H = window.innerHeight, e = 4;
       if (m.x <= e) vx -= sp; else if (m.x >= W - e) vx += sp;
       if (m.y <= e) vy -= sp; else if (m.y >= H - e) vy += sp;
     }
@@ -79,8 +90,8 @@ var G = globalThis.G || (globalThis.G = {});
     if (e.pointerType === 'mouse') {
       try { cv.setPointerCapture(e.pointerId); } catch (er) {}
       In.mouse = p;
-      if (e.button === 2) { if (G.UI.place) G.UI.cancelPlace(); else G.UI.commandAt(p.x, p.y, e.shiftKey); return; }
-      if (e.button === 1) { mode = 'mpan'; last = p; e.preventDefault(); return; }
+      if (e.button === 2) { mode = 'rpend'; start = p; last = p; return; }
+      if (e.button === 1 || (e.button === 0 && keys[' '])) { mode = 'mpan'; last = p; e.preventDefault(); return; }
       if (e.button !== 0) return;
       if (G.UI.place) { G.UI.placeAt(p.x, p.y, e.shiftKey); mode = 'none'; return; }
       mode = 'lpend'; start = p; last = p;
@@ -110,7 +121,8 @@ var G = globalThis.G || (globalThis.G = {});
       if (G.UI.place) G.UI.placeHover(p.x, p.y);
       if (mode === 'lpend' && Math.hypot(p.x - start.x, p.y - start.y) > 5) { mode = 'box'; In.box = { x0: start.x, y0: start.y, x1: p.x, y1: p.y }; }
       else if (mode === 'box' && In.box) { In.box.x1 = p.x; In.box.y1 = p.y; }
-      else if (mode === 'mpan') { pan(p.x - last.x, p.y - last.y); last = p; }
+      else if (mode === 'mpan' || mode === 'rpan') { pan(p.x - last.x, p.y - last.y); last = p; }
+      else if (mode === 'rpend' && Math.hypot(p.x - start.x, p.y - start.y) > 6) { mode = 'rpan'; pan(p.x - last.x, p.y - last.y); last = p; cv.style.cursor = 'grabbing'; }
       var now = performance.now();
       if (now - hoverT > 50) { hoverT = now; G.UI.hoverAt(p.x, p.y); }
       return;
@@ -143,7 +155,11 @@ var G = globalThis.G || (globalThis.G = {});
           G.UI.clickSelect(p.x, p.y, { shift: e.shiftKey, dbl: dbl });
         }
         In.box = null; mode = 'none';
-      } else if (e.button === 1) mode = 'none';
+      } else if (e.button === 2) {
+        if (mode === 'rpend') { if (G.UI.place) G.UI.cancelPlace(); else G.UI.commandAt(p.x, p.y, e.shiftKey); }
+        if (mode === 'rpan') cv.style.cursor = '';
+        mode = 'none';
+      } else if (mode === 'mpan') mode = 'none';
       return;
     }
     if (!pts.has(e.pointerId)) return;
@@ -175,7 +191,9 @@ var G = globalThis.G || (globalThis.G = {});
     if (k === 'Escape') G.UI.escape();
     else if (lk === 'h') G.UI.goHome();
     else if (k === '.' || k === ',') G.UI.nextIdle(k === ',');
-    else if (k === ' ') G.UI.lastAlert();
+    else if (k === ' ') { if (!e.repeat) { keys[' '] = true; spaceAt = performance.now(); } }
+    else if (k === 'PageUp' || k === ']') zoomAt(G.R.W / 2, G.R.H / 2, G.cam.z * 1.15);
+    else if (k === 'PageDown' || k === '[') zoomAt(G.R.W / 2, G.R.H / 2, G.cam.z / 1.15);
     else if (k === 'Delete' || k === 'Backspace') G.UI.deleteSel();
     else if (lk === 'p' || k === 'F3') G.pause();
     else if (k === '+' || k === '=') G.UI.speed(1);

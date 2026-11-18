@@ -486,15 +486,19 @@ var G = globalThis.G || (globalThis.G = {});
     var P = S.players[u.o], st = ust(u), e = getE(T.id);
     if (e && e.k === 'b' && (e.o !== u.o || !e.built)) e = null;
     if (!e) {
-      var ne = G.findRes(u.o, T.kind, T.ox, T.oy, 9);
+      var ne = G.findRes(u.o, T.kind, T.ox, T.oy, 11);
+      if (!ne && (T.kind === 'sheep' || T.kind === 'berry')) {
+        ne = G.findRes(u.o, T.kind === 'sheep' ? 'berry' : 'sheep', T.ox, T.oy, 12) || G.findRes(u.o, 'farm', T.ox, T.oy, 12);
+        if (ne) { T.kind = ne.k === 'b' ? 'farm' : ne.t; T.slot = null; }
+      }
       if (ne) { T.id = ne.id; T.ox = ne.x; T.oy = ne.y; e = ne; u.gk = null; }
-      else { u.path = null; u.task = (u.carry && u.carry.n >= 1) ? { k: 'ret', back: null } : null; return; }
+      else { u.path = null; u.why = 'nu mai e ' + T.kind + ' aproape'; u.task = (u.carry && u.carry.n >= 1) ? { k: 'ret', back: null } : null; return; }
     }
     var rt = resType(e);
     if (u.carry && u.carry.r !== rt) u.carry = null;
     if (u.carry && u.carry.n >= st.cap) { setTask(u, { k: 'ret', back: T }); return; }
     var r = e.k === 'r' && G.RESD[e.t].block ? approachSlot(u, e, T, dt) : approach(u, e, e.k === 'b' ? 0.05 : 0.4, dt);
-    if (r === 'fail') { u.task = null; u.path = null; return; }
+    if (r === 'fail') { u.why = 'nu ajunge la ' + T.kind; u.task = null; u.path = null; return; }
     if (!r) return;
     u.wk = 0.25;
     if (e.k !== 'b') faceTo(u, e.x - u.x, e.y - u.y);
@@ -511,9 +515,9 @@ var G = globalThis.G || (globalThis.G = {});
   function doRet(u, T, dt) {
     if (!u.carry || u.carry.n < 0.01) { u.carry = null; finishRet(u, T); return; }
     var d = T.did ? getE(T.did) : null;
-    if (!d) { d = findDrop(u.o, u.carry.r, u.x, u.y); if (!d) { u.task = null; return; } T.did = d.id; u.gk = null; }
+    if (!d) { d = findDrop(u.o, u.carry.r, u.x, u.y); if (!d) { u.why = 'nu are unde duce'; u.task = null; return; } T.did = d.id; u.gk = null; }
     var r = approach(u, d, 0.75, dt);
-    if (r === 'fail') { u.task = null; return; }
+    if (r === 'fail') { u.why = 'nu ajunge la depozit'; u.task = null; return; }
     if (!r) return;
     var P = S.players[u.o];
     P.res[u.carry.r] += u.carry.n;
@@ -522,7 +526,7 @@ var G = globalThis.G || (globalThis.G = {});
     finishRet(u, T);
   }
   function finishRet(u, T) {
-    if (T.back) setTask(u, T.back); else { u.task = null; u.path = null; }
+    if (T.back) setTask(u, T.back); else { u.why = u.why || 'a dus tot'; u.task = null; u.path = null; }
   }
 
   // ---------- construcții ----------
@@ -574,6 +578,9 @@ var G = globalThis.G || (globalThis.G = {});
     }
     var nb = findUnfinished(u.o, u.x, u.y, 10);
     if (nb) { setTask(u, { k: 'bld', id: nb.id }); return; }
+    var pt = u.prev;
+    u.prev = null;
+    if (pt && pt.k === 'gat') { var pe = getE(pt.id); if (pe || G.findRes(u.o, pt.kind, pt.ox, pt.oy, 11)) { setTask(u, pt); return; } }
     u.task = null; u.path = null;
   }
 
@@ -874,7 +881,13 @@ var G = globalThis.G || (globalThis.G = {});
     });
   };
   G.cmdBuild = function (units, b) {
-    units.forEach(function (u) { if (u && !u.dead && u.t === 'vil') setTask(u, { k: 'bld', id: b.id }); });
+    units.forEach(function (u) {
+      if (!u || u.dead || u.t !== 'vil') return;
+      var T = u.task, g = T && (T.k === 'gat' ? T : (T.k === 'ret' && T.back ? T.back : null));
+      if (g) u.prev = { k: 'gat', id: g.id, kind: g.kind, ox: g.ox, oy: g.oy };
+      else if (!T || T.k !== 'bld') u.prev = null;
+      setTask(u, { k: 'bld', id: b.id });
+    });
   };
   G.cmdStop = function (units) { units.forEach(function (u) { if (u && !u.dead) setTask(u, null); }); };
   G.cmdReturn = function (units) {
