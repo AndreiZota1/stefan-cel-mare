@@ -293,6 +293,27 @@ export function horse(o) {
   return H;
 }
 
+export function camel() {
+  const H = { root: new THREE.Group() }, coat = cloth('#c49a68', 'horse', 0.85), dark = cloth('#8a6a44', 'fur', 1);
+  const body = new THREE.Group(); body.position.y = 0.5; H.root.add(body); H.body = body;
+  const torso = mesh(new THREE.CapsuleGeometry(0.085, 0.26, 6, 12), coat); at(torso, 0, 0, 0, 0, 0, Math.PI / 2); torso.scale.set(1, 1, 0.8); body.add(torso);
+  const hump = sph(0.1, coat, 12, 8); hump.scale.set(1.25, 0.95, 0.85); at(hump, -0.01, 0.08, 0); body.add(hump);
+  const neck = new THREE.Group(); neck.position.set(0.17, 0.0, 0); body.add(neck); H.neck = neck;
+  neck.add(at(mesh(new THREE.CapsuleGeometry(0.034, 0.15, 5, 8), coat), 0.08, -0.03, 0, 0, 0, -2.0));
+  neck.add(at(mesh(new THREE.CapsuleGeometry(0.03, 0.15, 5, 8), coat), 0.17, 0.06, 0, 0, 0, -0.3));
+  neck.add(at(mesh(new THREE.CapsuleGeometry(0.03, 0.08, 5, 8), coat), 0.22, 0.16, 0, 0, 0, -1.8));
+  neck.add(at(torus(0.03, 0.004, LEATHER('#3a2414'), 4, 10), 0.22, 0.15, 0, 0, Math.PI / 2, 0.3));
+  body.add(at(mesh(new THREE.CapsuleGeometry(0.012, 0.12, 4, 6), dark), -0.22, -0.06, 0, 0, 0, -0.3));
+  [['FL', 0.14, 0.05], ['FR', 0.14, -0.05], ['BL', -0.14, 0.05], ['BR', -0.14, -0.05]].forEach(([n, x, z]) => {
+    const hip = new THREE.Group(); hip.position.set(x, -0.05, z); body.add(hip); hip.add(limb(0.026, 0.017, 0.22, coat));
+    const kn = new THREE.Group(); kn.position.y = -0.22; hip.add(kn); kn.add(limb(0.016, 0.014, 0.21, coat)); kn.add(at(cyl(0.024, 0.026, 0.02, dark, 8), 0, -0.215));
+    H['hip' + n] = hip; H['kn' + n] = kn;
+  });
+  H.reset = () => { H.root.position.set(0, 0, 0); H.root.rotation.x = 0; H.root.rotation.z = 0; H.body.position.y = 0.5; H.body.rotation.set(0, 0, 0); H.neck.rotation.set(0, 0, 0); ['FL', 'FR', 'BL', 'BR'].forEach(n => { H['hip' + n].rotation.set(0, 0, 0); H['kn' + n].rotation.set(0, 0, 0); }); };
+  return H;
+}
+function barrel0() { const g = new THREE.Group(); g.add(cyl(0.05, 0.05, 0.11, WOOD('#a07850'), 12)); [-0.035, 0.035].forEach(y => g.add(at(torus(0.051, 0.005, IRON(), 4, 14), 0, y, 0, Math.PI / 2))); return g; }
+
 // ---------- asediul ----------
 function wheel(r, mat) {
   const g = new THREE.Group();
@@ -302,7 +323,7 @@ function wheel(r, mat) {
   return g;
 }
 function pennant(g, x, y, z, h = 0.18) { g.add(at(cyl(0.005, 0.005, h, WOOD(), 5), x, y + h / 2, z)); g.add(at(box(0.004, 0.045, 0.08, team('velvet')), x, y + h - 0.03, z + 0.04)); }
-export function siege(vis) {
+export function siege(vis, civ) {
   const S = { root: new THREE.Group(), wheels: [] }, wd = WOOD('#6e4b2a');
   if (vis === 'ram1' || vis === 'ram2') {
     const heavy = vis === 'ram2', hide = cloth(heavy ? '#5a4632' : '#7a5a3a', 'hide', 0.95);
@@ -366,14 +387,39 @@ export function siege(vis) {
     S.reset = () => { S.root.position.set(0, 0, 0); S.root.rotation.x = 0; S.root.rotation.z = 0; S.arm.rotation.z = -0.55; };
     S.atk = t => { S.arm.rotation.z = key([-0.55, -0.6, 0.9, 1.4, 0.4], t); };
   } else if (vis === 'car') {
-    S.root.add(at(box(0.42, 0.04, 0.26, wd), -0.08, 0.16)); [0.15, -0.15].forEach(z => { const w = wheel(0.12, wd); at(w, -0.08, 0.12, z); S.root.add(w); S.wheels.push(w); });
-    for (let i = 0; i < 3; i++) S.root.add(at(sph(0.06, cloth('#c8b48a', 'linen'), 8, 6), -0.16 + i * 0.08, 0.24, (i % 2 - 0.5) * 0.08));
-    S.root.add(at(box(0.3, 0.06, 0.012, team('velvet')), -0.08, 0.22, 0.13));
-    S.root.add(at(box(0.4, 0.02, 0.02, wd), 0.22, 0.16, 0));
-    const ox = horse({ coat: '#8a7258', mane: '#3a2a1a' }); ox.root.scale.set(0.85, 0.75, 1.15); at(ox.root, 0.48, 0, 0); S.root.add(ox.root);
-    S.ox = ox;
-    S.reset = () => { S.root.position.set(0, 0, 0); S.root.rotation.x = 0; S.root.rotation.z = 0; S.wheels.forEach(w => w.rotation.z = 0); ox.reset(); };
-    S.walk = t => { S.wheels.forEach(w => w.rotation.z = -t * TAU / 3); gallop(ox, t * TAU, 0.3); };
+    // carul de negoț: cu boi (Moldova, Țara Românească), căruță cu coviltir (Ungaria, Polonia), chibitcă (tătari), cămilă (otomani)
+    if (civ === 'oto') {
+      const cm = camel(); S.root.add(cm.root); S.ox = cm;
+      const blanket = cyl(0.13, 0.13, 0.2, team('embroid', 0.9), 16, true, 0, Math.PI); at(blanket, 0, 0.56, 0, 0, Math.PI / 2, 0); blanket.scale.set(1, 1, 0.9); S.root.add(blanket);
+      [1, -1].forEach(sd => { const bl = box(0.16, 0.13, 0.08, cloth('#c8b48a', 'linen', 0.95)); at(bl, -0.02, 0.48, 0.12 * sd); S.root.add(bl); [0.44, 0.52].forEach(y => S.root.add(at(box(0.17, 0.012, 0.085, LEATHER('#5a3a22')), -0.02, y, 0.12 * sd))); });
+      S.root.add(at(cyl(0.05, 0.05, 0.14, cloth('#8a3a1a', 'stripes'), 10), -0.02, 0.66, 0, Math.PI / 2));
+      S.reset = () => { S.root.position.set(0, 0, 0); S.root.rotation.x = 0; S.root.rotation.z = 0; cm.reset(); };
+      S.walk = t => { gallop(cm, t * TAU, 0.28); cm.body.position.y = 0.5 + Math.abs(Math.sin(t * TAU)) * 0.012; };
+    } else {
+      S.root.add(at(box(0.42, 0.04, 0.26, wd), -0.08, 0.16)); [0.15, -0.15].forEach(z => { const w = wheel(0.12, wd); at(w, -0.08, 0.12, z); S.root.add(w); S.wheels.push(w); });
+      [0.13, -0.13].forEach(z => S.root.add(at(box(0.42, 0.07, 0.012, wd), -0.08, 0.21, z)));
+      S.root.add(at(box(0.4, 0.02, 0.02, wd), 0.22, 0.16, 0));
+      if (civ === 'ung' || civ === 'pol') {
+        const cov = mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.44, 14, 1, true, 0, Math.PI), team('linen', 0.9)); at(cov, -0.08, 0.22, 0, 0, 0, Math.PI / 2); cov.scale.set(1, 1, 0.95); S.root.add(cov);
+        [-0.26, 0.1].forEach(x => S.root.add(at(torus(0.15, 0.008, WOOD(), 4, 14, Math.PI), x, 0.22, 0, 0, Math.PI / 2, 0)));
+      } else if (civ === 'tat') {
+        const d = dome(0.17, cloth('#e8dcc4', 'felt', 0.98)); d.scale.set(1.35, 0.9, 0.95); at(d, -0.08, 0.2, 0); S.root.add(d);
+        S.root.add(at(torus(0.165, 0.012, team('felt'), 5, 18), -0.08, 0.26, 0, Math.PI / 2)); S.root.children[S.root.children.length - 1].scale.set(1.35, 0.95, 1);
+      } else {
+        for (let i = 0; i < 3; i++) S.root.add(at(sph(0.06, cloth('#c8b48a', 'linen'), 8, 6), -0.16 + i * 0.08, 0.24, (i % 2 - 0.5) * 0.08));
+        S.root.add(at(barrel0(), -0.02, 0.2, 0.06));
+        S.root.add(at(box(0.3, 0.06, 0.012, team('velvet')), -0.08, 0.22, 0.135));
+      }
+      let ox;
+      if (civ === 'mol' || civ === 'val') {
+        ox = horse({ coat: civ === 'val' ? '#9a8a78' : '#8a7258', mane: '#3a2a1a' }); ox.root.scale.set(0.85, 0.75, 1.15);
+        [1, -1].forEach(sd => { const hn = cone(0.012, 0.09, BONE(), 6); at(hn, 0.13, 0.27, 0.035 * sd, sd * 0.9, 0, -0.4); ox.neck.add(hn); });
+      } else ox = horse({ coat: civ === 'tat' ? '#c8a070' : '#6a4a2a', mane: '#2a1c12', small: civ === 'tat', bridle: true });
+      at(ox.root, 0.48, 0, 0); if (civ === 'mol' || civ === 'val') ox.root.scale.set(0.85, 0.75, 1.15); S.root.add(ox.root);
+      S.ox = ox;
+      S.reset = () => { S.root.position.set(0, 0, 0); S.root.rotation.x = 0; S.root.rotation.z = 0; S.wheels.forEach(w => w.rotation.z = 0); ox.reset(); };
+      S.walk = t => { S.wheels.forEach(w => w.rotation.z = -t * TAU / 3); gallop(ox, t * TAU, 0.3); };
+    }
   }
   return S;
 }
@@ -486,7 +532,7 @@ function gallop(H, a, amp = 0.55) {
 // { root, reset, actions, cell } pentru o imagine de unitate (vis = vil, mil3, hero, raz...)
 export function unitModel(vis, civ) {
   if (/^(ram|cat|can|treb|car)/.test(vis)) {
-    const S = siege(vis);
+    const S = siege(vis, civ);
     const actions = [
       { name: 'idle', frames: 1, pose: () => {} },
       { name: 'walk', frames: 4, pose: t => { if (S.walk) S.walk(t); else S.wheels.forEach(w => w.rotation.z = -t * TAU / 3); } },
