@@ -61,13 +61,30 @@ var G = globalThis.G || (globalThis.G = {});
   }
 
   function nextAge() { return P.age < 4 ? AGE_TECH[P.age] : null; }
+  // clădirea care lipsește pentru epoca următoare (dacă lipsește vreuna)
+  function missingAgeBld() {
+    var at = nextAge(); if (!at || (S.opt.maxAge !== undefined && P.age >= S.opt.maxAge)) return null;
+    var nb = G.TECHS[at].needB; if (!nb) return null;
+    function has(t) { return (my.cnt[t] || 0) > 0; }
+    if (nb.n) {
+      var have = nb.of.filter(has).length;
+      if (have >= nb.n) return null;
+      return nb.of.filter(function (t) { return !has(t) && !G.placeError(pid, t).match(/epoc|Epoc/); })[0] || null;
+    }
+    if (nb.all) for (var i = 0; i < nb.all.length; i++) if (!has(nb.all[i])) return nb.all[i];
+    if (nb.any && !nb.any.some(has)) return nb.any[nb.any.length - 1];
+    return null;
+  }
   function reserve() {
     var r = {}, at = nextAge();
     if (!at || G.queued(pid, at, true) || (S.opt.maxAge !== undefined && P.age >= S.opt.maxAge)) return r;
     var armyN = my.army.length;
     if (S.t > 300 && armyN < 3 + 3 * P.age && A.threat) return r; // întâi apărarea
     var need = [12, 22, 30, 36][P.age] * D.vil;
-    if (my.vils.length < Math.round(need) || !tc) return r;
+    if (my.vils.length < Math.round(need) * 0.85 || !tc) return r;
+    var mb = missingAgeBld();
+    if (mb) { var bc = G.BLDS[mb].cost; for (var kk in bc) r[kk] = bc[kk]; return r; }
+    if (my.vils.length < Math.round(need)) return r;
     // strânge pentru epoca următoare doar dacă are deja clădirile și tehnologiile cerute
     var err = G.techError(tc, at);
     if (err && err.indexOf('Îți mai trebuie') !== 0 && err.indexOf('Coada') !== 0) return r;
@@ -257,6 +274,9 @@ var G = globalThis.G || (globalThis.G = {});
 
   function buildings() {
     var R = reserve();
+    // întâi clădirea cerută de epoca următoare
+    var mb = missingAgeBld(), needV = [12, 22, 30, 36][P.age] * D.vil;
+    if (mb && !my.uc[mb] && my.vils.length >= Math.round(needV) * 0.85 && can(mb)) placeBuild(mb, 6, 16, mb === 'universitate' || mb === 'fortareata' ? 3 : 2);
     var prod = my.blds.filter(function (b) { return b.built && G.BLDS[b.t].train; }).length;
     var room = P.cap - P.pop;
     if (P.cap < S.opt.popMax && room <= 2 + prod && (my.uc.casa || 0) < (P.pop > 30 ? 2 : 1) && can('casa')) placeBuild('casa', 5, 14);
