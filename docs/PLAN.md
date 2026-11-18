@@ -266,13 +266,25 @@ Fiecare etapă se termină cu testele verzi, commit și publicare. Jocul rămân
 
 ## 7. Progres
 
-- [x] Muzica (doina, lupta) — commit 823b5a6
-- [ ] Etapa 1 — motorul
-- [ ] Etapa 2 — grafica 3D
-- [ ] Etapa 3 — hărțile
-- [ ] Etapa 4 — AI
-- [ ] Etapa 5 — interfața
-- [ ] Etapa 6 — campania
-- [ ] Etapa 7 — sunetul
-- [ ] Etapa 8 — lustruirea
-- [ ] Etapa 9 — testarea mare și publicarea
+- [x] Muzica (doina, lupta), apoi câte un stil pe civilizație (doină, modul unguresc, scara orientală cu zurna, stepa în galop)
+- [x] Etapa 1 — motorul: 2–4 jucători și echipe, 6 civilizații, 5 epoci, liniile de upgrade, ~85 de tehnologii, adăpostire și clopot, ziduri și porți, puterile eroilor, târg și care de negoț, moaște, victorii (cucerire, minune, regicid), salvarea v2
+- [ ] Etapa 2 — grafica 3D (ajutorul de grafică lucrează; până atunci, imaginile vechi țin locul celor noi)
+- [ ] Etapa 3 — hărțile (ajutorul de hărți lucrează; până atunci, harta râului și pictorul de rezervă pentru misiuni)
+- [x] Etapa 4 — calculatorul: epocile 3–4, upgrade-uri, universitate, fortăreață, contre după armata dușmanului, ajutor pentru aliați, clopot, piață, moaște, puteri, sparge zidurile; gândește pe rând (fără sacadări)
+- [x] Etapa 5 — interfața: meniul nou cu bătălie demonstrativă în spate, bătălia liberă, arborele tehnologiilor, ecranul de final cu grafic, butoanele noi, lista jucătorilor
+- [x] Etapa 6 — campaniile: 16 misiuni în 6 campanii (Ștefan 6, Vlad 3, Iancu 3, Mehmed 2, Jagiello 1, Mengli Giray 1), harta pe pergament, obiective, dialoguri, noapte, ceață, capcane
+- [x] Etapa 7 — sunetul: vocile celor 5 civilizații noi în limba lor, narațiunea tuturor misiunilor (156 de replici, verificate prin transcriere), sunete noi
+- [ ] Etapa 8 — lustruirea (ninsoare, foc, noapte, ceață: gata; vânătoarea: după hărți și grafică)
+- [ ] Etapa 9 — testarea mare de 3 ori și publicarea finală
+
+### Teste (rulează din rădăcina proiectului)
+
+| Test | Ce verifică |
+|---|---|
+| `node test/sim-test.js normal 12345 40` | calculatorul contra calculatorului, salvarea |
+| `node test/stuck-test.js 11 222 3333 4444` | nimeni blocat 30 de secunde |
+| `node test/civ-matrix.js 40 [mol-oto ...]` | perechi de civilizații, cine câștigă, erori |
+| `node test/camp-win.js` | fiecare misiune se poate câștiga |
+| `node test/camp-smoke.js [id...]` | fiecare misiune pornește în browser, capturi |
+| `node test/smoke-v2.js` | meniul, bătălia 2v2, arborele, finalul |
+| `node test/desk-flows.js`, `node test/flows-test.js` | mouse și telefon |

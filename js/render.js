@@ -817,6 +817,7 @@ var G = globalThis.G || (globalThis.G = {});
     // umbre de nori, apoi ceața cu margini moi
     G.Terrain.clouds(ctx, cam, W, H, clock);
     if (S.night || S.fog) weather(S, z);
+    if (S.map && S.map.season === 'iarna') snow(dt);
     G.Terrain.fogDraw(ctx, cam, W, H, DPR);
     // margini în afara hărții
     drawEdge(ox, oy, z, N);
@@ -888,6 +889,22 @@ var G = globalThis.G || (globalThis.G = {});
         ctx.fillStyle = gr2; ctx.fillRect(xx - 100, yy - 70, W + 200, 140);
       }
     }
+  }
+  // ninsoarea: fulgi care cad pe ecran, purtați de vânt
+  var flakes = null;
+  function snow(dt) {
+    if (!flakes) { flakes = []; for (var i = 0; i < 220; i++) flakes.push([Math.random(), Math.random(), 0.4 + Math.random() * 0.6, Math.random() * 6.28]); }
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    for (var j = 0; j < flakes.length; j++) {
+      var f = flakes[j];
+      f[1] += dt * 0.05 * f[2]; f[0] += dt * (0.008 + Math.sin(clock * 0.7 + f[3]) * 0.01);
+      if (f[1] > 1) { f[1] -= 1; f[0] = Math.random(); }
+      if (f[0] > 1) f[0] -= 1; if (f[0] < 0) f[0] += 1;
+      var r = 0.8 + f[2] * 1.6;
+      ctx.globalAlpha = 0.35 + f[2] * 0.5;
+      ctx.fillRect(f[0] * W, f[1] * H, r, r);
+    }
+    ctx.globalAlpha = 1;
   }
   function drawEdge(ox, oy, z, N) {
     // umbrește ce e în afara hărții
