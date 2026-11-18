@@ -61,6 +61,8 @@ var G = globalThis.G || (globalThis.G = {});
       G.Audio.toggle(); els.bSound.textContent = G.Audio.on ? '🔊' : '🔇';
     });
     els.bMenu.addEventListener('click', function () { G.pause(); });
+    var bm = $('bMusic'); bm.classList.toggle('off', !G.Music.on);
+    bm.addEventListener('click', function () { G.Music.toggle(); bm.classList.toggle('off', !G.Music.on); });
     $('bZin').addEventListener('click', function () { G.Input.zoomBy(1.2); });
     $('bZout').addEventListener('click', function () { G.Input.zoomBy(1 / 1.2); });
     $('bFull').addEventListener('click', function () {
@@ -464,6 +466,12 @@ var G = globalThis.G || (globalThis.G = {});
     var m = Math.floor(S.t / 60), s = Math.floor(S.t % 60);
     els.clock.textContent = m + ':' + (s < 10 ? '0' : '') + s;
     var idle = idleVils().length;
+    if (G.Music && G.Music.setMood) {
+      var near = 0;
+      if (S.t - S.tm.alert < 25) near = 9;
+      else G.C.units.forEach(function (u) { if (u.o === 1 && u.t !== 'vil' && G.visible(u.x, u.y)) near++; });
+      G.Music.setMood(near >= 3 ? 'battle' : 'peace');
+    }
     els.bIdle.innerHTML = '💤<b>' + idle + '</b>';
     els.bIdle.classList.toggle('hot', idle > 0);
     var ents = UI.selEnts();

@@ -23,6 +23,7 @@
   #age { margin-left: 4px; color: #e8c86a; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #clock { color: #b8ad98; font-size: 12px; margin-left: 6px; }
   .grow { flex: 1; }
+  #bMusic.off { opacity: 0.4; }
   .tb { width: 34px; height: 26px; border: 1px solid #8a6a3a; border-radius: 5px; background: #3a2c1c; font-size: 13px; padding: 0; }
 
   #bottom { position: fixed; left: 0; right: 0; bottom: 0; height: 104px; gap: 6px; z-index: 5;
@@ -158,6 +159,7 @@
   <div class="grow"></div>
   <button class="tb" id="bFull" title="Ecran complet">⛶</button>
   <button class="tb" id="bSpeed" title="Viteza jocului">1×</button>
+  <button class="tb" id="bMusic" title="Muzica">🎵</button>
   <button class="tb" id="bSound" title="Sunet">🔊</button>
   <button class="tb" id="bMenu" title="Pauză">☰</button>
 </div>
@@ -233,6 +235,7 @@
 <script src="js/ai.js"></script>
 <script src="js/voci.js" onerror="void 0"></script>
 <script src="js/audio.js"></script>
+<script src="js/music.js"></script>
 <script src="assets/sprites.js"></script>
 <script src="js/tex.js"></script>
 <script src="js/gfx-terrain.js"></script>

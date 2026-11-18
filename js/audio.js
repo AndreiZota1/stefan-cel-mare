@@ -16,9 +16,12 @@ var G = globalThis.G || (globalThis.G = {});
     var len = A.ac.sampleRate, buf = A.ac.createBuffer(1, len, A.ac.sampleRate), d = buf.getChannelData(0);
     for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     noise = buf;
+    master.gain.value = A.on ? 0.5 : 0;
     ambient();
     decodeVoices();
+    if (G.Music) G.Music.start(A.ac, master);
   };
+  A.noiseBuf = function () { return noise; };
   // fundalul: vânt și păsări, foarte încet
   var amb = null;
   function ambient() {
@@ -47,6 +50,7 @@ var G = globalThis.G || (globalThis.G = {});
     A.on = !A.on;
     try { localStorage.setItem('scm_sound', A.on ? '1' : '0'); } catch (e) {}
     if (A.on) A.unlock();
+    if (master) master.gain.setTargetAtTime(A.on ? 0.5 : 0, A.ac.currentTime, 0.1);
   };
 
   function env(g, t, a, peak, dec) {
