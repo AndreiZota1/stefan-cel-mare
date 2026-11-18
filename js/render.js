@@ -930,11 +930,31 @@ var G = globalThis.G || (globalThis.G = {});
       if (!n2) { var B2 = G.BAKED2[k2]; n2 = natC[k2] = { c: loadImg('assets/' + k2 + '.webp'), w: B2.W / B2.k, h: B2.H / B2.k, ax: B2.ax / B2.k, ay: B2.ay / B2.k }; }
       if (imgOk(n2.c)) return n2;
     }
+    if (kind === 'tree' && G.S && G.S.map && G.S.map.season === 'iarna') { var sn = snowy(v); if (sn) return sn; }
     var key = 'n_' + kind + v, B = G.BAKED && G.BAKED[key];
     if (!B) return null;
     var o = natC[key];
     if (!o) { var img = new Image(); img.src = 'assets/' + key + '.png'; o = natC[key] = { c: img, w: B.W / B.k, h: B.H / B.k, ax: B.ax / B.k, ay: B.ay / B.k }; }
     return o.c.complete && o.c.naturalWidth ? o : null;
+  }
+  var snowC = {};
+  function snowy(v) {
+    if (snowC[v]) return snowC[v];
+    var key = 'n_tree' + v, B = G.BAKED && G.BAKED[key]; if (!B) return null;
+    var o = natC[key];
+    if (!o) { var img = new Image(); img.src = 'assets/' + key + '.png'; o = natC[key] = { c: img, w: B.W / B.k, h: B.H / B.k, ax: B.ax / B.k, ay: B.ay / B.k }; }
+    if (!(o.c.complete && o.c.naturalWidth)) return null;
+    var c = document.createElement('canvas'); c.width = o.c.naturalWidth; c.height = o.c.naturalHeight;
+    var g = c.getContext('2d'); g.drawImage(o.c, 0, 0);
+    g.globalCompositeOperation = 'source-atop';
+    g.fillStyle = 'rgba(214,224,236,0.32)'; g.fillRect(0, 0, c.width, c.height);
+    var gr = g.createLinearGradient(0, 0, 0, c.height * 0.75);
+    gr.addColorStop(0, 'rgba(248,251,255,0.78)'); gr.addColorStop(0.45, 'rgba(240,246,252,0.42)'); gr.addColorStop(1, 'rgba(240,246,252,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, c.width, c.height * 0.75);
+    // pete de zăpadă pe ramuri
+    var Rn = G.rng(v * 31 + 7);
+    for (var i = 0; i < 40; i++) { g.fillStyle = 'rgba(250,252,255,' + (0.35 + Rn() * 0.4) + ')'; g.beginPath(); g.ellipse(Rn() * c.width, Rn() * c.height * 0.7, 3 + Rn() * 7, 2 + Rn() * 3, 0, 0, 6.3); g.fill(); }
+    return (snowC[v] = { c: c, w: o.w, h: o.h, ax: o.ax, ay: o.ay });
   }
   R.preloadNature = function () { for (var v = 0; v < 8; v++) natSprite('tree', v); ['gold', 'stone', 'berry'].forEach(function (k) { natSprite(k, 0); }); natSprite('sheep', 0); natSprite('sheep', 1); };
   function drawRes(e) {
@@ -967,8 +987,35 @@ var G = globalThis.G || (globalThis.G = {});
     var gl = 0.35 + 0.25 * Math.sin(clock * 3 + e.id);
     ctx.globalAlpha = gl; ell(ctx, p[0], p[1] - 8 * z, 12 * z, 9 * z, 'rgba(255,230,140,0.6)'); ctx.globalAlpha = 1;
   }
+  var decC = {};
+  function decorFallback(kd0) {
+    var kd = kd0 + (G.S && G.S.map && G.S.map.season === 'iarna' ? '_i' : '');
+    if (decC[kd] !== undefined) return decC[kd];
+    var R2 = G.rng(kd0.length * 97 + kd0.charCodeAt(kd0.length - 1) * 13), t = kd0.replace(/\d+$/, ''), w = 72, h = 64, c = document.createElement('canvas'), g;
+    if (t === 'mount') { w = 150; h = 120; }
+    c.width = w; c.height = h; g = c.getContext('2d');
+    var cx = w / 2, cy = h - 14, winter = G.S && G.S.map && G.S.map.season === 'iarna';
+    function blob(x, y, rx, ry, col) { g.fillStyle = col; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 6.3); g.fill(); }
+    function rock(x, y, s) {
+      var pts = [], n = 7; for (var i = 0; i < n; i++) { var a = i / n * 6.28, rr = s * (0.7 + R2() * 0.4); pts.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr * 0.62 - (Math.sin(a) < 0 ? s * 0.35 : 0)]); }
+      g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.ellipse(x + s * 0.3, y + s * 0.35, s * 1.05, s * 0.4, 0, 0, 6.3); g.fill();
+      var gr = g.createLinearGradient(x - s, y - s, x + s, y + s); gr.addColorStop(0, '#b9b2a6'); gr.addColorStop(0.55, '#8c857a'); gr.addColorStop(1, '#5d574f');
+      g.fillStyle = gr; g.beginPath(); pts.forEach(function (p, i) { if (i) g.lineTo(p[0], p[1]); else g.moveTo(p[0], p[1]); }); g.closePath(); g.fill();
+      g.strokeStyle = 'rgba(40,34,28,0.35)'; g.lineWidth = 1; g.stroke();
+      if (winter) { g.fillStyle = 'rgba(244,248,252,0.85)'; g.beginPath(); g.ellipse(x - s * 0.15, y - s * 0.42, s * 0.6, s * 0.22, -0.2, 0, 6.3); g.fill(); }
+    }
+    if (t === 'mount') { rock(cx - 28, cy - 6, 26); rock(cx + 22, cy - 2, 30); rock(cx - 4, cy - 26, 30); rock(cx + 30, cy - 30, 18); rock(cx - 36, cy - 30, 16); }
+    else if (t === 'rock') { rock(cx - 6, cy, 9 + R2() * 4); if (R2() < 0.6) rock(cx + 9, cy + 2, 6); }
+    else if (t === 'bush') { blob(cx + 3, cy + 2, 16, 6, 'rgba(0,0,0,0.2)'); var bc = winter ? ['#5d6d55', '#8f9d88', '#e9eef2'] : ['#2f5a24', '#3f7a2e', '#5f9a3e']; blob(cx - 6, cy - 6, 11, 9, bc[0]); blob(cx + 6, cy - 7, 10, 9, bc[1]); blob(cx, cy - 12, 9, 7, bc[2]); }
+    else if (t === 'log') { blob(cx, cy, 20, 6, 'rgba(0,0,0,0.2)'); g.save(); g.translate(cx, cy - 4); g.rotate(-0.35); g.fillStyle = '#6b4626'; g.fillRect(-18, -4, 36, 8); g.fillStyle = '#c99a62'; g.beginPath(); g.ellipse(18, 0, 3, 4, 0, 0, 6.3); g.fill(); g.restore(); }
+    else if (t === 'stump') { blob(cx, cy, 9, 4, 'rgba(0,0,0,0.2)'); g.fillStyle = '#5e3d20'; g.fillRect(cx - 5, cy - 8, 10, 8); blob(cx, cy - 8, 5, 2.2, '#c99a62'); }
+    else if (t === 'reed') { g.strokeStyle = winter ? '#a59a7c' : '#6e7f3a'; g.lineWidth = 1.4; for (var i2 = 0; i2 < 9; i2++) { var x0 = cx - 10 + R2() * 20; g.beginPath(); g.moveTo(x0, cy); g.quadraticCurveTo(x0 + 2, cy - 12, x0 + (R2() - 0.5) * 8, cy - 18 - R2() * 10); g.stroke(); } g.fillStyle = '#5a3a1e'; for (var i3 = 0; i3 < 3; i3++) blob(cx - 8 + R2() * 16, cy - 20 - R2() * 6, 1.4, 4, '#5a3a1e'); }
+    else if (t === 'flowers') { var fc = ['#d8392b', '#f3efe4', '#e8d24a', '#a060c0'][(R2() * 4) | 0]; for (var i4 = 0; i4 < 12; i4++) { var fx = cx - 16 + R2() * 32, fy = cy - 4 + R2() * 8; blob(fx, fy + 1, 2, 1, 'rgba(30,50,20,0.35)'); blob(fx, fy, 1.8, 1.8, fc); } }
+    else { decC[kd] = null; return null; }
+    return (decC[kd] = { c: c, w: w, h: h, ax: cx, ay: cy });
+  }
   function drawDecor(o) {
-    var s = natSprite(o.kd, ''), p = R.w2s(o.x, o.y), z = cam.z;
+    var s = natSprite(o.kd, '') || decorFallback(o.kd), p = R.w2s(o.x, o.y), z = cam.z;
     if (!s || p[0] < -120 || p[0] > W + 120 || p[1] < -40 || p[1] > H + 160) return;
     var k = z * (o.sc || 1);
     if (o.fl) { ctx.save(); ctx.translate(p[0], p[1]); ctx.scale(-1, 1); ctx.drawImage(s.c, -s.ax * k, -s.ay * k, s.w * k, s.h * k); ctx.restore(); }

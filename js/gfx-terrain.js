@@ -50,7 +50,7 @@ var G = globalThis.G || (globalThis.G = {});
     initNoise();
     var S = G.S; N = S.N; V = N + 1;
     var ter = S.ter, M = V * V, i;
-    F = { d: new Float32Array(M), w: new Float32Array(M), f: new Float32Array(M), dep: new Float32Array(M), fo: new Float32Array(M), sh: new Float32Array(M) };
+    F = { d: new Float32Array(M), w: new Float32Array(M), f: new Float32Array(M), dep: new Float32Array(M), fo: new Float32Array(M), sh: new Float32Array(M), r: new Float32Array(M), s: new Float32Array(M), m: new Float32Array(M) };
     // adâncimea apei = distanța până la mal
     var dist = new Float32Array(N * N), q = [];
     for (i = 0; i < N * N; i++) { if (ter[i] === 2 || ter[i] === 4) dist[i] = 1e9; else { dist[i] = 0; q.push(i); } }
@@ -66,7 +66,7 @@ var G = globalThis.G || (globalThis.G = {});
     var forest = new Float32Array(N * N);
     S.ents.forEach(function (e) { if (e.k === 'r' && e.t === 'tree') forest[e.ty * N + e.tx] = 1; });
     for (var vy = 0; vy < V; vy++) for (var vx = 0; vx < V; vx++) {
-      var cnt = 0, cd = 0, cw = 0, cf = 0, dep = 0, fo = 0;
+      var cnt = 0, cd = 0, cw = 0, cf = 0, dep = 0, fo = 0, cr = 0, cs = 0, cm = 0;
       for (var dy = -1; dy <= 0; dy++) for (var dx = -1; dx <= 0; dx++) {
         var tx = vx + dx, ty = vy + dy;
         if (tx < 0 || ty < 0 || tx >= N || ty >= N) continue;
@@ -75,10 +75,11 @@ var G = globalThis.G || (globalThis.G = {});
         if (tt === 1) cd++;
         if (tt === 2 || tt === 4) { cw++; dep += dist[k2]; }
         if (tt === 3) cf++;
+        if (tt === 5) cr++; else if (tt === 6) cs++; else if (tt === 7) cm++;
         fo += forest[k2];
       }
       var j = vy * V + vx;
-      F.d[j] = cd / cnt; F.w[j] = cw / cnt; F.f[j] = cf / cnt; F.dep[j] = dep / cnt; F.fo[j] = fo / cnt;
+      F.d[j] = cd / cnt; F.w[j] = cw / cnt; F.f[j] = cf / cnt; F.dep[j] = dep / cnt; F.fo[j] = fo / cnt; F.r[j] = cr / cnt; F.s[j] = cs / cnt; F.m[j] = cm / cnt;
       var h1 = bil(nLow, vx * 4 - 3, vy * 4), h2 = bil(nLow, vx * 4 + 3, vy * 4), h3 = bil(nLow, vx * 4, vy * 4 - 3), h4 = bil(nLow, vx * 4, vy * 4 + 3);
       F.sh[j] = 1 + ((h1 - h2) * 0.6 + (h3 - h4) * 0.35) * 1.15;
     }
@@ -103,7 +104,7 @@ var G = globalThis.G || (globalThis.G = {});
     var c = document.createElement('canvas'); c.width = CS; c.height = CS;
     var g = c.getContext('2d'), img = g.createImageData(CS, CS), d = img.data;
     var offX = N * 32 * k, X0 = cx * CS, Y0 = cy * CS, i32 = 1 / (32 * k), i16 = 1 / (16 * k);
-    var Fd = F.d, Fw = F.w, Ff = F.f, Fdep = F.dep, Ffo = F.fo, Fsh = F.sh, Nm = N - 0.001;
+    var Fd = F.d, Fw = F.w, Ff = F.f, Fdep = F.dep, Ffo = F.fo, Fsh = F.sh, Fr = F.r, Fs = F.s, Fm = F.m, Nm = N - 0.001, winter = G.S && G.S.map && G.S.map.season === 'iarna';
     // culoarea de bază se calculează o dată la 2x2 pixeli; granulația rămâne pe fiecare pixel
     for (var py = 0; py < CS; py += 2) {
       var Yc = Y0 + py + 1, b = Yc * i16;
@@ -192,7 +193,7 @@ var G = globalThis.G || (globalThis.G = {});
     var c = document.createElement('canvas'); c.width = CS; c.height = CS;
     var g = c.getContext('2d'), img = g.createImageData(CS, CS), d = img.data;
     var offX = N * 32 * k, X0 = cx * CS, Y0 = cy * CS, i32 = 1 / (32 * k), i16 = 1 / (16 * k);
-    var Fd = F.d, Fw = F.w, Ff = F.f, Fdep = F.dep, Ffo = F.fo, Fsh = F.sh, Nm = N - 0.001;
+    var Fd = F.d, Fw = F.w, Ff = F.f, Fdep = F.dep, Ffo = F.fo, Fsh = F.sh, Fr = F.r, Fs = F.s, Fm = F.m, Nm = N - 0.001, winter = G.S && G.S.map && G.S.map.season === 'iarna';
     var TG = TX.grass, TG2 = TX.grass2 || TX.grass, TF = TX.forest || TX.grass, TD = TX.dirt, TS = TX.sand || TX.dirt, TR = TX.rocks || TX.dirt;
     for (var py = 0; py < CS; py += 2) {
       var Yc = Y0 + py + 1, b = Yc * i16;
@@ -212,6 +213,9 @@ var G = globalThis.G || (globalThis.G = {});
         var wf = Ff[j0] * w0 + Ff[j1] * w1 + Ff[j2] * w2 + Ff[j3] * w3;
         var fo = Ffo[j0] * w0 + Ffo[j1] * w1 + Ffo[j2] * w2 + Ffo[j3] * w3;
         var sh = Fsh[j0] * w0 + Fsh[j1] * w1 + Fsh[j2] * w2 + Fsh[j3] * w3;
+        var wro = Fr[j0] * w0 + Fr[j1] * w1 + Fr[j2] * w2 + Fr[j3] * w3, wsa = Fs[j0] * w0 + Fs[j1] * w1 + Fs[j2] * w2 + Fs[j3] * w3, wma = Fm[j0] * w0 + Fm[j1] * w1 + Fm[j2] * w2 + Fm[j3] * w3;
+        var rm = wro > 0.01 ? sm(0.2, 0.62, wro + (nm - 0.5) * 0.35) : 0, sdm = wsa > 0.01 ? sm(0.18, 0.55, wsa + (nm - 0.5) * 0.3) : 0, mm = wma > 0.01 ? sm(0.15, 0.5, wma + (nm2 - 0.5) * 0.3) : 0;
+        var pud = mm > 0 ? sm(0.55, 0.7, bil(nMid, x * 17 + 9, y * 17 + 3)) * mm : 0;
         var nl = bil(nLow, x * 4, y * 4);
         var t2 = sm(0.42, 0.78, nl) * 0.55, fq = fo > 0.01 ? Math.min(1, fo * 1.5) * 0.85 : 0;
         var dm = wd > 0.01 ? sm(0.15, 0.55, wd + (nm - 0.5) * 0.5) : 0;
@@ -235,8 +239,20 @@ var G = globalThis.G || (globalThis.G = {});
             if (dm > 0) { var i4 = ti(xx + 1.7, yy, 0.3); r += (TD[i4] * 1.12 + 10 - r) * dm; gg += (TD[i4 + 1] * 1.02 + 6 - gg) * dm; bb += (TD[i4 + 2] * 0.88 - bb) * dm; }
             r *= sh; gg *= sh; bb *= sh;
             if (sand > 0) { var i5 = ti(xx, yy, 0.36); r += (TS[i5] * 1.08 - r) * sand; gg += (TS[i5 + 1] * 1.04 - gg) * sand; bb += (TS[i5 + 2] * 0.92 - bb) * sand; }
+            if (sdm > 0) { var i8 = ti(xx + 3.3, yy, 0.33); r += (TS[i8] * 1.1 + 6 - r) * sdm; gg += (TS[i8 + 1] * 1.04 + 2 - gg) * sdm; bb += (TS[i8 + 2] * 0.9 - bb) * sdm; }
+            if (mm > 0) { r += (r * 0.62 + 6 - r) * mm; gg += (gg * 0.78 + 10 - gg) * mm; bb += (bb * 0.66 + 4 - bb) * mm; }
+            if (pud > 0) { r += (58 - r) * pud; gg += (84 - gg) * pud; bb += (92 - bb) * pud; }
+            if (rm > 0) { var i9 = ti(xx * 0.8, yy * 0.8, 0.5), cr2 = bil(nMid, xx * 6, yy * 6); var rk = (TR[i9] + TR[i9 + 1] + TR[i9 + 2]) / 3 * (0.72 + cr2 * 0.5); r += (rk * 1.02 + 6 - r) * rm; gg += (rk * 0.98 + 2 - gg) * rm; bb += (rk * 0.94 - bb) * rm; }
             if (fm > 0) { var i6 = ti(xx, yy, 0.6); r += (TR[i6] * 0.72 + 8 - r) * fm; gg += (TR[i6 + 1] * 0.82 + 18 - gg) * fm; bb += (TR[i6 + 2] * 0.9 + 32 - bb) * fm; }
             if (wm > 0) { var i7 = ti(xx, yy, 0.5), rip = (TR[i7 + 1] - 110) * 0.08; r += (wr + rip - r) * wm; gg += (wg + rip - gg) * wm; bb += (wb + rip - bb) * wm; }
+            if (winter) {
+              // zăpada: mai groasă pe iarbă, subțire pe drumuri și stânci, gheață la margini de apă
+              var lum = (r + gg + bb) / 3, sn = (1 - wm) * (0.94 - dm * 0.32 - rm * 0.62 - fq * 0.12) * (0.84 + nl * 0.24);
+              sn = sn < 0 ? 0 : sn > 1 ? 1 : sn;
+              var sh2 = 0.9 + (sh - 1) * 1.6, sr = (176 + lum * 0.36) * sh2, sg = (184 + lum * 0.34) * sh2, sb = (204 + lum * 0.26) * sh2;
+              r += (sr - r) * sn; gg += (sg - gg) * sn; bb += (sb - bb) * sn;
+              if (wm > 0) { r += (r * 0.8 + 18 - r) * wm; gg += (gg * 0.85 + 20 - gg) * wm; bb += (bb * 0.95 + 24 - bb) * wm; }
+            }
             d[o] = r; d[o + 1] = gg; d[o + 2] = bb; d[o + 3] = 255;
           }
         }
@@ -281,7 +297,7 @@ var G = globalThis.G || (globalThis.G = {});
           for (var s = -1; s <= 1; s++) { g.moveTo(p[0] + s * 1.2 * k, p[1]); g.lineTo(p[0] + s * 2.4 * k, p[1] - (3 + Math.abs(s)) * k); }
           g.stroke();
         }
-        if (!nearW && h > 0.62) {
+        if (!nearW && h > 0.62 && !(G.S.map && G.S.map.season === 'iarna')) {
           var fc = FLOWERS[(G.hash2(tx, ty, 31) * FLOWERS.length) | 0], nf = 2 + ((h * 10) | 0) % 4;
           for (var f = 0; f < nf; f++) {
             var p2 = P(tx + G.hash2(tx, ty * 2 + f, 37), ty + G.hash2(tx * 2 + f, ty, 41));
