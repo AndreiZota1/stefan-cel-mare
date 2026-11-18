@@ -33,7 +33,37 @@ var G = globalThis.G || (globalThis.G = {});
     G.R.resize(); G.R.resizeMini(); G.UI.forceRefresh();
     G.Terrain.build(); G.Terrain.fogUpdate(); G.Terrain.prewarm(G.cam, G.R.W, G.R.H, G.R.DPR);
   }
+  // bătălia din spatele meniului: două civilizații la întâmplare, camera urmărește luptele
+  var demoT = 0, demoTgt = null;
+  function startDemo() {
+    if (G.running || !document.body.classList.contains('desk')) return;
+    var L = G.CIV_LIST.slice().sort(function () { return Math.random() - 0.5; }), types = ['rau', 'codri', 'stepa', 'delta', 'munti'];
+    try {
+      G.newGame({ seed: (Math.random() * 1e9) | 0, size: 72, diff: 'normal', startAge: 2, res: 'mult', popMax: 70, reveal: 'tot',
+        map: { type: types[(Math.random() * 5) | 0], season: Math.random() < 0.3 ? 'iarna' : 'vara' }, players: [{ civ: L[0], ai: true, team: 1 }, { civ: L[1], ai: true, team: 2 }] });
+    } catch (e) { return; }
+    G.demo = true; demoT = 0; demoTgt = null;
+    G.cam.z = 1.05; G.R.resize(); G.R.center(G.S.N / 2, G.S.N / 2);
+    G.R.preloadBaked(); G.R.preloadBld();
+    G.Terrain.build(); G.Terrain.fogUpdate();
+    for (var i = 0; i < 1500; i++) G.update(0.1);
+  }
+  G.startDemo = startDemo;
+  function demoCam(dt) {
+    demoT -= dt;
+    if (demoT <= 0 || !demoTgt) {
+      demoT = 9;
+      var f = G.C.units.filter(function (u) { return u.task && u.task.k === 'atk'; });
+      var u = f.length ? f[(Math.random() * f.length) | 0] : G.C.blds[(Math.random() * G.C.blds.length) | 0];
+      demoTgt = u ? [u.x, u.y] : [G.S.N / 2, G.S.N / 2];
+    }
+    var c = G.cam, w = G.R.s2w(G.R.W / 2, G.R.H / 2), k = Math.min(1, dt * 0.6);
+    G.R.center(w[0] + (demoTgt[0] - w[0]) * k, w[1] + (demoTgt[1] - w[1]) * k);
+    if (G.S.over || G.S.t > 2400) startDemo();
+  }
+
   G.startGame = function (o) {
+    G.demo = false;
     if (typeof o === 'string') o = { diff: o };
     o = o || {};
     if (!o.scen) G.lastStart = JSON.parse(JSON.stringify(o));
@@ -53,6 +83,7 @@ var G = globalThis.G || (globalThis.G = {});
     }
   };
   G.continueGame = function () {
+    G.demo = false;
     var str = null, meta = null;
     try { str = localStorage.getItem(SAVE); meta = JSON.parse(localStorage.getItem(SAVE + '_meta')); } catch (e) {}
     if (!str) return;
@@ -77,6 +108,7 @@ var G = globalThis.G || (globalThis.G = {});
     document.body.classList.remove('playing');
     show('menu', false); show('end', false);
     refreshStart(); show('start', true);
+    setTimeout(startDemo, 50);
   };
 
   function refreshStart() {
@@ -112,7 +144,12 @@ var G = globalThis.G || (globalThis.G = {});
       while (sim > 1e-6) { var st = Math.min(0.05, sim); G.update(st); sim -= st; }
       endCheck();
     }
-    if (G.S && (G.running || G.S.over)) {
+    if (G.demo && G.S && !G.running) {
+      var simd = dt * 1.5;
+      while (simd > 1e-6) { var st2 = Math.min(0.05, simd); G.update(st2); simd -= st2; }
+      demoCam(dt);
+      G.R.frame(dt);
+    } else if (G.S && (G.running || G.S.over)) {
       G.Input.tick(dt);
       G.R.frame(G.paused ? 0 : dt);
       G.UI.tick(dt);
@@ -145,7 +182,7 @@ var G = globalThis.G || (globalThis.G = {});
     $('mResume').addEventListener('click', G.resume);
     $('mHelp').addEventListener('click', function () { show('help', true); });
     $('mExit').addEventListener('click', G.toStart);
-    $('eAgain').addEventListener('click', function () { show('end', false); refreshStart(); show('start', true); });
+    $('eAgain').addEventListener('click', function () { show('end', false); refreshStart(); show('start', true); setTimeout(startDemo, 50); });
     function fillHelp() {
       var desk = document.body.classList.contains('desk');
       $('helpList').innerHTML = (desk ? G.HELP_DESK : G.HELP).map(function (h) { return '<li><span>' + h[0] + '</span><div>' + h[1] + '</div></li>'; }).join('');
@@ -158,5 +195,6 @@ var G = globalThis.G || (globalThis.G = {});
     setInterval(function () { if (G.running && !G.paused) G.saveGame(); }, 30000);
     window.addEventListener('pagehide', function () { if (G.running) G.saveGame(); });
     requestAnimationFrame(frame);
+    setTimeout(startDemo, 300);
   });
 })();

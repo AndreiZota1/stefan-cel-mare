@@ -97,8 +97,38 @@ def make(key, voice, instr, text, tmp):
     return enc
 
 
+def redo(key, keys):
+    """Reface doar replicile date (--keys a,b,c), cu mai multe încercări, păstrând restul fișierului."""
+    data = missions()
+    with tempfile.TemporaryDirectory() as tmp:
+        for k in keys:
+            mid = k.split('_')[0]
+            m = data[mid]
+            items = {mid + '_intro' + str(i): ('narator', t) for i, t in enumerate(m['intro'])}
+            items.update({mid + '_outro' + str(i): ('narator', t) for i, t in enumerate(m['outro'])})
+            items.update({mid + '_' + kk: (w, t) for kk, w, t in m.get('says', [])})
+            who, text = items[k]
+            voice, instr = VOICE.get(who, VOICE['narator'])
+            best, score = None, -1
+            for attempt in range(5):
+                enc = make(key, voice, instr, text, tmp)
+                sc = difflib.SequenceMatcher(None, norm(text), norm(transcribe(key, enc))).ratio()
+                if sc > score:
+                    score, best = sc, open(enc, 'rb').read()
+                if sc >= 0.85:
+                    break
+            path = os.path.join(ROOT, 'js', 'nar', mid + '.js')
+            lines = open(path, encoding='utf8').read().split('\n')
+            pre = 'G.NAR[' + json.dumps(k) + '] = '
+            lines = [pre + '"data:audio/mpeg;base64,' + base64.b64encode(best).decode() + '";' if l.startswith(pre) else l for l in lines]
+            open(path, 'w', encoding='utf8').write('\n'.join(lines))
+            print(k, round(score, 2), flush=True)
+
+
 def main():
     key = key_from_args()
+    if '--keys' in sys.argv:
+        return redo(key, sys.argv[sys.argv.index('--keys') + 1].split(','))
     only = [a for a in sys.argv[1:] if not a.startswith('--') and a not in (sys.argv[sys.argv.index('--keychain') + 1] if '--keychain' in sys.argv else '',)]
     data = missions()
     os.makedirs(os.path.join(ROOT, 'js', 'nar'), exist_ok=True)
