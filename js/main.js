@@ -29,6 +29,7 @@ var G = globalThis.G || (globalThis.G = {});
     show('start', false); show('menu', false); show('end', false); show('help', false);
     document.body.classList.add('playing');
     G.R.resize(); G.R.resizeMini(); G.UI.forceRefresh();
+    G.Terrain.build(); G.Terrain.fogUpdate(); G.Terrain.prewarm(G.cam, G.R.W, G.R.H, G.R.DPR);
   }
   G.startGame = function (diff) {
     if (G.Audio.on) G.Audio.unlock();

@@ -6,7 +6,7 @@ var G = globalThis.G || (globalThis.G = {});
   var R = G.R = {};
   var cam = G.cam = { x: 36, y: 36, z: 1.1 };
   var cv, ctx, W = 800, H = 400, DPR = 1, SS = 2;
-  var spr = {}, tileSpr = null, clock = 0;
+  var spr = {}, tileSpr = null, clock = 0, lastFogT = -1;
   R.marks = [];
 
   var PAL = {
@@ -38,13 +38,12 @@ var G = globalThis.G || (globalThis.G = {});
   R.init = function (canvas) {
     cv = canvas; ctx = cv.getContext('2d');
     R.resize();
-    tileSpr = buildTiles();
   };
   R.resize = function () {
     DPR = Math.min(window.devicePixelRatio || 1, 2);
     W = cv.clientWidth || window.innerWidth; H = cv.clientHeight || window.innerHeight;
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
-    R.W = W; R.H = H;
+    R.W = W; R.H = H; R.DPR = DPR;
   };
   R.w2s = function (x, y) { return [(x - y - cam.x + cam.y) * 32 * cam.z + W / 2, (x + y - cam.x - cam.y) * 16 * cam.z + H / 2]; };
   R.s2w = function (sx, sy) {
@@ -188,7 +187,8 @@ var G = globalThis.G || (globalThis.G = {});
 
   var HEAD = { cetate: 128, turn: 120, manastire: 110, moara: 92, casa: 62, cazarma: 74, grajd: 74, poligon: 62, fierarie: 92, joagar: 56, mina: 56, ogor: 6 };
 
-  function bldSprite(t, civ) {
+  function bldSprite(t, civ) { return G.Spr.bld(t, civ); }
+  function bldSpriteOld(t, civ) {
     var key = t + '_' + civ;
     if (spr[key]) return spr[key];
     var n = G.BLDS[t].n, head = HEAD[t] || 64;
@@ -401,14 +401,17 @@ var G = globalThis.G || (globalThis.G = {});
   }
 
   // ---------- oamenii ----------
-  function ell(g, x, y, rx, ry, col) { g.fillStyle = col; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 6.3); g.fill(); }
+  var OUTL = false;
+  function outl(g) { if (OUTL) { g.lineWidth = 0.7; g.strokeStyle = 'rgba(28,18,10,0.72)'; g.stroke(); } }
+  function ell(g, x, y, rx, ry, col) { g.fillStyle = col; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 6.3); g.fill(); outl(g); }
+  function grad(g, col, x0, x1) { var gr = g.createLinearGradient(x0, 0, x1, 0); gr.addColorStop(0, shade(col, 0.2)); gr.addColorStop(1, shade(col, -0.28)); return gr; }
   function ln(g, x0, y0, x1, y1, col, lw) { g.strokeStyle = col; g.lineWidth = lw; g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke(); }
   function rr(g, x, y, w, h, r, col) {
     g.fillStyle = col; g.beginPath();
     g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r);
     g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
     g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r);
-    g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.fill();
+    g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.fill(); outl(g);
   }
   function vilTool(u) {
     var T = u.task; if (!T) return null;
@@ -440,7 +443,7 @@ var G = globalThis.G || (globalThis.G = {});
       if (u.carry.r === 'w') { ln(g, -7.5, -14, -3, -14, '#5a3a20', 0.6); ln(g, -7.5, -12, -3, -12, '#5a3a20', 0.6); }
     }
     var tunic = u.t === 'vil' ? (civ === 'mol' ? '#ece6d6' : '#d9c9a2') : team;
-    rr(g, -4, -16.5, 8, 10.5, 2.6, tunic);
+    rr(g, -4, -16.5, 8, 10.5, 2.6, grad(g, tunic, -4, 4));
     if (u.t === 'vil') rr(g, -4, -10.6, 8, 1.8, 0.5, team);
     else { rr(g, -4, -10.6, 8, 1.4, 0.5, teamD); g.fillStyle = 'rgba(255,255,255,0.15)'; g.fillRect(-4, -16.5, 2.2, 10.5); }
     ell(g, 0, -19.4, 3.3, 3.3, SKIN);
@@ -486,7 +489,8 @@ var G = globalThis.G || (globalThis.G = {});
     var lx = [-6.5, -4, 4, 6.5], ph = [0, Math.PI, Math.PI * 0.5, Math.PI * 1.5];
     for (var i = 0; i < 4; i++) { var sw = moving ? Math.sin(gal + ph[i]) * 2.6 : 0; ln(g, lx[i], -7.5, lx[i] + sw, 0, shade(horse, -0.35), 2); }
     ln(g, -9, -11, -12.5, -5, shade(horse, -0.4), 2.2);
-    ell(g, 0, -10.8, 9.6, 4.6, horse);
+    var hb = g.createRadialGradient(-3, -13, 1, 0, -10.8, 10); hb.addColorStop(0, shade(horse, 0.25)); hb.addColorStop(1, shade(horse, -0.3));
+    ell(g, 0, -10.8, 9.6, 4.6, hb);
     if (u.t === 'kni' || hero) {
       g.fillStyle = team; g.beginPath(); g.moveTo(-8.5, -11.5); g.lineTo(8.5, -11.5); g.lineTo(7.5, -6); g.lineTo(-7.5, -6); g.closePath(); g.fill();
       ln(g, -7.5, -6.2, 7.5, -6.2, '#e0c060', 0.9);
@@ -499,7 +503,7 @@ var G = globalThis.G || (globalThis.G = {});
       g.beginPath(); g.moveTo(-2.5, -24); g.lineTo(-11, -13.5 + (moving ? Math.sin(gal) : 0)); g.lineTo(-5.5, -12.5); g.lineTo(1, -18); g.closePath(); g.fill();
     }
     ln(g, 0, -15.5, 1.5, -9.5, '#3a2a1e', 2);
-    rr(g, -3.4, -23.6, 6.8, 9.5, 2.4, hero && civ === 'mol' ? '#7a1a1a' : team);
+    rr(g, -3.4, -23.6, 6.8, 9.5, 2.4, grad(g, hero && civ === 'mol' ? '#8a1e1e' : team, -3.4, 3.4));
     ell(g, 0, -26.6, 3.1, 3.1, SKIN);
     if (civ === 'mol') {
       if (hero) { g.fillStyle = '#e8c242'; g.beginPath(); g.moveTo(-3.4, -28); g.lineTo(-3.6, -32.5); g.lineTo(-1.8, -30); g.lineTo(0, -33.5); g.lineTo(1.8, -30); g.lineTo(3.6, -32.5); g.lineTo(3.4, -28); g.closePath(); g.fill(); }
@@ -544,9 +548,11 @@ var G = globalThis.G || (globalThis.G = {});
     g.save(); g.translate(sx, sy); g.scale(k, k);
     ell(g, 0, 0, d.cls === 'cav' ? 10.5 : d.cls === 'sie' ? 13 : 6.2, d.cls === 'cav' ? 3.8 : d.cls === 'sie' ? 4.4 : 2.6, 'rgba(0,0,0,0.26)');
     g.scale(u.face || 1, 1);
+    OUTL = true;
     if (d.cls === 'cav') drawCav(g, u, civ, moving, swing);
     else if (d.cls === 'sie') drawSiege(g, u, civ, swing);
     else drawFoot(g, u, civ, moving, working, swing);
+    OUTL = false;
     g.restore();
   }
   function drawSheep(g, e, sx, sy, k) {
@@ -575,33 +581,10 @@ var G = globalThis.G || (globalThis.G = {});
     var tw = 64 * z, th = 32 * z, ox = W / 2 - (cam.x - cam.y) * 32 * z, oy = H / 2 - (cam.x + cam.y) * 16 * z;
     var exp = S.exp, vis = C.vis, ter = S.ter;
     var x, y, k, sx, sy;
-    // teren
-    for (y = minY; y <= maxY; y++) for (x = minX; x <= maxX; x++) {
-      sx = ox + (x - y) * 32 * z; sy = oy + (x + y) * 16 * z;
-      if (sx < -tw || sx > W + tw || sy < -th || sy > H + 2) continue;
-      k = y * N + x;
-      if (!exp[k]) continue;
-      var tv = tileSpr[ter[k]][(G.hash2(x, y, 1) * 4) | 0];
-      ctx.drawImage(tv.c, sx - 32 * z - 0.6, sy - 0.6, tw + 1.2, th + 1.2);
-      if (ter[k] === 2 && vis[k]) {
-        var ph = Math.sin(clock * 1.6 + x * 0.9 + y * 1.7);
-        if (ph > 0.55) { ctx.strokeStyle = 'rgba(255,255,255,' + ((ph - 0.55) * 0.9) + ')'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(sx - 8 * z, sy + 15 * z); ctx.lineTo(sx + 6 * z, sy + 15 * z); ctx.stroke(); }
-      }
-    }
-    // maluri
-    ctx.beginPath();
-    for (y = minY; y <= maxY; y++) for (x = minX; x <= maxX; x++) {
-      k = y * N + x;
-      if (!exp[k] || ter[k] > 1) continue;
-      sx = ox + (x - y) * 32 * z; sy = oy + (x + y) * 16 * z;
-      if (sx < -tw || sx > W + tw || sy < -th || sy > H + 2) continue;
-      var T = [sx, sy], Rr = [sx + 32 * z, sy + 16 * z], B = [sx, sy + 32 * z], L = [sx - 32 * z, sy + 16 * z];
-      if (y > 0 && ter[k - N] === 2) { ctx.moveTo(T[0], T[1]); ctx.lineTo(Rr[0], Rr[1]); }
-      if (x < N - 1 && ter[k + 1] === 2) { ctx.moveTo(Rr[0], Rr[1]); ctx.lineTo(B[0], B[1]); }
-      if (y < N - 1 && ter[k + N] === 2) { ctx.moveTo(B[0], B[1]); ctx.lineTo(L[0], L[1]); }
-      if (x > 0 && ter[k - 1] === 2) { ctx.moveTo(L[0], L[1]); ctx.lineTo(T[0], T[1]); }
-    }
-    ctx.strokeStyle = 'rgba(214,198,140,0.9)'; ctx.lineWidth = 3.5 * z; ctx.lineCap = 'round'; ctx.stroke();
+    // teren (calculat pe bucăți) și apa vie
+    G.Terrain.draw(ctx, cam, W, H, DPR);
+    G.Terrain.water(ctx, cam, W, H, clock);
+    if (clock - lastFogT > 0.2 || lastFogT > clock) { G.Terrain.fogUpdate(); lastFogT = clock; }
 
     // obiecte vizibile
     var list = [], ground = [];
@@ -681,20 +664,12 @@ var G = globalThis.G || (globalThis.G = {});
       ctx.globalAlpha = 1;
     });
 
-    // ceața
-    var fogA = new Path2D(), fogB = new Path2D();
-    for (y = minY; y <= maxY; y++) for (x = minX; x <= maxX; x++) {
-      k = y * N + x;
-      if (vis[k]) continue;
-      sx = ox + (x - y) * 32 * z; sy = oy + (x + y) * 16 * z;
-      if (sx < -tw || sx > W + tw || sy < -th * 3 || sy > H + 2) continue;
-      var pth = exp[k] ? fogB : fogA;
-      pth.moveTo(sx, sy - 0.6); pth.lineTo(sx + 32 * z + 0.6, sy + 16 * z); pth.lineTo(sx, sy + 32 * z + 0.6); pth.lineTo(sx - 32 * z - 0.6, sy + 16 * z); pth.closePath();
-    }
-    ctx.fillStyle = 'rgba(10,9,7,0.45)'; ctx.fill(fogB);
-    ctx.fillStyle = '#0d0c0a'; ctx.fill(fogA);
+    // umbre de nori, apoi ceața cu margini moi
+    G.Terrain.clouds(ctx, cam, W, H, clock);
+    G.Terrain.fogDraw(ctx, cam, W, H, DPR);
     // margini în afara hărții
     drawEdge(ox, oy, z, N);
+    G.Terrain.vignette(ctx, W, H);
 
     // clădirea de pus
     var pl = G.UI && G.UI.place;
@@ -746,10 +721,13 @@ var G = globalThis.G || (globalThis.G = {});
   }
   function drawRes(e) {
     var p = R.w2s(e.x, e.y), z = cam.z;
+    if (p[0] < -90 || p[0] > W + 90 || p[1] < -20 || p[1] > H + 140) return;
     if (e.t === 'sheep') { drawSheep(ctx, e, p[0], p[1], z); return; }
-    var s = resSprite(e.t, e.t === 'tree' ? e.v : 0);
-    var scl = e.t === 'tree' ? 1 : Math.max(0.55, Math.min(1, 0.45 + e.amt / G.RESD[e.t].amt));
-    ctx.drawImage(s.c, p[0] - s.ax * z * scl, p[1] - s.ay * z * scl, s.w * z * scl, s.h * z * scl);
+    var s, scl;
+    if (e.t === 'tree') { s = G.Spr.tree((G.hash2(e.tx, e.ty, 3) * 8) | 0); scl = 0.86 + G.hash2(e.tx, e.ty, 4) * 0.28; }
+    else { s = G.Spr.res(e.t); scl = Math.max(0.6, Math.min(1, 0.5 + e.amt / G.RESD[e.t].amt * 0.5)); }
+    var k = z * scl;
+    ctx.drawImage(s.c, p[0] - s.ax * k, p[1] - s.ay * k, s.w * k, s.h * k);
     if (G.UI && G.UI.selSet()[e.id]) { ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(p[0], p[1], 14 * z, 7 * z, 0, 0, 6.3); ctx.stroke(); }
   }
   function drawBld(b, selected) {
@@ -813,7 +791,7 @@ var G = globalThis.G || (globalThis.G = {});
       ctx.beginPath(); ctx.ellipse(p[0], p[1], rx, rx * 0.5, 0, 0, 6.3); ctx.stroke();
     }
     if (d.hero) { ctx.fillStyle = 'rgba(255,215,90,0.18)'; ctx.beginPath(); ctx.ellipse(p[0], p[1], 15 * z, 7.5 * z, 0, 0, 6.3); ctx.fill(); }
-    drawUnitAt(ctx, u, civ, p[0], p[1], z * (d.hero ? 1.12 : 1));
+    drawUnitAt(ctx, u, civ, p[0], p[1], z * 1.1 * (d.hero ? 1.1 : 1));
     if (selected || (u.hit && S.t - u.hit < 2.5)) hpBar(u, p[0], p[1] - (d.cls === 'cav' ? 40 : d.cls === 'sie' ? 28 : 33) * z, d.cls === 'vil' ? 16 : 20);
   }
 
