@@ -6,13 +6,14 @@ Scriptul nu caută chei pe disc și nu le afișează.
 
     OPENAI_API_KEY=... python3 tools/voci.py
     python3 tools/voci.py --cheie ~/cale/catre/fisierul-cu-cheia
+    python3 tools/voci.py --keychain claude-voce-openai   (intrarea din Keychain a modului vocal)
 """
 import base64, json, os, subprocess, sys, tempfile, urllib.request, urllib.error
 
 LINES = {
     'vil_sel':   ['Da, stăpâne?', 'Poruncă!', 'Ce-i de lucru?', 'Aici sunt!', 'Ascult!', 'Spune, stăpâne.'],
     'vil_ack':   ['Mă duc!', 'Am înțeles!', 'Îndată!', 'Bine, stăpâne!', 'S-a făcut!', 'Merg acum.'],
-    'vil_build': ['Construiesc!', 'Ridicăm!', 'Gata, mă apuc!'],
+    'vil_build': ['Construiesc!', 'Ne apucăm!', 'Gata, mă apuc!'],
     'mil_sel':   ['Da!', 'Gata de luptă!', 'Poruncește!', 'La ordin!', 'Oastea e gata!'],
     'mil_ack':   ['Înainte!', 'Am înțeles!', 'Mergem!', 'Așa vom face!'],
     'mil_atk':   ['La luptă!', 'Pentru Moldova!', 'Loviți!', 'Ura!', 'Nu ne dăm!'],
@@ -22,17 +23,24 @@ LINES = {
     'alert':     ['Suntem atacați!', 'Vin turcii!'],
     'oto':       ['Hücum!', 'Saldırın!', 'Vurun!'],
 }
+TTS1_VOICE = {'ash': 'echo', 'ballad': 'fable', 'verse': 'onyx', 'coral': 'nova', 'sage': 'alloy'}
 STYLE = {
     'vil':   ('ash', 'Vorbește în limba română, cu accent moldovenesc, ca un țăran din Evul Mediu care îi răspunde stăpânului: smerit, sprinten, scurt și firesc. Fără pauze la început.'),
     'mil':   ('onyx', 'Vorbește în limba română, ca un oștean moldovean din Evul Mediu: hotărât, cu voce puternică, aproape strigat, scurt. Fără pauze la început.'),
-    'hero':  ('onyx', 'Vorbește în limba română, ca Ștefan cel Mare, voievodul Moldovei: grav, solemn, sigur pe el, cu autoritate. Rar și apăsat.'),
-    'alert': ('ash', 'Vorbește în limba română, ca o iscoadă speriată care dă alarma: urgent, tare, grăbit.'),
-    'oto':   ('onyx', 'Speak Turkish, as an Ottoman soldier shouting a battle cry: loud, fierce, short.'),
+    'hero':  ('ballad', 'Vorbește în limba română, ca Ștefan cel Mare, voievodul Moldovei: grav, solemn, sigur pe el, cu autoritate. Rar și apăsat.'),
+    'alert': ('echo', 'Vorbește în limba română, ca o iscoadă speriată care dă alarma: urgent, tare, grăbit.'),
+    'oto':   ('verse', 'Speak Turkish, as an Ottoman soldier shouting a battle cry: loud, fierce, short.'),
 }
-MODELS = ['gpt-4o-mini-tts', 'tts-1-hd']
+MODELS = ['gpt-4o-mini-tts', 'tts-1-hd', 'tts-1']
 
 
 def key_from_args():
+    if '--keychain' in sys.argv:
+        svc = sys.argv[sys.argv.index('--keychain') + 1]
+        r = subprocess.run(['/usr/bin/security', 'find-generic-password', '-s', svc, '-w'], capture_output=True, text=True, timeout=20)
+        if r.returncode != 0 or not r.stdout.strip():
+            sys.exit('Nu am putut citi cheia din Keychain (' + svc + ').')
+        return r.stdout.strip()
     if '--cheie' in sys.argv:
         path = os.path.expanduser(sys.argv[sys.argv.index('--cheie') + 1])
         for line in open(path):
@@ -49,6 +57,8 @@ def key_from_args():
 
 
 def tts(key, model, voice, text, instructions):
+    if not model.startswith('gpt-'):
+        voice = TTS1_VOICE.get(voice, voice)
     body = {'model': model, 'voice': voice, 'input': text, 'response_format': 'mp3'}
     if model.startswith('gpt-'):
         body['instructions'] = instructions

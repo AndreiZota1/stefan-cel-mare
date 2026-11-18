@@ -17,6 +17,7 @@ var G = globalThis.G || (globalThis.G = {});
     for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     noise = buf;
     ambient();
+    decodeVoices();
   };
   // fundalul: vânt și păsări, foarte încet
   var amb = null;
@@ -87,6 +88,7 @@ var G = globalThis.G || (globalThis.G = {});
       });
     });
   }
+  A.voicesReady = function () { var n = 0; Object.keys(vbuf).forEach(function (c) { vbuf[c].forEach(function (b) { if (b) n++; }); }); return n; };
   // units: oamenii cărora li s-a vorbit; kind: sel | ack | atk | build | alert | oto
   G.voice = function (units, kind) {
     if (!A.on || !A.ac || !G.VOCI || !G.running || G.paused) return;
