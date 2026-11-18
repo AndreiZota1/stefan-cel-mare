@@ -7,7 +7,7 @@
 import { bakeSheet, bakeStill, bakeIcon, faceDir } from './core.js';
 import { texturesReady } from './mats.js';
 import { unitModel } from './units2.js';
-import { building2, wallPiece, ruin, NB } from './buildings2.js';
+import { building2, wallPiece, ruin, scaffold, NB } from './buildings2.js';
 import * as THREE from 'three';
 // celule de pornire la zoom 1 [W, H, ax, ay]; încadrarea se strânge automat
 const CELL = { foot: [60, 60, 26, 46], cav: [84, 76, 38, 58], siege: [110, 100, 52, 70] };
@@ -24,6 +24,7 @@ window.bakeUnitIcon = async (vis, civ) => {
 };
 function model(t, civ) {
   if (/^ruina\d$/.test(t)) { const n = +t.slice(5); return { root: ruin(n), info: { n } }; }
+  if (/^schela\d$/.test(t)) { const n = +t.slice(6); return { root: scaffold(n), info: { n } }; }
   const w = t.match(/^(pal|ppal|zid|poarta)_(x|y|p)$/); if (w) return { root: wallPiece(w[1], w[2], civ === 'all' ? null : civ), info: { n: 1 } };
   return building2(t, civ);
 }

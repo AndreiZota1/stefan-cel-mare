@@ -1084,13 +1084,17 @@ var G = globalThis.G || (globalThis.G = {});
       // fundația și clădirea care „crește”
       ctx.fillStyle = 'rgba(120,95,60,0.75)';
       ctx.beginPath(); ctx.moveTo(top[0], top[1]); ctx.lineTo(top[0] + n * 32 * z, top[1] + n * 16 * z); ctx.lineTo(top[0], top[1] + n * 32 * z); ctx.lineTo(top[0] - n * 32 * z, top[1] + n * 16 * z); ctx.closePath(); ctx.fill();
-      var showH = (s.ay + n * 16) * z * Math.max(0.08, b.prog) + n * 16 * z;
-      ctx.save(); ctx.beginPath(); ctx.rect(dx, dy + dh - showH, dw, showH); ctx.clip();
-      ctx.globalAlpha = 0.9; ctx.drawImage(s.c, dx, dy, dw, dh); ctx.globalAlpha = 1; ctx.restore();
-      ctx.strokeStyle = '#c9a26a'; ctx.lineWidth = 1.4 * z;
-      [[0, 0], [n, 0], [n, n], [0, n]].forEach(function (c) {
-        var p = R.w2s(b.tx + c[0], b.ty + c[1]); ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p[0], p[1] - (8 + 26 * b.prog) * z); ctx.stroke();
-      });
+      // clădirea se încheagă treptat sub schelă (tăierea pe orizontală lăsa vârfurile turnurilor din spate în aer)
+      ctx.globalAlpha = 0.18 + 0.72 * Math.min(1, Math.max(0, b.prog)); ctx.drawImage(s.c, dx, dy, dw, dh); ctx.globalAlpha = 1;
+      // schela de lemn în jurul șantierului (la ziduri, doar stâlpii)
+      var scf = n >= 2 ? sheet2('b/schela' + Math.min(5, n) + '_all') : null;
+      if (scf) { var sk = z / scf.B.k * (n / Math.min(5, n)); ctx.drawImage(scf.img, top[0] - scf.B.ax * sk, top[1] - scf.B.ay * sk, scf.B.W * sk, scf.B.H * sk); }
+      else {
+        ctx.strokeStyle = '#c9a26a'; ctx.lineWidth = 1.4 * z;
+        [[0, 0], [n, 0], [n, n], [0, n]].forEach(function (c) {
+          var p = R.w2s(b.tx + c[0], b.ty + c[1]); ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p[0], p[1] - (8 + 26 * b.prog) * z); ctx.stroke();
+        });
+      }
     }
     if (b.built && b.t === 'moara' && s.hub) {
       var hx = dx + s.hub[0] * z, hy = dy + s.hub[1] * z, ang = clock * 1.4, sl = s.baked ? 30 : 22;

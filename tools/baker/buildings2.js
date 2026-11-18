@@ -841,6 +841,23 @@ export function ruin(n) {
   return g;
 }
 
+// schela unei clădiri în construcție (aceeași pentru toți): stâlpi, podini pe fețele văzute, contrafișe, scară, materiale jos
+export function scaffold(n) {
+  const g = new THREE.Group(), P = PM('#8a6a44', 0.9), PL = TM('raw_plank_wall', '#d8bc98', 0.9, 1.2), h = 0.45 + n * 0.16, e = 0.12;
+  const xs = [], m = Math.max(2, Math.round(n / 0.55));
+  for (let i = 0; i <= m; i++) xs.push(e + (n - 2 * e) * i / m);
+  xs.forEach(x => { g.add(at(cyl(0.014, 0.016, h, P, 6), x, h / 2, n - e)); g.add(at(cyl(0.014, 0.016, h, P, 6), n - e, h / 2, x)); });
+  g.add(at(cyl(0.014, 0.016, h, P, 6), e, h / 2, e));
+  [0.32, 0.62, 0.92].map(f => f * h).forEach((y, k) => {
+    g.add(at(box(n - 2 * e, 0.018, 0.09, PL, 2), n / 2, y, n - e + 0.02)); g.add(at(box(0.09, 0.018, n - 2 * e, PL, 2), n - e + 0.02, y, n / 2));
+    g.add(at(box(n - 2 * e, 0.012, 0.012, P), n / 2, y + 0.1, n - e + 0.06)); g.add(at(box(0.012, 0.012, n - 2 * e, P), n - e + 0.06, y + 0.1, n / 2));
+  });
+  for (let i = 0; i < m; i += 2) { const a = xs[i], b = xs[i + 1], L = Math.hypot(b - a, h * 0.3), ang = Math.atan2(h * 0.3, b - a);
+    g.add(at(box(L, 0.012, 0.012, P), (a + b) / 2, h * 0.47, n - e + 0.03, 0, 0, ang)); const d2 = box(0.012, 0.012, L, P); at(d2, n - e + 0.03, h * 0.47, (a + b) / 2, -ang, 0, 0); g.add(d2); }
+  const lad = new THREE.Group(); [-0.05, 0.05].forEach(z => lad.add(at(box(0.014, h * 0.75, 0.014, P), 0, h * 0.375, z))); for (let i = 0; i < 6; i++) lad.add(at(box(0.012, 0.012, 0.1, P), 0, 0.06 + i * h * 0.12, 0)); at(lad, n - e + 0.16, 0, n * 0.62, 0, 0, 0.18); g.add(lad);
+  logPile(g, n * 0.3, n + 0.12, 2, 0.4); for (let i = 0; i < 4; i++) g.add(at(box(0.09, 0.06, 0.07, TM('castle_wall_slates', '#d8d0c4')), n + 0.08 + (i % 2) * 0.1, 0.03 + Math.floor(i / 2) * 0.06, n * 0.3 + (i % 2) * 0.05));
+  return g;
+}
 export function building2(t, civ) {
   const K = kit(civ), g = new THREE.Group(), info = { n: NB[t] };
   B[t](g, K, info);
