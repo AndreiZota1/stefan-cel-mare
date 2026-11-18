@@ -7,7 +7,7 @@ var G = globalThis.G || (globalThis.G = {});
   'use strict';
   var S = null;
   var C = G.C = { byId: new Map(), occ: null, pass: null, pp: [], gate: null, vis: null, units: [], blds: [], grid: new Map(),
-                  sc: [], bc: [], gm: [], fxl: [], hero: [], gcount: {}, budget: 0, en: [], fear: [], tepe: [] };
+                  sc: [], bc: [], gm: [], fxl: [], hero: [], gcount: {}, budget: 0, en: [], fear: [], tepe: [], mob: [] };
 
   G.msgQ = [];
   G.msg = function (text, kind, pos) {
@@ -1202,10 +1202,11 @@ var G = globalThis.G || (globalThis.G = {});
   function refreshLists() {
     var nP = S.players.length, us = C.units = [], bs = C.blds = [], pop = [], cap = [], p;
     for (p = 0; p < nP; p++) { pop.push(0); cap.push(0); }
-    C.fear = []; C.tepe = [];
+    C.fear = []; C.tepe = []; C.mob = [];
     for (var i = 0; i < S.ents.length; i++) {
       var e = S.ents[i];
       if (e.dead) continue;
+      if (e.k === 'r') { if (!G.RESD[e.t].block) C.mob.push(e); continue; }
       if (e.k === 'u') {
         pop[e.o]++;
         if (!e.gin) { us.push(e); if (G.UNITS[e.t].hero && S.players[e.o].civ === 'val') C.fear.push(e); }
@@ -1305,7 +1306,12 @@ var G = globalThis.G || (globalThis.G = {});
     updProj(dt);
     var tm = S.tm, p;
     if ((tm.fog -= dt) <= 0) { tm.fog = 0.25; G.updFog(); }
-    if ((tm.ai -= dt) <= 0) { tm.ai = 0.5; for (p = 0; p < S.players.length; p++) if (S.players[p].ai && S.players[p].alive && G.aiTick) G.aiTick(p); }
+    // calculatoarele gândesc pe rând, nu toate în același cadru
+    if ((tm.ai -= dt) <= 0) {
+      var ais = S.players.filter(function (P) { return P.ai && P.alive; });
+      tm.ai = 0.5 / Math.max(1, ais.length);
+      if (ais.length && G.aiTick) { tm.aiI = ((tm.aiI || 0) + 1) % ais.length; G.aiTick(ais[tm.aiI].id); }
+    }
     if (S.scen && G.Trig && (tm.trig -= dt) <= 0) { tm.trig = 0.25; G.Trig.tick(); }
     if ((tm.tl -= dt) <= 0) { tm.tl = 15; S.players.forEach(function (P) { P.st.tl.push(score(P)); }); }
     if ((tm.win -= dt) <= 0) { tm.win = 1; checkWin(); cleanFx(); }
@@ -1542,11 +1548,12 @@ var G = globalThis.G || (globalThis.G = {});
       if (o === 0 && !S.players[0].ai && !S.exp[i]) return false;
     }
     // nu peste dușmani sau oi
-    for (var j = 0; j < S.ents.length; j++) {
-      var e = S.ents[j];
-      if (e.dead || e.gin) continue;
-      var mob = (e.k === 'u' && e.o !== o) || (e.k === 'r' && !G.RESD[e.t].block);
-      if (mob && e.x > tx && e.x < tx + n && e.y > ty && e.y < ty + n) return false;
+    var bad = false;
+    forUnitsNear(tx + n / 2, ty + n / 2, n, function (e) { if (!bad && !e.dead && e.o !== o && e.x > tx && e.x < tx + n && e.y > ty && e.y < ty + n) bad = true; });
+    if (bad) return false;
+    for (var j = 0; j < C.mob.length; j++) {
+      var m = C.mob[j];
+      if (!m.dead && m.x > tx && m.x < tx + n && m.y > ty && m.y < ty + n) return false;
     }
     return true;
   };

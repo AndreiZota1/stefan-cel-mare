@@ -531,6 +531,12 @@ var G = globalThis.G || (globalThis.G = {});
     }
     my.army.forEach(function (u) {
       if (!u.wave || u.task) return;
+      // n-a găsit drum (ziduri, porți închise): lovește cel mai apropiat zid sau poartă
+      if (u.ign && Object.keys(u.ign).length) {
+        var wbest = null, wd = 30;
+        C.blds.forEach(function (b) { if (!b.dead && G.enemy(pid, b.o) && G.BLDS[b.t].wall) { var d = G.dist(b, u); if (d < wd) { wd = d; wbest = b; } } });
+        if (wbest) { G.cmdAttack([u], wbest); return; }
+      }
       var tgt = enemyTarget(u, -1);
       if (tgt) G.cmdMove([u], tgt.x, tgt.y, true); else u.wave = 0;
     });

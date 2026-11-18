@@ -12,6 +12,15 @@ var G = globalThis.G || (globalThis.G = {});
   // scări (semitonuri față de tonică): minorul românesc (doina) și frigicul dominant (ca la otomani)
   var DOINA = [0, 2, 3, 6, 7, 9, 10], HIJAZ = [0, 1, 4, 5, 7, 8, 10];
   var ROOT = 146.83; // Re
+  // stilul fiecărei civilizații: scara de pace, scara de luptă, instrumentele
+  var STYLES = {
+    doina: { root: 146.83, peace: DOINA, battle: DOINA, lead: 'flute', pluck: 'tambal', war: 'horn' },
+    ungar: { root: 164.81, peace: [0, 2, 3, 5, 7, 9, 10], battle: [0, 2, 3, 6, 7, 8, 11], lead: 'recorder', pluck: 'lute', war: 'trumpet' },
+    hijaz: { root: 146.83, peace: HIJAZ, battle: HIJAZ, lead: 'ney', pluck: 'oud', war: 'zurna' },
+    stepa: { root: 110, peace: [0, 3, 5, 7, 10, 12, 15], battle: [0, 3, 5, 7, 10, 12, 15], lead: 'flute', pluck: 'dombra', war: 'horn', gallop: true }
+  };
+  var ST = STYLES.doina;
+  Mu.setCiv = function (civ) { ST = STYLES[(G.CIVS[civ] || {}).music] || STYLES.doina; ROOT = ST.root; DOINA = ST.peace; HIJAZ = ST.battle; };
   function hz(deg, scale, oct) {
     var n = scale.length, o = Math.floor(deg / n), i = ((deg % n) + n) % n;
     return ROOT * Math.pow(2, (scale[i] + 12 * (o + (oct || 0))) / 12);
@@ -86,6 +95,27 @@ var G = globalThis.G || (globalThis.G = {});
       o.start(t); o3.start(t); o.stop(t + 1.5); o3.stop(t + 1.5);
     });
   }
+  function zurna(f, t, dur, vel) {
+    var o = ac.createOscillator(), bp = ac.createBiquadFilter(), g = ac.createGain(), l = ac.createOscillator(), lg = ac.createGain();
+    o.type = 'sawtooth'; o.frequency.value = f; bp.type = 'bandpass'; bp.frequency.value = f * 3.2; bp.Q.value = 2.4;
+    l.frequency.value = 6; lg.gain.value = f * 0.018; l.connect(lg); lg.connect(o.frequency);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vel * 0.09, t + 0.05); g.gain.setValueAtTime(vel * 0.08, t + dur * 0.8); g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.08);
+    o.connect(bp); bp.connect(g); g.connect(moodGain.battle); o.start(t); l.start(t); o.stop(t + dur + 0.1); l.stop(t + dur + 0.1);
+  }
+  function pluck(f, t, vel, dest, kind) {
+    // lăută, oud, dombra: corzi ciupite, mai calde decât țambalul
+    var o = ac.createOscillator(), lp = ac.createBiquadFilter(), g = ac.createGain();
+    o.type = kind === 'dombra' ? 'square' : 'sawtooth'; o.frequency.value = f;
+    lp.type = 'lowpass'; lp.frequency.setValueAtTime(kind === 'oud' ? 2200 : 2800, t); lp.frequency.exponentialRampToValueAtTime(400, t + 0.6);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vel * 0.05, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + (kind === 'lute' ? 1.6 : 1.0));
+    o.connect(lp); lp.connect(g); g.connect(dest || moodGain.peace); o.start(t); o.stop(t + 1.7);
+  }
+  function plk(f, t, vel, dest) { if (ST.pluck === 'tambal') tambal(f, t, vel, dest); else pluck(f, t, vel, dest, ST.pluck); }
+  function lead(f, t, dur, vel) {
+    if (ST.lead === 'ney') { flute(f, t, dur, vel * 0.8); var n = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain(); n.buffer = G.Audio.noiseBuf(); nf.type = 'bandpass'; nf.frequency.value = f * 1.5; nf.Q.value = 1.5; ng.gain.setValueAtTime(0.0001, t); ng.gain.linearRampToValueAtTime(vel * 0.03, t + 0.1); ng.gain.exponentialRampToValueAtTime(0.0001, t + dur); n.connect(nf); nf.connect(ng); ng.connect(moodGain.peace); n.start(t, Math.random() * 0.5); n.stop(t + dur + 0.05); }
+    else if (ST.lead === 'recorder') flute(f * 2, t, dur, vel * 0.8);
+    else flute(f, t, dur, vel);
+  }
   function drum(t, vel, low) {
     var o = ac.createOscillator(), g = ac.createGain();
     o.type = 'sine'; o.frequency.setValueAtTime(low ? 90 : 160, t); o.frequency.exponentialRampToValueAtTime(low ? 45 : 70, t + 0.18);
@@ -122,25 +152,33 @@ var G = globalThis.G || (globalThis.G = {});
       var t = next, bat = Mu.mood === 'battle';
       if (!bat) {
         // doina: fraze libere de fluier, cu pauze și țambal rar
-        if (rest > 0) { rest--; next += 0.42; if (R() < 0.25) tambal(hz([0, 2, 4][(R() * 3) | 0], DOINA, 1), t, 0.6); continue; }
+        if (rest > 0) { rest--; next += 0.42; if (R() < 0.25) plk(hz([0, 2, 4][(R() * 3) | 0], DOINA, 1), t, 0.6); continue; }
         if (phraseLeft <= 0) { phraseLeft = 4 + ((R() * 6) | 0); }
         var d = phraseLeft === 1 ? (R() < 0.6 ? 0 : 4) : nextDegree();
         var len = [0.42, 0.42, 0.84, 0.84, 1.26, 0.28][(R() * 6) | 0] * (phraseLeft === 1 ? 2.2 : 1);
-        if (R() < 0.18) flute(hz(d + 1, DOINA, 1), t, 0.07, 0.6); // ornament
-        flute(hz(d, DOINA, 1), t + (R() < 0.18 ? 0.07 : 0), len, 0.7 + R() * 0.3);
-        if (step % 4 === 0) tambal(hz(d - 7, DOINA, 1), t, 0.45);
+        if (R() < 0.18) lead(hz(d + 1, DOINA, 1), t, 0.07, 0.6); // ornament
+        lead(hz(d, DOINA, 1), t + (R() < 0.18 ? 0.07 : 0), len, 0.7 + R() * 0.3);
+        if (step % 4 === 0) plk(hz(d - 7, DOINA, 1), t, 0.45);
         phraseLeft--; step++;
         next += len;
         if (phraseLeft <= 0) rest = 2 + ((R() * 5) | 0);
       } else {
         // lupta: tobe pe opt timpi, bucium și țambal pe scara orientală
         var beat = step % 8;
-        drum(t, beat === 0 ? 1 : beat === 4 ? 0.8 : 0.45, beat === 0 || beat === 4);
-        if (beat === 2 || beat === 6 || R() < 0.15) drum(t + 0.13, 0.3, false);
-        if (step % 32 === 0) { horn(hz(0, HIJAZ, -1), t, 0.9, 1); horn(hz(4, HIJAZ, -1), t + 1.0, 1.2, 0.9); }
-        if (step % 2 === 0 && R() < 0.7) tambal(hz(nextDegree() % 7, HIJAZ, 1), t, 0.7, moodGain.battle);
+        if (ST.gallop) { // galopul stepei: trei lovituri, o pauză
+          if (beat % 4 !== 3) drum(t, beat === 0 ? 1 : 0.55, beat === 0 || beat === 4);
+        } else {
+          drum(t, beat === 0 ? 1 : beat === 4 ? 0.8 : 0.45, beat === 0 || beat === 4);
+          if (beat === 2 || beat === 6 || R() < 0.15) drum(t + 0.13, 0.3, false);
+        }
+        if (step % 32 === 0) {
+          if (ST.war === 'zurna') { var d0 = nextDegree() % 7; zurna(hz(d0, HIJAZ, 1), t, 0.45, 1); zurna(hz(d0 + 1, HIJAZ, 1), t + 0.48, 0.45, 0.9); zurna(hz(d0, HIJAZ, 1), t + 0.96, 0.9, 1); }
+          else { horn(hz(0, HIJAZ, ST.war === 'trumpet' ? 0 : -1), t, 0.9, 1); horn(hz(4, HIJAZ, ST.war === 'trumpet' ? 0 : -1), t + 1.0, 1.2, 0.9); }
+        }
+        if (ST.war === 'zurna' && step % 4 === 2 && R() < 0.5) zurna(hz(nextDegree() % 7, HIJAZ, 1), t, 0.22, 0.6);
+        if (step % 2 === 0 && R() < 0.7) plk(hz(nextDegree() % 7, HIJAZ, 1), t, 0.7, moodGain.battle);
         step++;
-        next += 0.24;
+        next += ST.gallop ? 0.2 : 0.24;
       }
     }
   }

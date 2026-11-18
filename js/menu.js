@@ -101,7 +101,7 @@ var G = globalThis.G || (globalThis.G = {});
         cols[T.age].push('<span class="tt' + (T.civ ? ' uniq' : '') + '" title="' + esc(T.name + ': ' + T.desc) + '">' + T.icon + ' ' + esc(T.name) + '</span>');
       });
       if (!cols.some(function (c) { return c.length; })) return;
-      html += '<div class="trow"><div class="tb"><img src="' + G.R.icon('b', bt, civ) + '" alt=""><b>' + esc(G.nm(d, civ)) + '</b><small>' + G.AGE_ROMAN[d.age === 9 ? 0 : d.age] + '</small></div>' +
+      html += '<div class="trow"><div class="tb"><img src="' + G.R.icon('b', bt, civ) + '" alt=""><b>' + esc(G.nm(d, civ)) + '</b><small>' + G.AGE_ROMAN[bt === 'cetate' ? 0 : d.age] + '</small></div>' +
         cols.map(function (c) { return '<div class="tc">' + c.join('') + '</div>'; }).join('') + '</div>';
     });
     html += '</div><div class="row2"><button class="btn" id="tClose">Închide</button></div>';

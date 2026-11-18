@@ -78,51 +78,69 @@ var G = globalThis.G || (globalThis.G = {});
     o.connect(f1); f1.connect(g); g.connect(master); o.start(t); lfo.start(t); o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
   }
 
-  // ---------- vocile (din js/voci.js, făcut cu tools/voci.py) ----------
-  var vbuf = {}, vdecoding = false, vlast = {}, vsrc = null, vtime = 0;
-  function decodeVoices() {
-    if (vdecoding || !G.VOCI || !A.ac) return;
-    vdecoding = true;
-    Object.keys(G.VOCI).forEach(function (cat) {
-      vbuf[cat] = [];
-      G.VOCI[cat].forEach(function (clip, i) {
+  // ---------- vocile: G.VOCI (Moldova) și G.VOCI_CIV[civ] (celelalte, în js/voci_<civ>.js) ----------
+  var vbuf = {}, vlast = {}, vsrc = null, vtime = 0;
+  function bankOf(civ) { return civ && civ !== 'mol' && G.VOCI_CIV && G.VOCI_CIV[civ] ? G.VOCI_CIV[civ] : G.VOCI; }
+  function decodeBank(civ) {
+    var key = civ && G.VOCI_CIV && G.VOCI_CIV[civ] && civ !== 'mol' ? civ : 'mol', V = bankOf(civ);
+    if (!V || !A.ac || vbuf[key]) return vbuf[key];
+    var B = vbuf[key] = {};
+    Object.keys(V).forEach(function (cat) {
+      B[cat] = [];
+      V[cat].forEach(function (clip, i) {
         var bin = atob(clip.a.split(',')[1]), arr = new Uint8Array(bin.length);
         for (var j = 0; j < bin.length; j++) arr[j] = bin.charCodeAt(j);
-        A.ac.decodeAudioData(arr.buffer, function (buf) { vbuf[cat][i] = buf; }, function () {});
+        A.ac.decodeAudioData(arr.buffer, function (buf) { B[cat][i] = buf; }, function () {});
       });
     });
+    return B;
   }
-  A.voicesReady = function () { var n = 0; Object.keys(vbuf).forEach(function (c) { vbuf[c].forEach(function (b) { if (b) n++; }); }); return n; };
-  // units: oamenii cărora li s-a vorbit; kind: sel | ack | atk | build | alert | oto
+  function decodeVoices() { decodeBank('mol'); }
+  A.voicesReady = function () { var n = 0; Object.keys(vbuf).forEach(function (b) { Object.keys(vbuf[b]).forEach(function (c) { vbuf[b][c].forEach(function (x) { if (x) n++; }); }); }); return n; };
+  G.Voci = {
+    load: function (civ) {
+      if (!civ || civ === 'mol' || (G.VOCI_CIV && G.VOCI_CIV[civ]) || G.Voci['l_' + civ]) return;
+      G.Voci['l_' + civ] = 1;
+      var sc = document.createElement('script'); sc.src = 'js/voci_' + civ + '.js'; sc.onerror = function () {}; document.head.appendChild(sc);
+    }
+  };
+  // units: oamenii cărora li s-a vorbit; kind: sel | ack | atk | build | alert | oto (strigătul dușmanului)
   G.voice = function (units, kind) {
-    if (!A.on || !A.ac || !G.VOCI || !G.running || G.paused) return;
-    decodeVoices();
-    var cat;
-    if (kind === 'alert' || kind === 'oto') cat = kind;
-    else {
+    if (!A.on || !A.ac || !G.running || G.paused || !G.S) return;
+    var cat, civ;
+    if (kind === 'alert') { cat = 'alert'; civ = 'mol'; }
+    else if (kind === 'oto') {
+      var foes = G.S.players.filter(function (P) { return G.enemy(0, P.id) && P.alive; });
+      var foe = foes[(Math.random() * foes.length) | 0];
+      if (!foe) return;
+      civ = foe.civ; cat = civ === 'mol' || !(G.VOCI_CIV && G.VOCI_CIV[civ]) ? (civ === 'oto' ? 'oto' : 'mil_atk') : 'mil_atk';
+    } else {
       units = units || [];
-      var who = units.some(function (u) { return u.t === 'hero'; }) ? 'hero' : units.some(function (u) { return u.t !== 'vil'; }) ? 'mil' : 'vil';
+      if (!units.length) return;
+      civ = G.S.players[units[0].o].civ;
+      var who = units.some(function (u) { return G.UNITS[u.t].hero; }) ? 'hero' : units.some(function (u) { return u.t !== 'vil' && G.UNITS[u.t].cls !== 'mon'; }) ? 'mil' : 'vil';
       if (who === 'vil') cat = kind === 'sel' ? 'vil_sel' : kind === 'build' ? 'vil_build' : 'vil_ack';
       else cat = who + '_' + (kind === 'sel' ? 'sel' : kind === 'atk' ? 'atk' : 'ack');
     }
-    var list = vbuf[cat]; if (!list) return;
+    var B = decodeBank(civ); if (!B) return;
+    var list = B[cat]; if (!list) return;
     var now = A.ac.currentTime;
     if (now - vtime < 0.35) return;
-    var idx = [], n = list.length;
-    for (var i = 0; i < n; i++) if (list[i] && i !== vlast[cat]) idx.push(i);
+    var idx = [], n = list.length, lk = civ + cat;
+    for (var i = 0; i < n; i++) if (list[i] && i !== vlast[lk]) idx.push(i);
     if (!idx.length) return;
     var k = idx[(Math.random() * idx.length) | 0];
-    vlast[cat] = k; vtime = now;
+    vlast[lk] = k; vtime = now;
     if (vsrc) try { vsrc.stop(); } catch (e) {}
     var src = A.ac.createBufferSource(), g = A.ac.createGain();
     src.buffer = list[k]; src.playbackRate.value = 0.97 + Math.random() * 0.06;
-    g.gain.value = cat === 'oto' ? 0.55 : 0.9;
+    g.gain.value = kind === 'oto' ? 0.55 : 0.9;
     src.connect(g); g.connect(master); src.start(now + 0.02);
     vsrc = src;
   };
 
-  var GAP = { chop: 0.12, mine: 0.12, hit: 0.07, arrow: 0.06, thud: 0.12, build: 0.15, death: 0.15 };
-  var LOCAL = { chop: 1, mine: 1, hit: 1, arrow: 1, thud: 1, build: 1, death: 1, cannon: 1, boom: 1, collapse: 1 };
+  var GAP = { chop: 0.12, mine: 0.12, hit: 0.07, arrow: 0.06, thud: 0.12, build: 0.15, death: 0.15, gun: 0.08, catapult: 0.15 };
+  var LOCAL = { chop: 1, mine: 1, hit: 1, arrow: 1, thud: 1, build: 1, death: 1, cannon: 1, boom: 1, collapse: 1, gun: 1, catapult: 1 };
   G.sfx = function (name, x, y) {
     if (!A.on || !A.ac || !G.running || G.paused) return;
     if (LOCAL[name] && x !== undefined) {
@@ -155,6 +173,16 @@ var G = globalThis.G || (globalThis.G = {});
       case 'age': [392, 523, 659, 784].forEach(function (f, i) { horn(t + i * 0.18, f / 2, 0.5); }); break;
       case 'win': [523, 659, 784, 1047].forEach(function (f, i) { tone('triangle', f, t + i * 0.22, 0.4, 0.1); }); break;
       case 'lose': [392, 349, 311, 262].forEach(function (f, i) { tone('triangle', f, t + i * 0.3, 0.5, 0.09); }); break;
+      case 'gun': burst(t, 0.18, 0.55, 'highpass', 900, 1, 300); burst(t + 0.02, 0.4, 0.2, 'lowpass', 700, 1, 120); tone('sine', 95, t, 0.15, 0.25, 50); break;
+      case 'catapult': burst(t, 0.25, 0.25, 'bandpass', 300, 2, 120); tone('triangle', 140, t, 0.2, 0.08, 70); break;
+      case 'bell': [0, 0.7, 1.4].forEach(function (d) { tone('sine', 523, t + d, 1.4, 0.12); tone('sine', 1046 * 1.003, t + d, 1.0, 0.05); tone('sine', 784, t + d, 1.2, 0.05); }); break;
+      case 'horn2': horn(t, 220, 0.5); horn(t + 0.5, 294, 0.8); break;
+      case 'power': burst(t, 0.6, 0.25, 'lowpass', 300, 1, 60); tone('sawtooth', 110, t, 0.6, 0.06, 55); break;
+      case 'relic': [784, 988, 1175, 1568].forEach(function (f, i) { tone('sine', f, t + i * 0.09, 0.5, 0.06); }); break;
+      case 'coin': tone('triangle', 1318, t, 0.06, 0.05); tone('triangle', 1760, t + 0.06, 0.12, 0.05); break;
+      case 'obj': tone('triangle', 587, t, 0.12, 0.08); tone('triangle', 880, t + 0.12, 0.25, 0.08); break;
+      case 'win1': [659, 784, 988].forEach(function (f, i) { tone('triangle', f, t + i * 0.15, 0.3, 0.08); }); break;
+      case 'lose1': [330, 294, 262].forEach(function (f, i) { tone('triangle', f, t + i * 0.2, 0.35, 0.07); }); break;
     }
   };
 })();
