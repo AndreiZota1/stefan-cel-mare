@@ -188,23 +188,101 @@ var G = globalThis.G || (globalThis.G = {});
   var HEAD = { cetate: 128, turn: 120, manastire: 110, moara: 92, casa: 62, cazarma: 74, grajd: 74, poligon: 62, fierarie: 92, joagar: 56, mina: 56, ogor: 6 };
 
   var bakedB = {};
-  function bldSprite(t, civ) {
-    var key = 'b_' + t + '_' + civ, B = G.BAKED && G.BAKED[key];
-    if (B) {
-      var o = bakedB[key];
-      if (!o) { var img = new Image(); img.src = 'assets/' + key + '.png'; o = bakedB[key] = { c: img, w: B.W / B.k, h: B.H / B.k, ax: B.ax / B.k, ay: B.ay / B.k, hub: B.hub, chimney: B.chimney, baked: 1 }; }
-      if (o.c.complete && o.c.naturalWidth) return o;
-    }
-    return G.Spr.bld(t, civ);
+  // stilurile: civilizația dă doar stilul imaginilor; culoarea vine de la jucător
+  function styleOf(civ) { return (G.CIVS[civ] || G.CIVS.mol).style; }
+  function artCiv(civ) { var st = styleOf(civ); return st === 'oto' || st === 'tat' ? 'oto' : 'mol'; }
+  function pcol(o) { var P = G.S && G.S.players[o]; return G.PCOL[P ? P.col : 0] || G.PCOL[0]; }
+  R.pcol = pcol; R.styleOf = styleOf; R.artCiv = artCiv;
+  // tipurile noi, desenate cu imaginile vechi până vin cele noi
+  var OLDB = { universitate: 'manastire', targ: 'moara', fortareata: 'cetate', atelier: 'fierarie', minune: 'manastire' };
+  var OLDT = {};
+  Object.keys(G.UNITS).forEach(function (t) {
+    var d = G.UNITS[t], m = { raz: 'mil', vit: 'mil', skr: 'arc', gun: 'arc', ien: 'arc', mon: 'vil', hus: 'lcv', har: 'lcv', nog: 'lcv', cpl: 'kni', cat: 'can', treb: 'can', car: 'ram' };
+    OLDT[t] = d.hero ? 'hero' : t === 'vil' ? 'vil' : (m[d.line || t] || d.line || t);
+  });
+  var imgs2 = {};
+  function loadImg(src) { var im = imgs2[src]; if (!im) { im = imgs2[src] = new Image(); im.onerror = function () { im.bad = 1; }; im.src = src; } return im; }
+  function imgOk(im) { return !!(im && im.complete && im.naturalWidth > 0); }
+  // foaia nouă: assets/<cheie>.webp, cu masca assets/<cheie>_m.webp
+  function sheet2(key) {
+    var B = G.BAKED2 && G.BAKED2[key]; if (!B) return null;
+    var im = loadImg('assets/' + key + '.webp'), mk2 = B.mask ? loadImg('assets/' + key + '_m.webp') : null;
+    if (!imgOk(im)) return null;
+    if (mk2 && !imgOk(mk2) && !mk2.bad) return null;
+    return { B: B, img: im, mask: imgOk(mk2) ? mk2 : null, key: key };
   }
-  R.bakedBldReady = function () { return !G.BAKED || Object.keys(G.BAKED).filter(function (k) { return k.indexOf('b_') === 0; }).every(function (k) { var o = bakedB[k]; return o && o.c.complete && o.c.naturalWidth; }); };
-  R.preloadBld = function () { Object.keys(G.BLDS).forEach(function (t) { bldSprite(t, 'mol'); bldSprite(t, 'oto'); }); };
+  R.sheet2 = sheet2;
+  // nuanțarea măștii cu culoarea jucătorului: bază × culoare, doar unde e masca
+  function tintRect(img, mask, sx, sy, w, h, col) {
+    var c = document.createElement('canvas'); c.width = w; c.height = h;
+    var g = c.getContext('2d');
+    g.drawImage(mask, sx, sy, w, h, 0, 0, w, h);
+    g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, w, h);
+    g.globalCompositeOperation = 'multiply'; g.drawImage(img, sx, sy, w, h, 0, 0, w, h);
+    g.globalCompositeOperation = 'destination-in'; g.drawImage(mask, sx, sy, w, h, 0, 0, w, h);
+    g.globalCompositeOperation = 'destination-over'; g.drawImage(img, sx, sy, w, h, 0, 0, w, h);
+    return c;
+  }
+  var tcache = new Map();
+  function tintedFrame(sh, cx, cy, col) {
+    var k = sh.key + '|' + col + '|' + cx + ',' + cy, c = tcache.get(k);
+    if (c) return c;
+    c = tintRect(sh.img, sh.mask, cx, cy, sh.B.W, sh.B.H, col);
+    tcache.set(k, c);
+    if (tcache.size > 3000) { var it = tcache.keys(); for (var n = 0; n < 600; n++) tcache.delete(it.next().value); }
+    return c;
+  }
+  function wallAt(x, y, o) {
+    var S = G.S, N = S.N; if (x < 0 || y < 0 || x >= N || y >= N) return false;
+    var id = G.C.occ[y * N + x]; if (!id) return false;
+    var e = G.C.byId.get(id); return !!(e && e.k === 'b' && e.o === o && G.BLDS[e.t].wall);
+  }
+  function wallDir(b) {
+    var h = wallAt(b.tx - 1, b.ty, b.o) || wallAt(b.tx + 1, b.ty, b.o), v = wallAt(b.tx, b.ty - 1, b.o) || wallAt(b.tx, b.ty + 1, b.o);
+    if (G.BLDS[b.t].gate) return v && !h ? 'y' : 'x';
+    return h && !v ? 'x' : v && !h ? 'y' : 'p';
+  }
+  function bkey2(t, civ, b, o) {
+    var d = G.BLDS[t], st = styleOf(civ);
+    if (d.wall) { var base = d.gate ? (d.wall === 'pal' ? 'ppal' : 'poarta') : d.wall; return 'b/' + base + '_' + (b ? wallDir(b) : (d.gate ? 'x' : 'p')) + '_all'; }
+    if (t === 'turn') { var P = G.S && G.S.players[b ? b.o : (o || 0)]; return 'b/turn' + (P && P.techs.turn2 ? 2 : 1) + '_' + st; }
+    if (t === 'minune') return 'b/minune_' + civ;
+    return 'b/' + t + '_' + st;
+  }
+  var bcache = {};
+  function bldSprite(t, civ, b, o) {
+    var key2 = bkey2(t, civ, b, o), owner = b ? b.o : (o || 0), sh = sheet2(key2);
+    if (sh) {
+      var col = pcol(owner).color, ck = key2 + '|' + col, o2 = bcache[ck];
+      if (!o2) { var B2 = sh.B; o2 = bcache[ck] = { c: sh.mask ? tintRect(sh.img, sh.mask, 0, 0, sh.img.naturalWidth, sh.img.naturalHeight, col) : sh.img, w: B2.W / B2.k, h: B2.H / B2.k, ax: B2.ax / B2.k, ay: B2.ay / B2.k, hub: B2.hub, chimney: B2.chimney, baked: 2 }; }
+      return o2;
+    }
+    if (G.BLDS[t].wall) return null;
+    var ac = artCiv(civ), ot = OLDB[t] || t, key = 'b_' + ot + '_' + ac, B = G.BAKED && G.BAKED[key];
+    if (B) {
+      var ob = bakedB[key];
+      if (!ob) { var img = new Image(); img.src = 'assets/' + key + '.png'; ob = bakedB[key] = { c: img, w: B.W / B.k, h: B.H / B.k, ax: B.ax / B.k, ay: B.ay / B.k, hub: B.hub, chimney: B.chimney, baked: 1 }; }
+      if (ob.c.complete && ob.c.naturalWidth) return ob;
+    }
+    return G.Spr.bld(ot, ac);
+  }
+  R.bakedBldReady = function () {
+    if (!G.BAKED) return true;
+    var S = G.S, need = {};
+    if (S) S.players.forEach(function (P) { need[artCiv(P.civ)] = 1; });
+    return Object.keys(G.BAKED).filter(function (k) { return k.indexOf('b_') === 0 && need[k.split('_').pop()]; }).every(function (k) { var o = bakedB[k]; return o && o.c.complete && o.c.naturalWidth; });
+  };
+  // încarcă doar imaginile stilurilor din joc
+  R.preloadBld = function () {
+    var S = G.S; if (!S) return;
+    S.players.forEach(function (P, i) { Object.keys(G.BLDS).forEach(function (t) { if (!G.BLDS[t].wall) bldSprite(t, P.civ, null, i); }); });
+  };
   function bldSpriteOld(t, civ) {
     var key = t + '_' + civ;
     if (spr[key]) return spr[key];
     var n = G.BLDS[t].n, head = HEAD[t] || 64;
     var w = n * 64 + 24, h = n * 32 + head + 10;
-    var s = mk(w, h), I = iso(s.g, w / 2, head), P = I.P, pal = PAL[civ], team = G.CIVS[civ].color, g = s.g;
+    var s = mk(w, h), I = iso(s.g, w / 2, head), P = I.P, pal = PAL[civ], team = G.PCOL[civ === 'oto' ? 1 : 0].color, g = s.g;
     s.ax = w / 2; s.ay = head;
     if (t !== 'ogor') I.shadowD(0.12, 0.12, n - 0.05, n - 0.05);
     var st = pal.stone;
@@ -443,7 +521,7 @@ var G = globalThis.G || (globalThis.G = {});
     }
   }
   function drawFoot(g, u, civ, moving, working, swing) {
-    var t = u.an, step = moving ? Math.sin(t * 11) : 0, team = G.CIVS[civ].color, teamD = G.CIVS[civ].dark;
+    var t = u.an, step = moving ? Math.sin(t * 11) : 0, team = TC().color, teamD = TC().dark;
     g.translate(0, moving ? -Math.abs(Math.sin(t * 11)) * 0.8 : 0);
     g.lineCap = 'round';
     ln(g, -1.3, -7, -1.3 + step * 2.4, 0, '#3a2a1e', 2.2);
@@ -493,7 +571,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (u.t === 'mil' || u.t === 'spr') { ell(g, -0.5, -11.5, 3.6, 3.9, teamD); g.strokeStyle = '#d8c070'; g.lineWidth = 0.8; g.stroke(); }
   }
   function drawCav(g, u, civ, moving, swing) {
-    var t = u.an, gal = t * 12, team = G.CIVS[civ].color, hero = u.t === 'hero';
+    var t = u.an, gal = t * 12, team = TC().color, hero = u.t === 'hero';
     var horse = hero ? (civ === 'mol' ? '#efebe2' : '#4a3426') : u.t === 'kni' ? '#3b2a1e' : '#8a5a33';
     g.translate(0, moving ? -Math.abs(Math.sin(gal)) * 1.2 : 0);
     g.lineCap = 'round';
@@ -518,7 +596,7 @@ var G = globalThis.G || (globalThis.G = {});
     ell(g, 0, -26.6, 3.1, 3.1, SKIN);
     if (civ === 'mol') {
       if (hero) { g.fillStyle = '#e8c242'; g.beginPath(); g.moveTo(-3.4, -28); g.lineTo(-3.6, -32.5); g.lineTo(-1.8, -30); g.lineTo(0, -33.5); g.lineTo(1.8, -30); g.lineTo(3.6, -32.5); g.lineTo(3.4, -28); g.closePath(); g.fill(); }
-      else if (u.t === 'kni') { g.fillStyle = '#9aa1a8'; g.beginPath(); g.arc(0, -27.4, 3.7, Math.PI, 0); g.fill(); ln(g, 0, -31, -3, -35, G.CIVS.mol.light, 1.8); }
+      else if (u.t === 'kni') { g.fillStyle = '#9aa1a8'; g.beginPath(); g.arc(0, -27.4, 3.7, Math.PI, 0); g.fill(); ln(g, 0, -31, -3, -35, TC().light, 1.8); }
       else rr(g, -3.6, -31.6, 7.2, 4.6, 2, '#3e2b1d');
     } else {
       if (hero) { ell(g, 0, -30, 5.2, 3.7, '#f4f1ea'); ell(g, 0, -31.5, 1.8, 1.8, '#b0302a'); ln(g, 0, -33, 2, -38, '#f4f1ea', 1.3); }
@@ -538,7 +616,7 @@ var G = globalThis.G || (globalThis.G = {});
     g.restore();
   }
   function drawSiege(g, u, civ, swing) {
-    var team = G.CIVS[civ].color;
+    var team = TC().color;
     if (u.t === 'ram') {
       var push = swing > 0 ? Math.sin(swing * Math.PI) * 4 : 0;
       rr(g, 7 + push, -11, 11, 3.6, 1.5, '#6b4a2a'); rr(g, 16 + push, -11.6, 3.5, 4.8, 1, '#6d6d6d');
@@ -554,7 +632,12 @@ var G = globalThis.G || (globalThis.G = {});
       ell(g, -2.5, -4.5, 4.8, 4.8, '#4a3320'); ell(g, -2.5, -4.5, 1.4, 1.4, '#8a6a40');
     }
   }
+  var curPC = null;
+  function TC() { return curPC || G.PCOL[0]; }
   function drawUnitAt(g, u, civ, sx, sy, k) {
+    curPC = G.S && G.S.players[u.o] ? pcol(u.o) : G.PCOL[0];
+    civ = artCiv(civ);
+    var ot = OLDT[u.t]; if (ot && ot !== u.t) u = Object.assign({}, u, { t: ot });
     var d = G.UNITS[u.t], moving = u.mv > 0, working = u.wk > 0, swing = u.sw > 0 ? 1 - u.sw / 0.4 : 0;
     g.save(); g.translate(sx, sy); g.scale(k, k);
     ell(g, 0, 0, d.cls === 'cav' ? 10.5 : d.cls === 'sie' ? 13 : 6.2, d.cls === 'cav' ? 3.8 : d.cls === 'sie' ? 4.4 : 2.6, 'rgba(0,0,0,0.26)');
@@ -602,12 +685,21 @@ var G = globalThis.G || (globalThis.G = {});
     var ents = S.ents;
     for (var i = 0; i < ents.length; i++) {
       var e = ents[i];
-      if (e.dead || e.x < minX - 3 || e.x > maxX + 4 || e.y < minY - 3 || e.y > maxY + 4) continue;
+      if (e.dead || e.gin || e.x < minX - 3 || e.x > maxX + 4 || e.y < minY - 3 || e.y > maxY + 4) continue;
       var ek = Math.floor(e.y) * N + Math.floor(e.x);
       if (!exp[ek]) continue;
-      if (e.k === 'u' && e.o !== 0 && !vis[ek]) continue;
+      if (e.k === 'u' && !vis[ek] && !G.ally(0, e.o)) continue;
       if (e.k === 'b' && G.BLDS[e.t].walk) { ground.push(e); continue; }
       list.push(e);
+    }
+    // decorurile hărții (tufe, pietre, flori): florile stau pe sol, restul se sortează cu obiectele
+    var dec = S.decor || [];
+    for (var di = 0; di < dec.length; di++) {
+      var dd = dec[di];
+      if (dd.x < minX - 2 || dd.x > maxX + 3 || dd.y < minY - 2 || dd.y > maxY + 3) continue;
+      if (!exp[Math.floor(dd.y) * N + Math.floor(dd.x)]) continue;
+      var o3 = { k: 'd', kd: dd.k, x: dd.x, y: dd.y, sc: 0.85 + G.hash2(Math.floor(dd.x * 7), Math.floor(dd.y * 7), 5) * 0.3, fl: G.hash2(Math.floor(dd.x * 3), Math.floor(dd.y * 3), 6) < 0.5 };
+      if (/^(flowers|reed)/.test(dd.k)) drawDecor(o3); else list.push(o3);
     }
     // pe sol: ogoare, ruine, morți, cioturi
     ground.forEach(function (b) { drawBld(b, sel[b.id]); });
@@ -616,16 +708,19 @@ var G = globalThis.G || (globalThis.G = {});
       if (p[0] < -80 || p[0] > W + 80 || p[1] < -80 || p[1] > H + 80) return;
       if (!exp[Math.floor(f.y) * N + Math.floor(f.x)]) return;
       if (f.k === 'corpse') {
-        ctx.globalAlpha = Math.max(0, Math.min(1, (14 - age) / 4));
-        var csh = bakedSheet(f.ut + '_' + S.players[f.o].civ);
-        if (csh) { var dA = csh.B.actions.die; bakedFrame(ctx, csh, 'die', Math.min(dA.frames - 1, Math.floor(age / 0.14)), f.d8 || 0, p[0], p[1], z * USCALE / csh.B.k); ctx.globalAlpha = 1; return; }
+        ctx.globalAlpha = Math.max(0, Math.min(1, (16 - age) / 4));
+        var csh = sheetFor(f.ut, S.players[f.o].civ, f.fem);
+        if (csh && csh.B.actions.die) { var dA = csh.B.actions.die; bakedFrame(ctx, csh, 'die', Math.min(dA.frames - 1, Math.floor(age / 0.14)), f.d8 || 0, p[0], p[1], z * USCALE / csh.B.k, pcol(f.o).color); ctx.globalAlpha = 1; return; }
         var cav = G.UNITS[f.ut].cls === 'cav';
         if (cav) ell(ctx, p[0], p[1] - 3 * z, 10 * z, 3.6 * z, '#5a3d28');
-        ell(ctx, p[0] + (f.face || 1) * 2 * z, p[1] - (cav ? 6 : 2) * z, 6.5 * z, 2.4 * z, G.UNITS[f.ut].cls === 'vil' ? '#d8cfbd' : G.CIVS[S.players[f.o].civ].color);
+        ell(ctx, p[0] + (f.face || 1) * 2 * z, p[1] - (cav ? 6 : 2) * z, 6.5 * z, 2.4 * z, G.UNITS[f.ut].cls === 'vil' ? '#d8cfbd' : pcol(f.o).color);
         ell(ctx, p[0] - (f.face || 1) * 5 * z, p[1] - (cav ? 6 : 2) * z, 2.4 * z, 2.2 * z, SKIN);
         ctx.globalAlpha = 1;
       } else if (f.k === 'rubble') {
-        ctx.globalAlpha = Math.max(0, 1 - age / 30);
+        var rs = sheet2('b/ruina' + Math.min(5, Math.max(2, f.n)) + '_all');
+        ctx.globalAlpha = Math.max(0, Math.min(1, (900 - age) / 120));
+        if (rs) { var rk = z / rs.B.k * (f.n / Math.min(5, Math.max(2, f.n))), tp0 = R.w2s(f.x - f.n / 2, f.y - f.n / 2); ctx.drawImage(rs.img, tp0[0] - rs.B.ax * rk, tp0[1] - rs.B.ay * rk, rs.B.W * rk, rs.B.H * rk); ctx.globalAlpha = 1; return; }
+        if (age < 3) { ctx.globalAlpha = 0.6 * (1 - age / 3); ell(ctx, p[0], p[1] - 10 * z, (f.n * 26 + age * 25) * z, (f.n * 12 + age * 10) * z, '#9a8f80'); ctx.globalAlpha = Math.max(0, Math.min(1, (900 - age) / 120)); }
         var n = f.n, hw = n * 32 * z * 0.85, hh = n * 16 * z * 0.85;
         ctx.fillStyle = '#5c544a'; ctx.beginPath(); ctx.moveTo(p[0], p[1] - hh); ctx.lineTo(p[0] + hw, p[1]); ctx.lineTo(p[0], p[1] + hh); ctx.lineTo(p[0] - hw, p[1]); ctx.closePath(); ctx.fill();
         var Rn = G.rng(Math.floor(f.x * 31 + f.y * 17));
@@ -650,6 +745,7 @@ var G = globalThis.G || (globalThis.G = {});
     for (var j = 0; j < list.length; j++) {
       var o = list[j];
       if (o.k === 'r') drawRes(o);
+      else if (o.k === 'd') drawDecor(o);
       else if (o.k === 'b') drawBld(o, sel[o.id]);
       else drawUnit(o, sel[o.id]);
     }
@@ -660,47 +756,57 @@ var G = globalThis.G || (globalThis.G = {});
 
     // proiectile
     S.proj.forEach(function (p) {
+      if (p.p < 0) return;
       var px = p.sx + (p.tx - p.sx) * p.p, py = p.sy + (p.ty - p.sy) * p.p;
       if (!vis[Math.floor(py) * N + Math.floor(px)]) return;
-      var hgt = ((p.h0 || 0.8) * 22 * (1 - p.p) + 30 * 4 * p.p * (1 - p.p) + 8) * z;
-      var a = R.w2s(px, py), p2 = Math.min(1, p.p + 0.03);
-      var b = R.w2s(p.sx + (p.tx - p.sx) * p2, p.sy + (p.ty - p.sy) * p2), hgt2 = ((p.h0 || 0.8) * 22 * (1 - p2) + 30 * 4 * p2 * (1 - p2) + 8) * z;
+      var arc = p.k === 'bullet' ? 0 : p.k === 'stone' || p.k === 'treb' ? 70 : p.k === 'ball' ? 18 : 30;
+      function hg(q) { return ((p.h0 || 0.8) * 22 * (1 - q) + arc * 4 * q * (1 - q) + 8) * z; }
+      var hgt = hg(p.p), a = R.w2s(px, py), p2 = Math.min(1, p.p + 0.03);
+      var b = R.w2s(p.sx + (p.tx - p.sx) * p2, p.sy + (p.ty - p.sy) * p2), hgt2 = hg(p2);
       if (p.k === 'ball') { ell(ctx, a[0], a[1] - hgt, 2.4 * z, 2.4 * z, '#1d1d1f'); return; }
+      if (p.k === 'stone' || p.k === 'treb') { var rr2 = (p.k === 'treb' ? 4.5 : 3.2) * z; ell(ctx, a[0], a[1], rr2 * 0.9, rr2 * 0.4, 'rgba(0,0,0,0.25)'); ell(ctx, a[0], a[1] - hgt, rr2, rr2, '#8a8276'); ell(ctx, a[0] - rr2 * 0.3, a[1] - hgt - rr2 * 0.3, rr2 * 0.45, rr2 * 0.45, '#b3ab9d'); return; }
       var dx = b[0] - a[0], dy = (b[1] - hgt2) - (a[1] - hgt), dl = Math.sqrt(dx * dx + dy * dy) || 1;
-      ln(ctx, a[0] - dx / dl * 4 * z, a[1] - hgt - dy / dl * 4 * z, a[0] + dx / dl * 4 * z, a[1] - hgt + dy / dl * 4 * z, '#3a2a18', 1.2 * z);
+      if (p.k === 'bullet') { ctx.globalAlpha = 0.85; ln(ctx, a[0] - dx / dl * 7 * z, a[1] - hgt - dy / dl * 7 * z, a[0], a[1] - hgt, '#fff2b0', 1.4 * z); ctx.globalAlpha = 1; return; }
+      var L = p.k === 'jav' ? 7 : p.k === 'bolt' ? 3 : 4;
+      ln(ctx, a[0] - dx / dl * L * z, a[1] - hgt - dy / dl * L * z, a[0] + dx / dl * L * z, a[1] - hgt + dy / dl * L * z, p.k === 'jav' ? '#5a4024' : '#3a2a18', (p.k === 'jav' ? 1.6 : 1.2) * z);
     });
     // efecte în aer
     S.fx.forEach(function (f) {
       var age = S.t - f.t;
-      if (f.k !== 'dust' && f.k !== 'boom' && f.k !== 'smoke') return;
+      if (f.k !== 'dust' && f.k !== 'boom' && f.k !== 'smoke' && f.k !== 'heal' && f.k !== 'aura' && f.k !== 'coin') return;
       if (!vis[Math.floor(f.y) * N + Math.floor(f.x)]) return;
       var p = R.w2s(f.x, f.y);
+      if (f.k === 'heal') { ctx.globalAlpha = Math.max(0, 1 - age); ctx.fillStyle = '#7dff8a'; ctx.font = 'bold ' + Math.round(13 * z) + 'px sans-serif'; ctx.fillText('+', p[0] - 4 * z, p[1] - (30 + age * 18) * z); ctx.globalAlpha = 1; return; }
+      if (f.k === 'aura') { var ar = (f.r || 6) * 32 * z * Math.min(1, age * 2); ctx.globalAlpha = Math.max(0, 0.8 - age * 0.5); ctx.strokeStyle = f.p === 'teroare' ? '#ff3b30' : f.p === 'cruciada' ? '#9dffb0' : '#ffd75a'; ctx.lineWidth = 3 * z; ctx.beginPath(); ctx.ellipse(p[0], p[1], ar, ar * 0.5, 0, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; return; }
+      if (f.k === 'coin') { if (!G.ally(0, f.o)) return; ctx.globalAlpha = Math.max(0, 1 - age / 1.4); ctx.fillStyle = '#ffd75a'; ctx.font = 'bold ' + Math.round(12 * Math.max(0.8, z)) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('+' + f.n + ' 🪙', p[0], p[1] - (34 + age * 20) * z); ctx.textAlign = 'start'; ctx.globalAlpha = 1; return; }
       if (f.k === 'dust') { ctx.globalAlpha = Math.max(0, 0.6 - age * 0.4); ell(ctx, p[0], p[1], (f.n * 22 + age * 30) * z, (f.n * 11 + age * 15) * z, '#d8c8a0'); }
-      else if (f.k === 'boom') { ctx.globalAlpha = Math.max(0, 1 - age / 0.8); ell(ctx, p[0], p[1] - 6 * z, (6 + age * 20) * z, (4 + age * 12) * z, age < 0.25 ? '#ffb030' : '#6a625a'); }
-      else { ctx.globalAlpha = Math.max(0, 0.7 - age * 0.6); ell(ctx, p[0] + age * 8 * z, p[1] - (14 + age * 16) * z, (5 + age * 8) * z, (4 + age * 6) * z, '#b8b2a8'); }
+      else if (f.k === 'boom') { var bs2 = f.s || 1; ctx.globalAlpha = Math.max(0, 1 - age / 0.8); ell(ctx, p[0], p[1] - 6 * z, (6 + age * 20) * bs2 * z, (4 + age * 12) * bs2 * z, age < 0.25 ? '#ffb030' : '#6a625a'); }
+      else { var ss = f.s || 1; ctx.globalAlpha = Math.max(0, 0.7 - age * 0.5); ell(ctx, p[0] + age * 8 * z, p[1] - (14 + age * 16) * z, (5 + age * 8) * ss * z, (4 + age * 6) * ss * z, '#c9c4ba'); if (age < 0.08) { ctx.globalAlpha = 1; ell(ctx, p[0], p[1] - 14 * z, 4 * z * ss, 3 * z * ss, '#ffe08a'); } }
       ctx.globalAlpha = 1;
     });
 
     // umbre de nori, apoi ceața cu margini moi
     G.Terrain.clouds(ctx, cam, W, H, clock);
+    if (S.night || S.fog) weather(S, z);
     G.Terrain.fogDraw(ctx, cam, W, H, DPR);
     // margini în afara hărții
     drawEdge(ox, oy, z, N);
     G.Terrain.vignette(ctx, W, H);
 
-    // clădirea de pus
+    // clădirea de pus (la ziduri: tot șirul, de la locul unde a început tragerea)
     var pl = G.UI && G.UI.place;
     if (pl && pl.tx !== undefined) {
-      var d = G.BLDS[pl.t], ok = G.canPlace(0, pl.t, pl.tx, pl.ty);
-      for (var py2 = pl.ty; py2 < pl.ty + d.n; py2++) for (var px2 = pl.tx; px2 < pl.tx + d.n; px2++) {
-        var tp = R.w2s(px2, py2);
-        ctx.fillStyle = ok ? 'rgba(90,230,110,0.35)' : 'rgba(240,70,60,0.4)';
-        ctx.beginPath(); ctx.moveTo(tp[0], tp[1]); ctx.lineTo(tp[0] + 32 * z, tp[1] + 16 * z); ctx.lineTo(tp[0], tp[1] + 32 * z); ctx.lineTo(tp[0] - 32 * z, tp[1] + 16 * z); ctx.closePath(); ctx.fill();
-      }
-      var s2 = bldSprite(pl.t, 'mol'), top = R.w2s(pl.tx, pl.ty);
-      ctx.globalAlpha = ghostAlpha;
-      ctx.drawImage(s2.c, top[0] - s2.ax * z, top[1] - s2.ay * z, s2.w * z, s2.h * z);
-      ctx.globalAlpha = 1;
+      var d = G.BLDS[pl.t], cells = d.wall && pl.x0 !== undefined ? G.wallTiles(pl.x0, pl.y0, pl.tx, pl.ty) : [[pl.tx, pl.ty]];
+      cells.forEach(function (c) {
+        var ok = G.canPlace(0, pl.t, c[0], c[1]);
+        for (var py2 = c[1]; py2 < c[1] + d.n; py2++) for (var px2 = c[0]; px2 < c[0] + d.n; px2++) {
+          var tp = R.w2s(px2, py2);
+          ctx.fillStyle = ok ? 'rgba(90,230,110,0.35)' : 'rgba(240,70,60,0.4)';
+          ctx.beginPath(); ctx.moveTo(tp[0], tp[1]); ctx.lineTo(tp[0] + 32 * z, tp[1] + 16 * z); ctx.lineTo(tp[0], tp[1] + 32 * z); ctx.lineTo(tp[0] - 32 * z, tp[1] + 16 * z); ctx.closePath(); ctx.fill();
+        }
+      });
+      var s2 = d.wall ? null : bldSprite(pl.t, S.players[0].civ, null, 0), top = R.w2s(pl.tx, pl.ty);
+      if (s2) { ctx.globalAlpha = ghostAlpha; ctx.drawImage(s2.c, top[0] - s2.ax * z, top[1] - s2.ay * z, s2.w * z, s2.h * z); ctx.globalAlpha = 1; }
     }
     // punctul de adunare
     if (G.UI) {
@@ -709,7 +815,7 @@ var G = globalThis.G || (globalThis.G = {});
         var a1 = R.w2s(one.x, one.y), a2 = R.w2s(one.rally.x, one.rally.y);
         ctx.setLineDash([4, 4]); ln(ctx, a1[0], a1[1], a2[0], a2[1], 'rgba(255,255,255,0.6)', 1.2); ctx.setLineDash([]);
         ln(ctx, a2[0], a2[1], a2[0], a2[1] - 18 * z, '#4a3a2a', 1.5);
-        ctx.fillStyle = G.CIVS.mol.color; ctx.beginPath(); ctx.moveTo(a2[0], a2[1] - 18 * z); ctx.lineTo(a2[0] + 10 * z, a2[1] - 15 * z); ctx.lineTo(a2[0], a2[1] - 11 * z); ctx.fill();
+        ctx.fillStyle = pcol(0).color; ctx.beginPath(); ctx.moveTo(a2[0], a2[1] - 18 * z); ctx.lineTo(a2[0] + 10 * z, a2[1] - 15 * z); ctx.lineTo(a2[0], a2[1] - 11 * z); ctx.fill();
       }
     }
     // dreptunghiul de selecție
@@ -720,6 +826,40 @@ var G = globalThis.G || (globalThis.G = {});
       ctx.fillRect(rx, ry, rw, rh); ctx.strokeRect(rx, ry, rw, rh);
     }
   };
+  // noaptea (luminile vin de la clădirile și oamenii tăi) și ceața deasă
+  var nightC = null;
+  function weather(S, z) {
+    if (S.night) {
+      if (!nightC) nightC = document.createElement('canvas');
+      if (nightC.width !== Math.ceil(W) || nightC.height !== Math.ceil(H)) { nightC.width = Math.ceil(W); nightC.height = Math.ceil(H); }
+      var g = nightC.getContext('2d');
+      g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, W, H);
+      g.fillStyle = 'rgba(6,10,30,' + (0.66 * S.night) + ')'; g.fillRect(0, 0, W, H);
+      g.globalCompositeOperation = 'destination-out';
+      function light(x, y, r, a) {
+        var p = R.w2s(x, y); if (p[0] < -r || p[0] > W + r || p[1] < -r || p[1] > H + r) return;
+        var gr = g.createRadialGradient(p[0], p[1] - 10 * z, 0, p[0], p[1] - 10 * z, r);
+        gr.addColorStop(0, 'rgba(0,0,0,' + a + ')'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(p[0], p[1] - 10 * z, r, 0, 6.3); g.fill();
+      }
+      var fl = 0.9 + Math.sin(clock * 9) * 0.05;
+      G.C.blds.forEach(function (b) { if (!b.dead && b.built && G.ally(0, b.o) && !G.BLDS[b.t].wall) light(b.x, b.y, (b.n * 34 + 70) * z * fl, 0.95); });
+      G.C.units.forEach(function (u) { if (u.o === 0 || (G.ally(0, u.o) && G.C.vis[Math.floor(u.y) * S.N + Math.floor(u.x)])) light(u.x, u.y, 46 * z, 0.75); });
+      (S.lights || []).forEach(function (l) { light(l.x, l.y, (l.r || 3) * 32 * z * fl, 0.9); });
+      S.fx.forEach(function (f) { if ((f.k === 'boom' || f.k === 'fire') && S.t - f.t < 1.5) light(f.x, f.y, 90 * z, 0.8); });
+      G.C.blds.forEach(function (b) { if (!b.dead && b.built && b.hp < (b.mhp || 1) * 0.55 && G.C.vis[Math.floor(b.y) * S.N + Math.floor(b.x)]) light(b.x, b.y, 110 * z * fl, 0.9); });
+      ctx.drawImage(nightC, 0, 0, W, H);
+    }
+    if (S.fog) {
+      ctx.fillStyle = 'rgba(205,210,214,' + (0.26 * S.fog) + ')'; ctx.fillRect(0, 0, W, H);
+      for (var i = 0; i < 7; i++) {
+        var yy = ((clock * 7 + i * 97) % (H + 240)) - 120, xx = Math.sin(clock * 0.05 + i) * 80;
+        var gr2 = ctx.createLinearGradient(0, yy - 70, 0, yy + 70);
+        gr2.addColorStop(0, 'rgba(225,228,232,0)'); gr2.addColorStop(0.5, 'rgba(225,228,232,' + (0.22 * S.fog) + ')'); gr2.addColorStop(1, 'rgba(225,228,232,0)');
+        ctx.fillStyle = gr2; ctx.fillRect(xx - 100, yy - 70, W + 200, 140);
+      }
+    }
+  }
   function drawEdge(ox, oy, z, N) {
     // umbrește ce e în afara hărții
     ctx.fillStyle = '#0d0c0a';
@@ -731,13 +871,19 @@ var G = globalThis.G || (globalThis.G = {});
   }
 
   function hpBar(e, x, y, w) {
-    var mx = G.def(e).hp, f = Math.max(0, Math.min(1, e.hp / mx));
+    var mx = G.maxHp(e) || 1, f = Math.max(0, Math.min(1, e.hp / mx));
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - w / 2 - 1, y - 1, w + 2, 4.5);
     ctx.fillStyle = f > 0.6 ? '#4cd964' : f > 0.3 ? '#f5c542' : '#ff4b3e';
     ctx.fillRect(x - w / 2, y, w * f, 2.5);
   }
   var natC = {};
   function natSprite(kind, v) {
+    var k2 = 'n/' + (kind === 'tree' && G.S && G.S.map && G.S.map.season === 'iarna' && G.BAKED2 && G.BAKED2['n/treeS' + (v % 4)] ? 'treeS' + (v % 4) : kind + v);
+    var n2 = natC[k2];
+    if (G.BAKED2 && G.BAKED2[k2]) {
+      if (!n2) { var B2 = G.BAKED2[k2]; n2 = natC[k2] = { c: loadImg('assets/' + k2 + '.webp'), w: B2.W / B2.k, h: B2.H / B2.k, ax: B2.ax / B2.k, ay: B2.ay / B2.k }; }
+      if (imgOk(n2.c)) return n2;
+    }
     var key = 'n_' + kind + v, B = G.BAKED && G.BAKED[key];
     if (!B) return null;
     var o = natC[key];
@@ -748,6 +894,7 @@ var G = globalThis.G || (globalThis.G = {});
   function drawRes(e) {
     var p = R.w2s(e.x, e.y), z = cam.z;
     if (p[0] < -90 || p[0] > W + 90 || p[1] < -20 || p[1] > H + 140) return;
+    if (e.t === 'relic') { drawRelic(e, p, z); return; }
     if (e.t === 'sheep') {
       var sp = natSprite('sheep', Math.sin(clock * 0.7 + e.id * 1.7) > 0.3 ? 1 : 0);
       if (!sp) { drawSheep(ctx, e, p[0], p[1], z); return; }
@@ -763,10 +910,44 @@ var G = globalThis.G || (globalThis.G = {});
     ctx.drawImage(s.c, p[0] - s.ax * k, p[1] - s.ay * k, s.w * k, s.h * k);
     if (G.UI && G.UI.selSet()[e.id]) { ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(p[0], p[1], 14 * z, 7 * z, 0, 0, 6.3); ctx.stroke(); }
   }
+  function drawRelic(e, p, z) {
+    var s = natSprite('relic', 0);
+    if (s) { ctx.drawImage(s.c, p[0] - s.ax * z, p[1] - s.ay * z, s.w * z, s.h * z); }
+    else {
+      ell(ctx, p[0], p[1], 9 * z, 4 * z, 'rgba(0,0,0,0.25)');
+      ctx.fillStyle = '#7a1f1a'; ctx.fillRect(p[0] - 6 * z, p[1] - 9 * z, 12 * z, 8 * z);
+      ctx.fillStyle = '#e8c04a'; ctx.fillRect(p[0] - 6 * z, p[1] - 11 * z, 12 * z, 3 * z); ctx.fillRect(p[0] - 1 * z, p[1] - 9 * z, 2 * z, 8 * z);
+    }
+    var gl = 0.35 + 0.25 * Math.sin(clock * 3 + e.id);
+    ctx.globalAlpha = gl; ell(ctx, p[0], p[1] - 8 * z, 12 * z, 9 * z, 'rgba(255,230,140,0.6)'); ctx.globalAlpha = 1;
+  }
+  function drawDecor(o) {
+    var s = natSprite(o.kd, ''), p = R.w2s(o.x, o.y), z = cam.z;
+    if (!s || p[0] < -120 || p[0] > W + 120 || p[1] < -40 || p[1] > H + 160) return;
+    var k = z * (o.sc || 1);
+    if (o.fl) { ctx.save(); ctx.translate(p[0], p[1]); ctx.scale(-1, 1); ctx.drawImage(s.c, -s.ax * k, -s.ay * k, s.w * k, s.h * k); ctx.restore(); }
+    else ctx.drawImage(s.c, p[0] - s.ax * k, p[1] - s.ay * k, s.w * k, s.h * k);
+  }
+  // zid sau poartă fără imagine: un bloc simplu
+  function drawWallBlock(b) {
+    var z = cam.z, pal = G.BLDS[b.t].wall === 'pal', gate = G.BLDS[b.t].gate, h = (pal ? 15 : 22) * z * (b.built ? 1 : Math.max(0.15, b.prog));
+    var c = [R.w2s(b.tx + 0.12, b.ty + 0.12), R.w2s(b.tx + 0.88, b.ty + 0.12), R.w2s(b.tx + 0.88, b.ty + 0.88), R.w2s(b.tx + 0.12, b.ty + 0.88)];
+    function pl(pts, col) { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (var i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath(); ctx.fill(); }
+    var top = pal ? '#9a7044' : '#c9bfa9', l = pal ? '#7a5532' : '#a39a87', r = pal ? '#5e4126' : '#857d6d';
+    if (!b.built) ctx.globalAlpha = 0.8;
+    pl([c[3], c[2], [c[2][0], c[2][1] - h], [c[3][0], c[3][1] - h]], l);
+    pl([c[2], c[1], [c[1][0], c[1][1] - h], [c[2][0], c[2][1] - h]], r);
+    pl([[c[0][0], c[0][1] - h], [c[1][0], c[1][1] - h], [c[2][0], c[2][1] - h], [c[3][0], c[3][1] - h]], top);
+    if (gate) { var m = R.w2s(b.tx + 0.5, b.ty + 0.88); pl([[m[0] - 6 * z, m[1] - 3 * z], [m[0] + 6 * z, m[1] + 3 * z], [m[0] + 6 * z, m[1] + 3 * z - h * 0.65], [m[0] - 6 * z, m[1] - 3 * z - h * 0.65]], '#3a2a1a');
+      var tp = R.w2s(b.tx + 0.5, b.ty + 0.5); ln(ctx, tp[0], tp[1] - h, tp[0], tp[1] - h - 12 * z, '#4a3a2a', 1.4); ctx.fillStyle = pcol(b.o).color; ctx.beginPath(); ctx.moveTo(tp[0], tp[1] - h - 12 * z); ctx.lineTo(tp[0] + 8 * z, tp[1] - h - 9.5 * z); ctx.lineTo(tp[0], tp[1] - h - 7 * z); ctx.fill(); }
+    else if (pal) { ctx.strokeStyle = 'rgba(40,25,10,0.5)'; ctx.lineWidth = 1; for (var q = 1; q < 4; q++) { var a = R.w2s(b.tx + 0.12 + q * 0.19, b.ty + 0.88); ln(ctx, a[0], a[1], a[0], a[1] - h, 'rgba(40,25,10,0.45)', 1); } }
+    ctx.globalAlpha = 1;
+  }
   function drawBld(b, selected) {
-    var S = G.S, z = cam.z, civ = S.players[b.o].civ, s = bldSprite(b.t, civ), top = R.w2s(b.tx, b.ty), n = b.n;
+    var S = G.S, z = cam.z, civ = S.players[b.o].civ, s = bldSprite(b.t, civ, b), top = R.w2s(b.tx, b.ty), n = b.n;
+    if (!s) { drawWallBlock(b); if (selected || (b.hit && S.t - b.hit < 3)) hpBar(b, top[0], top[1] - 6 * z, 24); return; }
     if (selected) {
-      ctx.strokeStyle = b.o === 0 ? '#ffffff' : '#ff6a5a'; ctx.lineWidth = 1.6;
+      ctx.strokeStyle = b.o === 0 ? '#ffffff' : G.ally(0, b.o) ? '#9cf59c' : '#ff6a5a'; ctx.lineWidth = 1.6;
       ctx.beginPath(); ctx.moveTo(top[0], top[1] - 2); ctx.lineTo(top[0] + n * 32 * z + 3, top[1] + n * 16 * z); ctx.lineTo(top[0], top[1] + n * 32 * z + 2); ctx.lineTo(top[0] - n * 32 * z - 3, top[1] + n * 16 * z); ctx.closePath(); ctx.stroke();
     }
     var dx = top[0] - s.ax * z, dy = top[1] - s.ay * z, dw = s.w * z, dh = s.h * z;
@@ -800,7 +981,7 @@ var G = globalThis.G || (globalThis.G = {});
         ctx.globalAlpha = 0.5 * (1 - ph); ell(ctx, cx, cy, (3 + ph * 5) * z, (2.5 + ph * 4) * z, '#9a958d'); ctx.globalAlpha = 1;
       }
     }
-    var mx = G.BLDS[b.t].hp;
+    var mx = G.maxHp(b);
     if (b.built && b.hp < mx * 0.55 && !G.BLDS[b.t].walk) {
       var Rn = G.rng(b.id * 7), fires = b.hp < mx * 0.25 ? 3 : 1;
       for (var f = 0; f < fires; f++) {
@@ -810,6 +991,13 @@ var G = globalThis.G || (globalThis.G = {});
       }
     }
     if (selected || (b.hit && G.S.t - b.hit < 3)) hpBar(b, top[0], top[1] - (s.ay - 6) * z * 0.85, 40);
+    if ((b.gar && b.gar.length) || b.relics) {
+      var lb = (b.gar && b.gar.length ? '⚑' + b.gar.length : '') + (b.relics ? (b.gar && b.gar.length ? ' ' : '') + '✚' + b.relics : '');
+      ctx.font = 'bold ' + Math.round(11 * Math.max(0.8, z)) + 'px sans-serif'; ctx.textAlign = 'center';
+      var bw = ctx.measureText(lb).width + 8, byy = top[1] - (s.ay - 2) * z * 0.85 - 16;
+      ctx.fillStyle = 'rgba(20,14,8,0.75)'; ctx.fillRect(top[0] - bw / 2, byy, bw, 15);
+      ctx.fillStyle = b.relics ? '#ffe28a' : '#ffffff'; ctx.fillText(lb, top[0], byy + 11.5); ctx.textAlign = 'start';
+    }
     if (selected && b.q && b.q.length && b.o === 0) {
       var it = b.q[0], pr = 1 - Math.max(0, it.left) / it.tot, by = top[1] - (s.ay - 6) * z * 0.85 + 6;
       ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(top[0] - 21, by - 1, 42, 4.5); ctx.fillStyle = '#7fb6ff'; ctx.fillRect(top[0] - 20, by, 40 * pr, 2.5);
@@ -821,11 +1009,41 @@ var G = globalThis.G || (globalThis.G = {});
     var B = G.BAKED && G.BAKED[key]; if (!B) return null;
     var img = bakedImgs[key];
     if (!img) { img = bakedImgs[key] = new Image(); img.src = 'assets/u_' + key + '.png'; }
-    return img.complete && img.naturalWidth ? { B: B, img: img } : null;
+    return img.complete && img.naturalWidth ? { B: B, img: img, key: key } : null;
   }
-  function unitKeys() { return G.BAKED ? Object.keys(G.BAKED).filter(function (k) { return !/^[bijn]_/.test(k); }) : []; }
-  R.preloadBaked = function () { unitKeys().forEach(bakedSheet); };
-  R.bakedReady = function () { return unitKeys().every(function (k) { return !!bakedSheet(k); }); };
+  var ukCache = {};
+  function ukeys(t, civ, fem) {
+    var ck = t + '|' + civ + '|' + (fem ? 1 : 0), r = ukCache[ck];
+    if (r) return r;
+    var d = G.UNITS[t], st = styleOf(civ), v;
+    if (d.hero) v = 'hero_' + civ;
+    else if (d.civ) v = d.line + '_' + civ;
+    else if (t === 'vil') v = (fem ? 'vilf' : 'vil') + '_' + st;
+    else if (d.cls === 'sie' || t === 'car') v = (d.line ? d.line + d.tier : t) + '_all';
+    else if (d.line) v = d.line + d.tier + '_' + st;
+    else v = t + '_' + st;
+    var base = OLDT[t] || 'mil', ac = artCiv(civ), old = base + '_' + ac;
+    if (G.BAKED && !G.BAKED[old]) old = base + '_' + (ac === 'mol' ? 'oto' : 'mol');
+    return (ukCache[ck] = { k2: 'u/' + v, old: old, v: v });
+  }
+  R.ukeys = ukeys;
+  function sheetFor(t, civ, fem) {
+    var k = ukeys(t, civ, fem), sh = sheet2(k.k2);
+    if (sh) return sh;
+    if (fem) { sh = sheet2(ukeys(t, civ, 0).k2); if (sh) return sh; }
+    return bakedSheet(k.old);
+  }
+  function unitSheet(u) { return sheetFor(u.t, G.S.players[u.o].civ, u.fem); }
+  R.preloadBaked = function () {
+    var S = G.S; if (!S) return;
+    S.players.forEach(function (P) {
+      Object.keys(G.UNITS).forEach(function (t) { if (G.unitOK(P.id, t) || G.UNITS[t].hero) { sheetFor(t, P.civ, 0); if (t === 'vil') sheetFor(t, P.civ, 1); } });
+    });
+  };
+  R.bakedReady = function () {
+    var S = G.S; if (!S) return true;
+    return S.players.every(function (P) { return ['vil', 'mil', 'hero'].every(function (t) { return !!sheetFor(t, P.civ, 0) || !G.BAKED; }); });
+  };
   var TOOLACT = { axe: 'axe', pick: 'pick', hammer: 'hammer', sickle: 'sickle' };
   function unitAction(u, A) {
     if (u.sw > 0) {
@@ -833,31 +1051,39 @@ var G = globalThis.G || (globalThis.G = {});
       return [at, Math.min(A[at].frames - 1, Math.floor(p * A[at].frames))];
     }
     if (u.t === 'vil' && u.wk > 0) { var nm = TOOLACT[vilTool(u)]; if (nm && A[nm]) return [nm, Math.floor(u.an * 5.5) % A[nm].frames]; }
-    if (u.mv > 0 && A.walk) return ['walk', Math.floor(u.an * G.UNITS[u.t].spd * (G.UNITS[u.t].cls === 'cav' ? 5 : 7)) % A.walk.frames];
+    if (u.mv > 0 && A.walk) { var cl = G.UNITS[u.t].cls; return ['walk', Math.floor(u.an * G.UNITS[u.t].spd * (cl === 'cav' || cl === 'har' ? 5 : 7)) % A.walk.frames]; }
     return ['idle', 0];
   }
-  function bakedFrame(g, sh, act, frame, d8, sx, sy, scale) {
+  function bakedFrame(g, sh, act, frame, d8, sx, sy, scale, col) {
     var B = sh.B, A = B.actions[act] || B.actions.idle, d = d8 <= 4 ? d8 : 8 - d8;
-    var cx = Math.min(frame, A.frames - 1) * B.W, cy = (A.row + d) * B.H, w = B.W * scale, h = B.H * scale;
-    if (d8 > 4) { g.save(); g.translate(sx, sy); g.scale(-1, 1); g.drawImage(sh.img, cx, cy, B.W, B.H, -B.ax * scale, -B.ay * scale, w, h); g.restore(); }
-    else g.drawImage(sh.img, cx, cy, B.W, B.H, sx - B.ax * scale, sy - B.ay * scale, w, h);
+    var cx = Math.min(frame, A.frames - 1) * B.W, cy = (A.row + d) * B.H, w = B.W * scale, h = B.H * scale, src = sh.img, ox = cx, oy = cy;
+    if (sh.mask && col) { src = tintedFrame(sh, cx, cy, col); ox = 0; oy = 0; }
+    if (d8 > 4) { g.save(); g.translate(sx, sy); g.scale(-1, 1); g.drawImage(src, ox, oy, B.W, B.H, -B.ax * scale, -B.ay * scale, w, h); g.restore(); }
+    else g.drawImage(src, ox, oy, B.W, B.H, sx - B.ax * scale, sy - B.ay * scale, w, h);
   }
-  R.bakedFrame = function (g, key, act, frame, d8, sx, sy, scale) { var sh = bakedSheet(key); if (!sh) return false; bakedFrame(g, sh, act, frame, d8, sx, sy, scale); return true; };
+  R.bakedFrame = function (g, key, act, frame, d8, sx, sy, scale, col) {
+    var sh = key.indexOf('u/') === 0 ? sheet2(key) : bakedSheet(key); if (!sh) return false;
+    bakedFrame(g, sh, act, frame, d8, sx, sy, scale / (sh.B.k / 1.5), col); return true;
+  };
+  R.unitFrame = function (g, t, civ, act, frame, d8, sx, sy, scale, col) {
+    var sh = sheetFor(t, civ, 0); if (!sh) return false;
+    bakedFrame(g, sh, act, frame, d8, sx, sy, scale / sh.B.k, col || G.PCOL[0].color); return true;
+  };
   var USCALE = 1.1;
   function ghostUnit(u) {
     var p = R.w2s(u.x, u.y);
     if (p[0] < -40 || p[0] > W + 40 || p[1] < -10 || p[1] > H + 50) return;
-    var civ = G.S.players[u.o].civ, sh = bakedSheet(u.t + '_' + civ);
+    var sh = unitSheet(u);
     if (!sh) return;
     var ua = unitAction(u, sh.B.actions);
-    bakedFrame(ctx, sh, ua[0], ua[1], u.dir8 || 0, p[0], p[1], cam.z * USCALE * (G.UNITS[u.t].hero ? 1.08 : 1) / sh.B.k);
+    bakedFrame(ctx, sh, ua[0], ua[1], u.dir8 || 0, p[0], p[1], cam.z * USCALE * (G.UNITS[u.t].hero ? 1.08 : 1) / sh.B.k, pcol(u.o).color);
   }
   function drawUnit(u, selected) {
     var S = G.S, z = cam.z, p = R.w2s(u.x, u.y), d = G.UNITS[u.t], civ = S.players[u.o].civ;
     if (p[0] < -40 || p[0] > W + 40 || p[1] < -10 || p[1] > H + 50) return;
     if (selected) {
-      ctx.strokeStyle = u.o === 0 ? '#ffffff' : '#ff6a5a'; ctx.lineWidth = 1.5;
-      var rx = (d.cls === 'cav' ? 12 : d.cls === 'sie' ? 14 : 8) * z;
+      ctx.strokeStyle = u.o === 0 ? '#ffffff' : G.ally(0, u.o) ? '#9cf59c' : '#ff6a5a'; ctx.lineWidth = 1.5;
+      var rx = (d.cls === 'cav' || d.cls === 'har' ? 12 : d.cls === 'sie' ? 14 : 8) * z;
       ctx.beginPath(); ctx.ellipse(p[0], p[1], rx, rx * 0.5, 0, 0, 6.3); ctx.stroke();
     }
     else if (G.UI && G.UI.hover === u.id) {
@@ -866,17 +1092,18 @@ var G = globalThis.G || (globalThis.G = {});
       ctx.beginPath(); ctx.ellipse(p[0], p[1], hr, hr * 0.5, 0, 0, 6.3); ctx.stroke();
     }
     if (d.hero) { ctx.fillStyle = 'rgba(255,215,90,0.18)'; ctx.beginPath(); ctx.ellipse(p[0], p[1], 15 * z, 7.5 * z, 0, 0, 6.3); ctx.fill(); }
-    var sh = bakedSheet(u.t + '_' + civ);
+    var sh = unitSheet(u);
     if (sh) {
       var ua = unitAction(u, sh.B.actions);
-      bakedFrame(ctx, sh, ua[0], ua[1], u.dir8 || 0, p[0], p[1], z * USCALE * (d.hero ? 1.08 : 1) / sh.B.k);
+      bakedFrame(ctx, sh, ua[0], ua[1], u.dir8 || 0, p[0], p[1], z * USCALE * (d.hero ? 1.08 : 1) / sh.B.k, pcol(u.o).color);
+      if (u.relic) { ctx.fillStyle = '#e9c24a'; ctx.strokeStyle = '#6a4a10'; ctx.lineWidth = 1; ctx.fillRect(p[0] - 3 * z, p[1] - 38 * z, 6 * z, 5 * z); ctx.strokeRect(p[0] - 3 * z, p[1] - 38 * z, 6 * z, 5 * z); }
       if (u.carry && u.carry.n > 0.5) {
         var cc = { w: '#7a5130', f: '#b8433a', g: '#e6c24a', s: '#a7a59e' }[u.carry.r], bk = (u.dir8 || 0) > 4 ? 1 : -1;
         ctx.fillStyle = cc; ctx.strokeStyle = 'rgba(20,12,6,0.7)'; ctx.lineWidth = 0.8;
         ctx.beginPath(); ctx.ellipse(p[0] + bk * 3.5 * z, p[1] - 16 * z, 2.2 * z, 1.8 * z, 0, 0, 6.3); ctx.fill(); ctx.stroke();
       }
     } else drawUnitAt(ctx, u, civ, p[0], p[1], z * 1.1 * (d.hero ? 1.1 : 1));
-    if (selected || (u.hit && S.t - u.hit < 2.5)) hpBar(u, p[0], p[1] - (d.cls === 'cav' ? 40 : d.cls === 'sie' ? 28 : 33) * z, d.cls === 'vil' ? 16 : 20);
+    if (selected || (u.hit && S.t - u.hit < 2.5)) hpBar(u, p[0], p[1] - (d.cls === 'cav' || d.cls === 'har' ? 40 : d.cls === 'sie' ? 28 : 33) * z, d.cls === 'vil' ? 16 : 20);
   }
 
   R.clock = function () { return clock; };
@@ -885,10 +1112,10 @@ var G = globalThis.G || (globalThis.G = {});
     var S = G.S, z = cam.z, w = R.s2w(sx, sy), best = null, bs = -1e9, N = S.N, C = G.C;
     for (var i = 0; i < S.ents.length; i++) {
       var e = S.ents[i];
-      if (e.dead || Math.abs(e.x - w[0]) > 6 || Math.abs(e.y - w[1]) > 6) continue;
+      if (e.dead || e.gin || Math.abs(e.x - w[0]) > 6 || Math.abs(e.y - w[1]) > 6) continue;
       var k = Math.floor(e.y) * N + Math.floor(e.x);
       if (!S.exp[k]) continue;
-      if (e.k === 'u' && e.o !== 0 && !C.vis[k]) continue;
+      if (e.k === 'u' && !C.vis[k] && !G.ally(0, e.o)) continue;
       var p = R.w2s(e.x, e.y), score = -1e9;
       if (e.k === 'u') {
         var d = G.UNITS[e.t], hy = p[1] - (d.cls === 'cav' ? 17 : 12) * z, dd = Math.hypot(sx - p[0], sy - hy);
@@ -897,7 +1124,7 @@ var G = globalThis.G || (globalThis.G = {});
         var n = e.n;
         if (w[0] >= e.tx && w[0] <= e.tx + n && w[1] >= e.ty && w[1] <= e.ty + n) score = 1000 + e.tx + e.ty;
         else {
-          var s = bldSprite(e.t, S.players[e.o].civ), top = R.w2s(e.tx, e.ty);
+          var s = bldSprite(e.t, S.players[e.o].civ, e) || { ay: 30 }, top = R.w2s(e.tx, e.ty);
           if (sx > top[0] - n * 26 * z && sx < top[0] + n * 26 * z && sy > top[1] - (s.ay - 10) * z && sy < top[1] + n * 16 * z) score = 900 + e.tx + e.ty;
         }
         if (G.BLDS[e.t].walk && score > -1e9) score -= 600;
@@ -918,8 +1145,6 @@ var G = globalThis.G || (globalThis.G = {});
   var mc, mctx, moff, mimg;
   R.initMini = function (canvas) {
     mc = canvas; mctx = mc.getContext('2d');
-    moff = document.createElement('canvas'); moff.width = moff.height = G.N;
-    mimg = moff.getContext('2d').createImageData(G.N, G.N);
   };
   R.resizeMini = function () {
     if (!mc) return;
@@ -927,15 +1152,17 @@ var G = globalThis.G || (globalThis.G = {});
     mc.width = Math.round(mc.clientWidth * d); mc.height = Math.round(mc.clientHeight * d);
   };
   var TCOL = [[96, 140, 58], [152, 128, 88], [50, 96, 150], [88, 138, 178], [128, 98, 60]];
-  var RCOL = { tree: [36, 78, 34], gold: [232, 196, 70], stone: [176, 176, 170], berry: [130, 60, 140], sheep: [240, 240, 236] };
-  var TEAM = [[70, 140, 255], [235, 70, 55]];
+  var RCOL = { tree: [36, 78, 34], gold: [232, 196, 70], stone: [176, 176, 170], berry: [130, 60, 140], sheep: [240, 240, 236], relic: [255, 236, 150] };
   R.drawMini = function () {
     var S = G.S; if (!S || !mc) return;
-    var C = G.C, N = S.N, d = mimg.data, exp = S.exp, vis = C.vis;
+    var C = G.C, N = S.N;
+    if (!moff || moff.width !== N) { moff = document.createElement('canvas'); moff.width = moff.height = N; mimg = moff.getContext('2d').createImageData(N, N); }
+    var d = mimg.data, exp = S.exp, vis = C.vis, TC0 = (S.map && S.map.season === 'iarna' && G.TCOL_IARNA) || G.TCOL || TCOL;
+    var TEAM = S.players.map(function (P, i) { var c = pcol(i).color; return [parseInt(c.substr(1, 2), 16), parseInt(c.substr(3, 2), 16), parseInt(c.substr(5, 2), 16)]; });
     for (var i = 0; i < N * N; i++) {
       var j = i * 4, col;
       if (!exp[i]) { d[j] = 14; d[j + 1] = 12; d[j + 2] = 10; d[j + 3] = 255; continue; }
-      col = TCOL[S.ter[i]];
+      col = TC0[S.ter[i]] || TCOL[0];
       var oid = C.occ[i];
       if (oid) { var e = C.byId.get(oid); if (e) col = e.k === 'r' ? RCOL[e.t] : TEAM[e.o]; }
       var m = vis[i] ? 1 : 0.55;
@@ -943,7 +1170,7 @@ var G = globalThis.G || (globalThis.G = {});
     }
     C.units.forEach(function (u) {
       var k = Math.floor(u.y) * N + Math.floor(u.x);
-      if (u.o !== 0 && !vis[k]) return;
+      if (!vis[k] && !G.ally(0, u.o)) return;
       var col = TEAM[u.o], j = k * 4;
       d[j] = Math.min(255, col[0] + 40); d[j + 1] = Math.min(255, col[1] + 40); d[j + 2] = Math.min(255, col[2] + 40);
     });
@@ -969,11 +1196,33 @@ var G = globalThis.G || (globalThis.G = {});
   // ---------- iconițe pentru butoane ----------
   // imaginile randate se folosesc direct ca fișiere: copierea lor printr-un canvas e interzisă când jocul rulează din file://
   var icons = {};
-  R.icon = function (kind, t, civ) {
-    if (G.BAKED) {
-      if (kind === 'u' && G.BAKED['i_' + t + '_' + civ]) return 'assets/i_' + t + '_' + civ + '.png';
-      if (kind === 'b' && G.BAKED['j_' + t + '_' + civ]) return 'assets/j_' + t + '_' + civ + '.png';
+  function wallIcon(t) {
+    if (icons[t]) return icons[t];
+    var c = document.createElement('canvas'); c.width = c.height = 96; var g = c.getContext('2d'), d = G.BLDS[t], pal = d.wall === 'pal';
+    for (var i = 0; i < 3; i++) {
+      var x = 14 + i * 24, y = 58 - i * 12;
+      g.fillStyle = pal ? '#7a5532' : '#a39a87'; g.fillRect(x, y, 22, 26);
+      g.fillStyle = pal ? '#9a7044' : '#c9bfa9'; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 12, y - 8); g.lineTo(x + 34, y - 8); g.lineTo(x + 22, y); g.closePath(); g.fill();
+      g.fillStyle = pal ? '#5e4126' : '#857d6d'; g.beginPath(); g.moveTo(x + 22, y); g.lineTo(x + 34, y - 8); g.lineTo(x + 34, y + 18); g.lineTo(x + 22, y + 26); g.closePath(); g.fill();
     }
+    if (d.gate) { g.fillStyle = '#3a2a1a'; g.fillRect(39, 56, 12, 16); }
+    return (icons[t] = c.toDataURL());
+  }
+  R.icon = function (kind, t, civ) {
+    civ = civ || (G.S && G.S.players[0] ? G.S.players[0].civ : 'mol');
+    if (kind === 'u') {
+      var uk = ukeys(t, civ, 0), ik = 'i/' + uk.v;
+      if (G.BAKED2 && G.BAKED2[ik]) return 'assets/' + ik + '.webp';
+      if (G.BAKED && G.BAKED['i_' + uk.old]) return 'assets/i_' + uk.old + '.png';
+    } else {
+      var bk = bkey2(t, civ, null, 0).slice(2), jk = 'j/' + bk;
+      if (G.BAKED2 && G.BAKED2[jk]) return 'assets/' + jk + '.webp';
+      if (G.BLDS[t].wall) return wallIcon(t);
+      var ob = 'j_' + (OLDB[t] || t) + '_' + artCiv(civ);
+      if (G.BAKED && G.BAKED[ob]) return 'assets/' + ob + '.png';
+      t = OLDB[t] || t;
+    }
+    civ = artCiv(civ);
     var key = kind + t + civ;
     if (icons[key]) return icons[key];
     var c = document.createElement('canvas'); c.width = c.height = 96;

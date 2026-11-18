@@ -55,9 +55,9 @@ var G = globalThis.G || (globalThis.G = {});
 
   // goal: {x, y, r} (pătrățel, acceptă la distanța r) sau {rect:[x0,y0,x1,y1], r} (pătrățele incluse)
   // întoarce o listă de puncte [x, y]; [] dacă suntem deja acolo; null dacă nu se poate pleca deloc
-  function findPath(sx, sy, goal, maxNodes) {
-    var pass = G.C.pass;
-    if (!N) init(G.S.N);
+  function findPath(sx, sy, goal, maxNodes, o) {
+    var pass = (o !== undefined && o >= 0 && G.C.pp && G.C.pp[o]) || G.C.pass;
+    if (N !== G.S.N) init(G.S.N);
     maxNodes = maxNodes || 3000;
     var stx = Math.max(0, Math.min(N - 1, Math.floor(sx))), sty = Math.max(0, Math.min(N - 1, Math.floor(sy)));
     var start = sty * N + stx;
@@ -130,6 +130,6 @@ var G = globalThis.G || (globalThis.G = {});
     return out;
   }
 
-  G.Path = { init: init, find: findPath, clear: function (x0, y0, x1, y1) { return clear(G.C.pass, x0, y0, x1, y1); } };
+  G.Path = { init: init, find: findPath, clear: function (x0, y0, x1, y1, o) { return clear((o !== undefined && o >= 0 && G.C.pp && G.C.pp[o]) || G.C.pass, x0, y0, x1, y1); } };
   G.findPath = findPath;
 })();

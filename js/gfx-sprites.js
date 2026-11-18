@@ -247,7 +247,7 @@ var G = globalThis.G || (globalThis.G = {});
     var n = G.BLDS[t].n, head = HEAD[t] || 72, mr = 40;
     var w = n * 64 + 26 + mr, h = n * 32 + head + 22;
     var s = mk(w, h), ox = 13 + n * 32, oy = head;
-    var K = kit(s.g, ox, oy, t.length * 31 + (civ === 'mol' ? 7 : 13)), P = K.P, g = s.g, pal = PAL[civ], team = G.CIVS[civ].color, mol = civ === 'mol';
+    var K = kit(s.g, ox, oy, t.length * 31 + (civ === 'mol' ? 7 : 13)), P = K.P, g = s.g, pal = PAL[civ], team = G.PCOL[civ === 'oto' ? 1 : 0].color, mol = civ === 'mol';
     s.ax = ox; s.ay = oy;
     var st = pal.stone;
     switch (t) {

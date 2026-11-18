@@ -3,7 +3,8 @@ var G = globalThis.G || (globalThis.G = {});
 
 (function () {
   'use strict';
-  var SAVE = 'scm_save_v1';
+  var SAVE = 'scm_save_v2';
+  try { localStorage.removeItem('scm_save_v1'); localStorage.removeItem('scm_save_v1_meta'); } catch (e) {}
   G.speed = 1;
   try { var sp = parseFloat(localStorage.getItem('scm_speed')); if (sp) G.speed = sp; } catch (e) {}
   G.running = false; G.paused = false;
@@ -26,18 +27,29 @@ var G = globalThis.G || (globalThis.G = {});
     else if (tc) { G.cam.z = document.body.classList.contains('desk') ? 1.25 : 1.15; G.R.resize(); G.R.center(tc.x + 0.8, tc.y + 0.8); }
     G.UI.reset();
     G.running = true; G.paused = false;
-    show('start', false); show('menu', false); show('end', false); show('help', false);
+    show('start', false); show('menu', false); show('end', false); show('help', false); show('setup', false); show('tree', false); if ($('camp')) show('camp', false); if ($('story')) show('story', false);
+    G.R.preloadBaked(); G.R.preloadBld();
     document.body.classList.add('playing');
     G.R.resize(); G.R.resizeMini(); G.UI.forceRefresh();
     G.Terrain.build(); G.Terrain.fogUpdate(); G.Terrain.prewarm(G.cam, G.R.W, G.R.H, G.R.DPR);
   }
-  G.startGame = function (diff) {
+  G.startGame = function (o) {
+    if (typeof o === 'string') o = { diff: o };
+    o = o || {};
+    if (!o.scen) G.lastStart = JSON.parse(JSON.stringify(o));
     if (G.Audio.on) G.Audio.unlock();
     goFull();
-    G.newGame({ diff: diff, aiBoth: !!G.spectate });
+    if (o.aiBoth === undefined) o.aiBoth = !!G.spectate;
+    if (o.aiBoth && o.players) o.players[0].ai = true;
+    G.newGame(o);
     afterLoad(null);
-    G.msg('Moldova, 1475. Oastea lui Soliman Pașa vine spre Suceava.', 'good');
-    G.msg('Atinge un țăran, apoi o oaie sau o tufă de mure.', 'info');
+    if (G.Voci && G.Voci.load) G.S.players.forEach(function (P) { G.Voci.load(P.civ); });
+    if (!o.scen) {
+      var S = G.S, me = S.players[0], foes = S.players.filter(function (P) { return G.enemy(0, P.id); }), fr = S.players.filter(function (P) { return P.id && G.ally(0, P.id); });
+      G.msg('Ești ' + G.CIVS[me.civ].name + '. Te înfrunți cu: ' + foes.map(function (P) { return G.CIVS[P.civ].name; }).join(', ') + (fr.length ? '. Aliați: ' + fr.map(function (P) { return G.CIVS[P.civ].name; }).join(', ') : '') + '.', 'good');
+      if (S.opt.peace) G.msg('Pace ' + Math.round(S.opt.peace / 60) + ' minute: nimeni nu te atacă până atunci.', 'info');
+      G.msg('Alege un țăran, apoi o oaie sau o tufă de mure.', 'info');
+    }
   };
   G.continueGame = function () {
     var str = null, meta = null;
@@ -53,7 +65,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (!G.S || G.S.over || G.spectate) return;
     try {
       localStorage.setItem(SAVE, G.serialize());
-      localStorage.setItem(SAVE + '_meta', JSON.stringify({ t: G.S.t, diff: G.S.diff, when: Date.now(), cam: { x: G.cam.x, y: G.cam.y, z: G.cam.z } }));
+      localStorage.setItem(SAVE + '_meta', JSON.stringify({ t: G.S.t, diff: G.S.diff, civ: G.S.players[0].civ, scen: G.S.scen ? G.S.scen.title || G.S.scen.id : '', when: Date.now(), cam: { x: G.cam.x, y: G.cam.y, z: G.cam.z } }));
     } catch (e) {}
   };
   G.pause = function () { if (!G.running) return; G.paused = true; G.saveGame(); show('menu', true); };
@@ -72,7 +84,7 @@ var G = globalThis.G || (globalThis.G = {});
     var cb = $('bContinue');
     if (meta && localStorage.getItem(SAVE)) {
       cb.style.display = '';
-      cb.querySelector('small').textContent = G.DIFF[meta.diff].name + ' · minutul ' + Math.floor(meta.t / 60);
+      cb.querySelector('small').textContent = (meta.scen ? meta.scen : (G.CIVS[meta.civ] ? G.CIVS[meta.civ].name : '')) + ' · ' + (G.DIFF[meta.diff] || G.DIFF.normal).name + ' · minutul ' + Math.floor(meta.t / 60);
     } else cb.style.display = 'none';
     $('fact').textContent = G.FACTS[Math.floor(Math.random() * G.FACTS.length)];
   }
@@ -80,22 +92,14 @@ var G = globalThis.G || (globalThis.G = {});
   function endCheck() {
     var S = G.S;
     if (!S.over || $('end').classList.contains('on')) return;
-    var win = S.over === 1, P = S.players[0], E = S.players[1];
-    $('endT').textContent = win ? 'Victorie!' : 'Înfrângere';
-    $('endT').className = win ? 'win' : 'lose';
-    $('endS').textContent = win ? 'Cetatea Otomană a căzut. Moldova e liberă!' : 'Cetatea de Scaun a căzut. Mai încerci o dată?';
-    var m = Math.floor(S.t / 60), g = P.st.gath;
-    $('endStats').innerHTML =
-      '<tr><td></td><th>Moldova</th><th>Otomanii</th></tr>' +
-      '<tr><td>Oameni făcuți</td><td>' + P.st.trained + '</td><td>' + E.st.trained + '</td></tr>' +
-      '<tr><td>Dușmani doborâți</td><td>' + P.st.killed + '</td><td>' + E.st.killed + '</td></tr>' +
-      '<tr><td>Clădiri dărâmate</td><td>' + P.st.razed + '</td><td>' + E.st.razed + '</td></tr>' +
-      '<tr><td>Resurse strânse</td><td>' + Math.floor(g.f + g.w + g.g + g.s) + '</td><td>' + Math.floor(E.st.gath.f + E.st.gath.w + E.st.gath.g + E.st.gath.s) + '</td></tr>' +
-      '<tr><td>Durata</td><td colspan="2">' + m + ' minute · ' + G.DIFF[S.diff].name + '</td></tr>';
-    show('end', true);
+    var win = S.over === 1;
     G.running = false;
     document.body.classList.remove('playing');
     try { localStorage.removeItem(SAVE); localStorage.removeItem(SAVE + '_meta'); } catch (e) {}
+    if (S.scen && G.Camp && G.Camp.onEnd) { G.Camp.onEnd(win); return; }
+    G.Menu.endScreen(S, win);
+    $('eNext').style.display = 'none'; $('eRetry').style.display = '';
+    show('end', true);
   }
 
   var last = performance.now();
@@ -119,7 +123,7 @@ var G = globalThis.G || (globalThis.G = {});
     var qs = new URLSearchParams(location.search);
     if (qs.get('spectate')) G.spectate = true;
     G.R.init($('cv')); G.R.initMini($('mini')); G.UI.init(); G.Input.init($('cv'));
-    G.R.preloadBaked(); G.R.preloadBld(); G.R.preloadNature(); G.Terrain.loadTextures();
+    G.R.preloadNature(); G.Terrain.loadTextures();
     function layout() {
       var desk = window.matchMedia('(pointer: fine)').matches && window.innerWidth >= 900 && window.innerHeight >= 520;
       document.body.classList.toggle('desk', desk);
@@ -128,7 +132,12 @@ var G = globalThis.G || (globalThis.G = {});
     layout();
     window.addEventListener('resize', layout);
     document.addEventListener('visibilitychange', function () { if (document.hidden && G.running && !G.paused) G.pause(); });
-    document.querySelectorAll('[data-diff]').forEach(function (b) { b.addEventListener('click', function () { G.startGame(b.dataset.diff); }); });
+    $('bSkirmish').addEventListener('click', G.Menu.openSetup);
+    $('bQuick').addEventListener('click', function () { G.Menu.startSkirmish(); });
+    $('bTree').addEventListener('click', function () { G.Menu.openTree(); });
+    if (G.Camp && G.Camp.open) $('bCamp').addEventListener('click', G.Camp.open); else $('bCamp').style.display = 'none';
+    $('mTree').addEventListener('click', function () { G.Menu.openTree(); });
+    $('eRetry').addEventListener('click', function () { show('end', false); if (G.lastStart) G.startGame(JSON.parse(JSON.stringify(G.lastStart))); });
     $('bContinue').addEventListener('click', G.continueGame);
     $('bHelp').addEventListener('click', function () { show('help', true); });
     $('helpClose').addEventListener('click', function () { show('help', false); });
@@ -142,7 +151,8 @@ var G = globalThis.G || (globalThis.G = {});
     }
     fillHelp(); window.addEventListener('resize', fillHelp);
     $('intro').textContent = G.INTRO;
-    $('startArt').innerHTML = '<img src="' + G.R.icon('u', 'hero', 'mol') + '"><img class="big" src="' + G.R.icon('b', 'cetate', 'mol') + '"><img src="' + G.R.icon('u', 'mil', 'mol') + '">';
+    function art() { $('startArt').innerHTML = '<img src="' + G.R.icon('u', 'hero', 'val') + '"><img src="' + G.R.icon('u', 'hero', 'mol') + '"><img class="big" src="' + G.R.icon('b', 'cetate', 'mol') + '"><img src="' + G.R.icon('u', 'hero', 'oto') + '"><img src="' + G.R.icon('u', 'hero', 'tat') + '">'; }
+    art(); setTimeout(art, 1500);
     refreshStart();
     setInterval(function () { if (G.running && !G.paused) G.saveGame(); }, 30000);
     window.addEventListener('pagehide', function () { if (G.running) G.saveGame(); });
