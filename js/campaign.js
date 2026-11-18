@@ -186,7 +186,7 @@ G.NAR = G.NAR || {};
   var curC = 0, raf = 0;
   Camp.open = function () {
     if (!G.CAMPAIGNS.length) return;
-    render(); show('camp', true);
+    show('camp', true); render();
   };
   function render() {
     var c = G.CAMPAIGNS[curC];
@@ -203,7 +203,7 @@ G.NAR = G.NAR || {};
     $('campBox').querySelectorAll('[data-m]').forEach(function (b) { b.addEventListener('click', function () { Camp.story(b.dataset.m, 'intro'); }); });
     $('cBack').addEventListener('click', function () { show('camp', false); cancelAnimationFrame(raf); });
     var t0 = performance.now(), cv = $('campMap');
-    var marks = c.scen.map(function (id, i) { var m = G.MISSIONS[id]; return { lon: m.lon, lat: m.lat, n: i + 1, st: prog.done[id] ? 2 : unlocked(c, i) ? 1 : 0, label: m.short || '' }; });
+    var marks = c.scen.map(function (id, i) { var m = G.MISSIONS[id]; return { lon: m.lon, lat: m.lat, n: i + 1, st: prog.done[id] ? 2 : unlocked(c, i) ? 1 : 0, label: '' }; });
     cancelAnimationFrame(raf);
     (function loop() { if (!$('camp').classList.contains('on')) return; Camp.drawMap(cv, c.view, [], marks, (performance.now() - t0) / 1000); raf = requestAnimationFrame(loop); })();
   }

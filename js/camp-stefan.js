@@ -450,6 +450,6 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
     triggers: []
   };
 
-  G.CAMPAIGNS.push({ id: 'stefan', name: 'Ștefan cel Mare', civ: 'mol', sub: 'Atletul lui Hristos, 1457–1504', view: { lon: 27.0, lat: 46.5, z: 1.5 },
+  G.CAMPAIGNS.push({ id: 'stefan', name: 'Ștefan cel Mare', civ: 'mol', sub: 'Atletul lui Hristos, 1457–1504', view: { lon: 27.3, lat: 46.6, z: 2.4 },
     scen: ['st1', 'st2', 'st3', 'st4', 'st5', 'st6'] });
 })();
