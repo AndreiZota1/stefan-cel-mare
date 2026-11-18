@@ -243,11 +243,10 @@ var G = globalThis.G || (globalThis.G = {});
     return h && !v ? 'x' : v && !h ? 'y' : 'p';
   }
   function bkey2(t, civ, b, o) {
-    var d = G.BLDS[t], st = styleOf(civ);
+    var d = G.BLDS[t];
     if (d.wall) { var base = d.gate ? (d.wall === 'pal' ? 'ppal' : 'poarta') : d.wall; return 'b/' + base + '_' + (b ? wallDir(b) : (d.gate ? 'x' : 'p')) + '_all'; }
-    if (t === 'turn') { var P = G.S && G.S.players[b ? b.o : (o || 0)]; return 'b/turn' + (P && P.techs.turn2 ? 2 : 1) + '_' + st; }
-    if (t === 'minune') return 'b/minune_' + civ;
-    return 'b/' + t + '_' + st;
+    if (t === 'turn') { var P = G.S && G.S.players[b ? b.o : (o || 0)]; return 'b/turn' + (P && P.techs.turn2 ? 2 : 1) + '_' + civ; }
+    return 'b/' + t + '_' + civ;
   }
   // capcana din Codrii Cosminului: un trunchi tăiat și bușteni
   var capS = null;
@@ -1108,13 +1107,13 @@ var G = globalThis.G || (globalThis.G = {});
   function ukeys(t, civ, fem) {
     var ck = t + '|' + civ + '|' + (fem ? 1 : 0), r = ukCache[ck];
     if (r) return r;
-    var d = G.UNITS[t], st = styleOf(civ), v;
+    // fiecare civilizație are imaginile ei (u/mil3_pol); asediul e comun (u/cat2_all)
+    var d = G.UNITS[t], v;
     if (d.hero) v = 'hero_' + civ;
-    else if (d.civ) v = d.line + '_' + civ;
-    else if (t === 'vil') v = (fem ? 'vilf' : 'vil') + '_' + st;
+    else if (t === 'vil') v = (fem ? 'vilf' : 'vil') + '_' + civ;
     else if (d.cls === 'sie' || t === 'car') v = (d.line ? d.line + d.tier : t) + '_all';
-    else if (d.line) v = d.line + d.tier + '_' + st;
-    else v = t + '_' + st;
+    else if (d.line) v = d.line + d.tier + '_' + civ;
+    else v = t + '_' + civ;
     var base = OLDT[t] || 'mil', ac = artCiv(civ), old = base + '_' + ac;
     if (G.BAKED && !G.BAKED[old]) old = base + '_' + (ac === 'mol' ? 'oto' : 'mol');
     return (ukCache[ck] = { k2: 'u/' + v, old: old, v: v });

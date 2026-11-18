@@ -1,4 +1,5 @@
 // Scena 3D pentru randarea sprite-urilor: cameră izometrică (30°, ca în AoE2), soare cu umbre, sol transparent.
+// v2: a doua trecere pentru masca de culoare a jucătorului, încadrare automată (celula strânsă), ieșire WebP.
 import * as THREE from 'three';
 export { THREE };
 
@@ -9,11 +10,12 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.55;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 renderer.setClearColor(0x000000, 0);
 
 export const scene = new THREE.Scene();
-scene.add(new THREE.HemisphereLight(0xeef3ff, 0x8a7a58, 1.7));
+export const hemi = new THREE.HemisphereLight(0xeef3ff, 0x8a7a58, 1.7);
+scene.add(hemi);
 export const sun = new THREE.DirectionalLight(0xfff0d4, 3.3);
 sun.position.set(-4, 6.5, -1.6);
 scene.add(sun); scene.add(sun.target);
@@ -23,17 +25,37 @@ sun.shadow.radius = 3;
 sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.012;
 const sc = sun.shadow.camera;
-export function shadowBox(r) { sc.left = -r; sc.right = r; sc.top = r; sc.bottom = -r; sc.near = 0.1; sc.far = 30; sc.updateProjectionMatrix(); }
+let shadowMapSize = 2048;
+export function shadowBox(r, cx = 0, cz = 0) {
+  sc.left = -r; sc.right = r; sc.top = r; sc.bottom = -r; sc.near = 0.1; sc.far = 60; sc.updateProjectionMatrix();
+  const want = r > 3.2 ? 4096 : 2048;
+  if (want !== shadowMapSize) { shadowMapSize = want; sun.shadow.mapSize.set(want, want); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
+  sun.target.position.set(cx, 0, cz); sun.position.set(cx - 4 * 2, 13, cz - 1.6 * 2); sun.target.updateMatrixWorld();
+}
 shadowBox(1.5);
 
-export const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.ShadowMaterial({ opacity: 0.34 }));
+export const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.ShadowMaterial({ opacity: 0.34 }));
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
-export const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
+// reflexii pentru metale: un cer pictat (albastru sus, pământ jos, soarele spre stânga-sus)
+const envCanvas = document.createElement('canvas'); envCanvas.width = 512; envCanvas.height = 256;
+{
+  const c = envCanvas.getContext('2d'), gr = c.createLinearGradient(0, 0, 0, 256);
+  gr.addColorStop(0, '#7fa6d8'); gr.addColorStop(0.42, '#cfdbe6'); gr.addColorStop(0.5, '#e8e4d8'); gr.addColorStop(0.53, '#8a8462'); gr.addColorStop(1, '#4a4632');
+  c.fillStyle = gr; c.fillRect(0, 0, 512, 256);
+  const d = new THREE.Vector3(-4, 6.5, -1.6).normalize(), u = (Math.atan2(d.z, d.x) / (2 * Math.PI) + 0.5) * 512, v = (1 - (Math.asin(d.y) / Math.PI + 0.5)) * 256;
+  const sg = c.createRadialGradient(u, v, 0, u, v, 40); sg.addColorStop(0, 'rgba(255,250,235,1)'); sg.addColorStop(0.25, 'rgba(255,244,220,0.8)'); sg.addColorStop(1, 'rgba(255,240,210,0)');
+  c.fillStyle = sg; c.fillRect(0, 0, 512, 256);
+}
+const envTex = new THREE.CanvasTexture(envCanvas); envTex.mapping = THREE.EquirectangularReflectionMapping; envTex.colorSpace = THREE.SRGBColorSpace;
+const pmrem = new THREE.PMREMGenerator(renderer);
+export const ENV = pmrem.fromEquirectangular(envTex).texture;
+
+export const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 400);
 const dir = new THREE.Vector3(Math.cos(Math.PI / 4) * Math.cos(Math.PI / 6), Math.sin(Math.PI / 6), Math.sin(Math.PI / 4) * Math.cos(Math.PI / 6));
-camera.position.copy(dir.multiplyScalar(60));
+camera.position.copy(dir.multiplyScalar(120));
 camera.up.set(0, 1, 0);
 camera.lookAt(0, 0, 0);
 
@@ -43,7 +65,7 @@ export function frameCell(W, H, ax, ay, k) {
   camera.left = -ax / P; camera.right = (W - ax) / P; camera.top = ay / P; camera.bottom = -(H - ay) / P;
   camera.updateProjectionMatrix();
 }
-export function renderTo(ctx, dx, dy, W, H, ss) {
+function renderTo(ctx, dx, dy, W, H, ss) {
   renderer.setSize(W * ss, H * ss, false);
   renderer.render(scene, camera);
   ctx.drawImage(renderer.domElement, 0, 0, W * ss, H * ss, dx, dy, W, H);
@@ -56,44 +78,144 @@ export function faceDir(obj, d) {
   obj.rotation.y = Math.atan2(-v[1] / l, v[0] / l);
 }
 
+// ---------- culoarea jucătorului ----------
+// materialele marcate cu userData.team sunt randate gri neutru; masca are alfa = cât din pixel e „culoarea echipei”
+export const TEAM_GRAY = '#d0d0d0';
+const maskCache = new WeakMap();
+function maskMat(m) {
+  let mm = maskCache.get(m);
+  if (!mm) {
+    const team = !!(m.userData && m.userData.team);
+    mm = new THREE.MeshBasicMaterial({ color: team ? 0xffffff : 0x000000, side: m.side, toneMapped: false, alphaTest: m.alphaTest || 0, map: m.alphaTest ? m.map : null });
+    maskCache.set(m, mm);
+  }
+  return mm;
+}
+export function hasTeam(root) {
+  let t = false;
+  root.traverse(o => { if (o.isMesh && o.visible) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.userData && m.userData.team) t = true; }); });
+  return t;
+}
+function maskOn(root) {
+  const saved = [];
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    if (mats.some(m => m.transparent && !m.depthWrite)) { saved.push([o, o.material, o.visible]); o.visible = false; return; }
+    saved.push([o, o.material, o.visible]);
+    o.material = Array.isArray(o.material) ? o.material.map(maskMat) : maskMat(o.material);
+  });
+  ground.visible = false; renderer.shadowMap.autoUpdate = false;
+  return () => { saved.forEach(([o, m, v]) => { o.material = m; o.visible = v; }); ground.visible = true; renderer.shadowMap.autoUpdate = true; };
+}
+// alfa măștii = acoperirea materialelor de echipă (roșul premultiplicat), RGB alb
+function finishMask(c) {
+  const ctx = c.getContext('2d'), im = ctx.getImageData(0, 0, c.width, c.height), d = im.data;
+  for (let i = 0; i < d.length; i += 4) { const a = Math.round(d[i] * d[i + 3] / 255); d[i] = d[i + 1] = d[i + 2] = 255; d[i + 3] = a; }
+  ctx.putImageData(im, 0, 0);
+}
+
+function mkCanvas(w, h) { const c = document.createElement('canvas'); c.width = Math.max(1, w); c.height = Math.max(1, h); const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; return c; }
+export { mkCanvas };
+// cutia ne-transparentă a unei pânze
+function bbox(c, thr = 3) {
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data, W = c.width, H = c.height;
+  let x0 = W, y0 = H, x1 = -1, y1 = -1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > thr) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  return x1 < 0 ? null : { x0, y0, x1, y1 };
+}
+export { bbox };
+
+// încadrare automată: randează toate pozele suprapuse într-o celulă mare și păstrează doar cutia lor
+function fitCell(k, guess, poses, pad) {
+  let [W, H, ax, ay] = guess.map(v => Math.round(v * k));
+  for (let attempt = 0; attempt < 5; attempt++) {
+    frameCell(W, H, ax, ay, k);
+    const acc = mkCanvas(W, H), actx = acc.getContext('2d');
+    poses(() => { renderer.setSize(W, H, false); renderer.render(scene, camera); actx.drawImage(renderer.domElement, 0, 0, W, H, 0, 0, W, H); });
+    const b = bbox(acc, 2);
+    if (!b) return [8, 8, 4, 4];
+    const touch = b.x0 <= 1 || b.y0 <= 1 || b.x1 >= W - 2 || b.y1 >= H - 2;
+    if (touch) { const gx = Math.round(W * 0.5), gy = Math.round(H * 0.5); W += 2 * gx; H += 2 * gy; ax += gx; ay += gy; continue; }
+    const x0 = Math.max(0, b.x0 - pad), y0 = Math.max(0, b.y0 - pad), x1 = Math.min(W - 1, b.x1 + pad), y1 = Math.min(H - 1, b.y1 + pad);
+    return [x1 - x0 + 1, y1 - y0 + 1, ax - x0, ay - y0];
+  }
+  throw new Error('nu încape în celulă');
+}
+
+const Q = 0.88;
 // o foaie cu toate cadrele: rânduri = acțiune x direcție, coloane = cadre
+// spec: root, reset, actions, k, ss, shadow, guess [W,H,ax,ay] la zoom 1, dirs (implicit 5)
 export function bakeSheet(spec) {
-  const A = spec.actions, rows = A.length * 5, cols = Math.max(...A.map(a => a.frames));
-  const sheet = document.createElement('canvas');
-  sheet.width = cols * spec.W; sheet.height = rows * spec.H;
-  const ctx = sheet.getContext('2d');
-  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-  frameCell(spec.W, spec.H, spec.ax, spec.ay, spec.k);
+  const A = spec.actions, ND = spec.dirs || 5, rows = A.length * ND, cols = Math.max(...A.map(a => a.frames)), k = spec.k, ss = spec.ss || 2;
   shadowBox(spec.shadow || 1.5);
   scene.add(spec.root);
-  const meta = { W: spec.W, H: spec.H, ax: spec.ax, ay: spec.ay, k: spec.k, actions: {} };
-  A.forEach((a, ai) => {
-    meta.actions[a.name] = { row: ai * 5, frames: a.frames, loop: a.loop !== false };
-    for (let d = 0; d < 5; d++) {
-      faceDir(spec.root, d);
-      for (let f = 0; f < a.frames; f++) {
-        spec.reset();
-        a.pose(f / a.frames, f);
-        spec.root.updateMatrixWorld(true);
-        renderTo(ctx, f * spec.W, (ai * 5 + d) * spec.H, spec.W, spec.H, spec.ss || 2);
-      }
-    }
+  const each = cb => A.forEach((a, ai) => { for (let d = 0; d < ND; d++) { faceDir(spec.root, d); for (let f = 0; f < a.frames; f++) { spec.reset(); a.pose(f / a.frames, f, d); spec.root.updateMatrixWorld(true); cb(ai, d, f); } } });
+  const [W, H, ax, ay] = fitCell(k, spec.guess, cb => each(() => cb()), spec.pad || 3);
+  const sheet = mkCanvas(cols * W, rows * H), ctx = sheet.getContext('2d');
+  const team = hasTeam(spec.root), msheet = team ? mkCanvas(cols * W, rows * H) : null, mctx = team ? msheet.getContext('2d') : null;
+  frameCell(W, H, ax, ay, k);
+  const meta = { W, H, ax, ay, k, actions: {} };
+  A.forEach((a, ai) => { meta.actions[a.name] = { row: ai * ND, frames: a.frames, loop: a.loop !== false }; });
+  each((ai, d, f) => {
+    renderTo(ctx, f * W, (ai * ND + d) * H, W, H, ss);
+    if (team) { const undo = maskOn(spec.root); renderTo(mctx, f * W, (ai * ND + d) * H, W, H, ss); undo(); }
   });
   scene.remove(spec.root);
-  return { png: sheet.toDataURL('image/png'), meta };
+  if (team) { finishMask(msheet); meta.mask = true; }
+  return { webp: sheet.toDataURL('image/webp', Q), mask: team ? msheet.toDataURL('image/webp', Q) : null, meta, canvas: sheet, mcanvas: msheet };
 }
 
 // o singură imagine (clădiri, copaci, resurse)
 export function bakeStill(spec) {
-  const c = document.createElement('canvas');
-  c.width = spec.W; c.height = spec.H;
-  const ctx = c.getContext('2d');
-  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-  frameCell(spec.W, spec.H, spec.ax, spec.ay, spec.k);
-  shadowBox(spec.shadow || 3);
-  scene.add(spec.root);
-  spec.root.updateMatrixWorld(true);
-  renderTo(ctx, 0, 0, spec.W, spec.H, spec.ss || 2);
+  const k = spec.k, ss = spec.ss || 2;
+  shadowBox(spec.shadow || 3, spec.scx || 0, spec.scz || 0);
+  scene.add(spec.root); spec.root.updateMatrixWorld(true);
+  const [W, H, ax, ay] = spec.fixed || fitCell(k, spec.guess, cb => cb(), spec.pad || 3);
+  const c = mkCanvas(W, H), ctx = c.getContext('2d');
+  frameCell(W, H, ax, ay, k);
+  renderTo(ctx, 0, 0, W, H, ss);
+  const team = !spec.noMask && hasTeam(spec.root);
+  let mc = null;
+  if (team) { mc = mkCanvas(W, H); const undo = maskOn(spec.root); renderTo(mc.getContext('2d'), 0, 0, W, H, ss); undo(); finishMask(mc); }
+  const meta = { W, H, ax, ay, k };
+  if (team) meta.mask = true;
+  const proj = p => { const v = new THREE.Vector3(p[0], p[1], p[2]).project(camera); return [+(((v.x + 1) / 2 * W) / k).toFixed(1), +(((1 - v.y) / 2 * H) / k).toFixed(1)]; };
   scene.remove(spec.root);
-  return { png: c.toDataURL('image/png'), meta: { W: spec.W, H: spec.H, ax: spec.ax, ay: spec.ay, k: spec.k } };
+  return { webp: c.toDataURL('image/webp', Q), mask: team ? mc.toDataURL('image/webp', Q) : null, meta, proj, canvas: c, mcanvas: mc };
+}
+
+// nuanțarea cu culoarea jucătorului, exact cum o va face jocul: baza × culoare acolo unde e masca
+export function tint(base, mask, col) {
+  const w = base.width, h = base.height, t = mkCanvas(w, h), tc = t.getContext('2d');
+  tc.drawImage(mask, 0, 0); tc.globalCompositeOperation = 'source-in'; tc.fillStyle = col; tc.fillRect(0, 0, w, h);
+  const o = mkCanvas(w, h), oc = o.getContext('2d');
+  oc.drawImage(base, 0, 0); oc.globalCompositeOperation = 'multiply'; oc.drawImage(t, 0, 0);
+  oc.globalCompositeOperation = 'destination-in'; oc.drawImage(base, 0, 0);
+  return o;
+}
+
+// iconiță 96x96: figura (fără umbră) încadrată, apoi randată cu umbră; culoarea echipei aplicată ca în joc
+export function bakeIcon(spec) {
+  const size = spec.size || 96, k0 = spec.k0 || 3;
+  shadowBox(spec.shadow || 2, spec.scx || 0, spec.scz || 0);
+  scene.add(spec.root); spec.root.updateMatrixWorld(true);
+  ground.visible = false;
+  let [W, H, ax, ay] = spec.guess.map(v => Math.round(v * k0)), b;
+  for (let i = 0; i < 5; i++) {
+    frameCell(W, H, ax, ay, k0);
+    const c = mkCanvas(W, H); renderTo(c.getContext('2d'), 0, 0, W, H, 1);
+    b = bbox(c, 10);
+    if (b && (b.x0 <= 1 || b.y0 <= 1 || b.x1 >= W - 2 || b.y1 >= H - 2)) { W *= 2; H *= 2; ax += W / 4; ay += H / 4; continue; }
+    break;
+  }
+  ground.visible = true;
+  const fit = size * (spec.fill || 0.86), bw = b.x1 - b.x0 + 1, bh = b.y1 - b.y0 + 1, f = Math.min(fit / bw, fit / bh), k = k0 * f;
+  const cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+  const iax = size / 2 - (cx - ax) * f, iay = size / 2 - (cy - ay) * f + (spec.dy || 0);
+  const c = mkCanvas(size, size); frameCell(size, size, iax, iay, k); renderTo(c.getContext('2d'), 0, 0, size, size, 3);
+  let out = c;
+  if (hasTeam(spec.root)) { const m = mkCanvas(size, size), undo = maskOn(spec.root); renderTo(m.getContext('2d'), 0, 0, size, size, 3); undo(); finishMask(m); out = tint(c, m, spec.team || '#2f6fd6'); }
+  scene.remove(spec.root);
+  return { webp: out.toDataURL('image/webp', 0.9), meta: { W: size, H: size }, canvas: out };
 }

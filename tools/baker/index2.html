@@ -1,0 +1,46 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<script type="importmap">{ "imports": { "three": "/node_modules/three/build/three.module.js" } }</script>
+</head><body>
+<script type="module">
+// Pagina de randare v2: oamenii (foi de cadre), clădirile, zidurile, ruinele și iconițele, cu mască de culoare.
+import { bakeSheet, bakeStill, bakeIcon, faceDir } from './core.js';
+import { texturesReady } from './mats.js';
+import { unitModel } from './units2.js';
+import { building2, wallPiece, ruin, NB } from './buildings2.js';
+import * as THREE from 'three';
+// celule de pornire la zoom 1 [W, H, ax, ay]; încadrarea se strânge automat
+const CELL = { foot: [60, 60, 26, 46], cav: [84, 76, 38, 58], siege: [110, 100, 52, 70] };
+const out = r => ({ webp: r.webp, mask: r.mask, meta: r.meta });
+window.bakeUnit = async (vis, civ, k) => {
+  const m = unitModel(vis, civ); await texturesReady();
+  const r = bakeSheet({ root: m.root, reset: m.reset, actions: m.actions, k, ss: 2, shadow: m.cell === 'siege' ? 1.8 : 1.3, guess: CELL[m.cell], pad: 2 });
+  r.meta.cell = m.cell; return out(r);
+};
+window.bakeUnitIcon = async (vis, civ) => {
+  const m = unitModel(vis, civ); await texturesReady();
+  m.reset(); faceDir(m.root, 1); m.root.updateMatrixWorld(true);
+  return out(bakeIcon({ root: m.root, size: 96, k0: 3, guess: CELL[m.cell], shadow: 1.4, fill: m.cell === 'foot' ? 0.9 : 0.92 }));
+};
+function model(t, civ) {
+  if (/^ruina\d$/.test(t)) { const n = +t.slice(5); return { root: ruin(n), info: { n } }; }
+  const w = t.match(/^(pal|ppal|zid|poarta)_(x|y|p)$/); if (w) return { root: wallPiece(w[1], w[2]), info: { n: 1 } };
+  return building2(t, civ);
+}
+window.bakeBld = async (t, civ, k) => {
+  const b = model(t, civ); await texturesReady();
+  const n = b.info.n, head = 40 + n * 46, guess = [n * 64 + 80, n * 32 + head + 30, 40 + n * 32, head];
+  const r = bakeStill({ root: b.root, k, ss: 2, shadow: n * 1.1 + 1.6, scx: n / 2, scz: n / 2, guess, pad: 3 });
+  if (b.info.hub) r.meta.hub = r.proj(b.info.hub);
+  if (b.info.chimney) r.meta.chimney = r.proj(b.info.chimney);
+  r.meta.n = n; return out(r);
+};
+window.bakeBldIcon = async (t, civ) => {
+  const b = model(t, civ); await texturesReady();
+  const n = b.info.n, head = 40 + n * 46;
+  return out(bakeIcon({ root: b.root, size: 96, k0: 1, guess: [n * 64 + 80, n * 32 + head + 30, 40 + n * 32, head], shadow: n * 1.1 + 1.6, scx: n / 2, scz: n / 2, fill: 0.92 }));
+};
+window.NB = NB;
+window.ready = true;
+</script>
+</body></html>
