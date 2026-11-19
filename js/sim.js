@@ -1770,6 +1770,7 @@ var G = globalThis.G || (globalThis.G = {});
     'oastea cea mare': function (P) { var tc = C.blds.find(function (b) { return b.o === P.id && b.t === 'cetate'; }) || C.units.find(function (u) { return u.o === P.id; }); if (!tc) return ''; G.placeUnits(P.id, G.curType(P.id, 'kni'), 6, tc.x + 3, tc.y + 3); G.placeUnits(P.id, G.curType(P.id, 'arc'), 6, tc.x + 3, tc.y + 4); return 'a sosit oastea cea mare'; },
     'victorie': function (P) { S.players.forEach(function (Q) { if (G.enemy(P.id, Q.id) && Q.alive) defeat(Q.id); }); return 'victorie!'; }
   };
+  G.isCheat = function (text) { return !!CHEATS[(text || '').toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '')]; };
   G.cheat = function (o, text) {
     var k = (text || '').toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, ''), fn = CHEATS[k];
     if (!fn) return null;

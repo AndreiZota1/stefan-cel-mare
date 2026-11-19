@@ -294,9 +294,9 @@ var G = globalThis.G || (globalThis.G = {});
   // fereastra de mesaje: coduri secrete, strigăte pe numere (ca în AoE2), mesaje
   var TAUNTS = ['Da.', 'Nu.', 'Hrană, vă rog!', 'Lemne, vă rog!', 'Aur, vă rog!', 'Niște piatră, vă rog!', 'Aaah!', 'Toată lumea la atac!', 'Ești gata?', 'Mai stai puțin!', 'Ha, ha, ha!', 'Pentru Moldova!'];
   // strigătul n: textul pe ecran și vocea (js/strigate.js, încărcat la prima folosire)
-  UI.taunt = function (n, who) {
+  UI.taunt = function (n, who, name) {
     var tt = n === 12 ? 'Pentru țară, înainte!' : TAUNTS[n - 1];
-    G.msg((who !== undefined ? G.ppl(who, true) + ': ' : '') + n + ' — ' + tt, who !== undefined ? 'alert' : 'info');
+    G.msg((name ? name + ': ' : who !== undefined ? G.ppl(who, true) + ': ' : '') + n + ' — ' + tt, who !== undefined && name !== 'Tu' ? 'alert' : 'info');
     var play = function () { if (!G.STRIGATE || !G.Audio || !G.Audio.on) return; var au = new Audio(G.STRIGATE[n - 1].a); au.volume = 0.9; au.play().catch(function () {}); };
     if (G.STRIGATE) play();
     else { var sc = document.createElement('script'); sc.src = 'js/strigate.js' + (G.VER ? '?v=' + G.VER : ''); sc.onload = play; document.head.appendChild(sc); }
@@ -323,6 +323,8 @@ var G = globalThis.G || (globalThis.G = {});
         var t = ch.value.trim(); ch.style.display = 'none'; ch.blur();
         if (!t) return;
         if (G.cheat(G.me, t)) return;
+        // online, mesajele și strigătele pleacă la toți jucătorii
+        if (G.Net && G.Net.on) { G.Net.say(t); return; }
         var n = +t;
         if (n >= 1 && n <= TAUNTS.length && /^\d+$/.test(t)) { UI.taunt(n); return; }
         G.msg('Tu: ' + t, 'info');
@@ -628,14 +630,14 @@ var G = globalThis.G || (globalThis.G = {});
     if (pl) {
       var ph = S.players.map(function (Q, i) {
         if (S.scen && i > 0 && !G.enemy(G.me, i) && !G.ally(G.me, i)) return '';
-        return '<span data-p="' + i + '" class="' + (Q.alive ? '' : 'dead') + '" title="' + (i === G.me ? 'Tu' : (G.ally(G.me, i) ? 'Aliat: ' : 'Dușman: ') + G.ppl(i)) + '"><i style="background:' + G.R.pcol(i).color + '"></i>' + G.CIVS[Q.civ].flag + '<b>' + (i === G.me ? 'Tu' : (G.ally(G.me, i) ? '🤝 ' : '') + G.CIVS[Q.civ].name.replace(/^(Regatul|Imperiul|Hanatul) /, '')) + '</b></span>';
+        return '<span data-p="' + i + '" class="' + (Q.alive ? '' : 'dead') + '" title="' + (i === G.me ? 'Tu' : (G.ally(G.me, i) ? 'Aliat: ' : 'Dușman: ') + (Q.name && !Q.ai ? esc(Q.name) + ', ' : '') + G.ppl(i)) + '"><i style="background:' + G.R.pcol(i).color + '"></i>' + G.CIVS[Q.civ].flag + '<b>' + (i === G.me ? 'Tu' : (G.ally(G.me, i) ? '🤝 ' : '') + (Q.name && !Q.ai ? esc(Q.name) : G.CIVS[Q.civ].name.replace(/^(Regatul|Imperiul|Hanatul) /, ''))) + '</b></span>';
       }).join('');
       if (S.wonder && S.opt.victory === 'minune') { var wl = Math.max(0, Math.ceil(300 - (S.t - S.wonder.t0))); ph += '<span class="wt">🏛 ' + Math.floor(wl / 60) + ':' + ('0' + wl % 60).slice(-2) + '</span>'; }
       if (S.opt.peace && S.t < S.opt.peace) { var pz = Math.ceil(S.opt.peace - S.t); ph += '<span class="wt">🕊 ' + Math.floor(pz / 60) + ':' + ('0' + pz % 60).slice(-2) + '</span>'; }
       if (S.koth && S.koth.team && S.opt.victory === 'deal') { var kl2 = Math.max(0, Math.ceil(600 - (S.t - S.koth.t0))); ph += '<span class="wt">🗿 ' + Math.floor(kl2 / 60) + ':' + ('0' + kl2 % 60).slice(-2) + '</span>'; }
       if (pl._h !== ph) { pl._h = ph; pl.innerHTML = ph; }
       // atingi un jucător: îi trimiți resurse (tribut)
-      if (!pl._tb) { pl._tb = 1; pl.addEventListener('click', function (ev) { var sp = ev.target.closest('[data-p]'); if (!sp) return; var q = +sp.dataset.p; if (q > 0 && G.S.players[q].alive) UI.tributeTo(q); }); }
+      if (!pl._tb) { pl._tb = 1; pl.addEventListener('click', function (ev) { var sp = ev.target.closest('[data-p]'); if (!sp) return; var q = +sp.dataset.p; if (q !== G.me && G.S.players[q].alive) UI.tributeTo(q); }); }
     }
     var idle = idleVils().length;
     if (G.Music && G.Music.setMood) {

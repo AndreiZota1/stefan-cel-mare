@@ -38,6 +38,12 @@ async function until(page, fn, ms, what) { const t0 = Date.now(); while (Date.no
     await A.click('#nStart');
     await until(A, () => G.Net.on && G.running, 20000, 'pornirea la gazdă'); await until(B, () => G.Net.on && G.running, 20000, 'pornirea la oaspete');
     console.log('pornit:', await A.evaluate(() => 'gazda e jucătorul ' + G.me), '/', await B.evaluate(() => 'oaspetele e jucătorul ' + G.me));
+    // chatul și strigătele: ce scrie oaspetele apare la gazdă; numele în bara de sus
+    await B.evaluate(() => { G.UI.openChat(); const c = document.getElementById('chat'); c.value = 'salut, gata de bătaie?'; c.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' })); });
+    await B.evaluate(() => G.Net.say('11')); await sleep(2500);
+    const msgs = await A.evaluate(() => G.msgQ.map(m => m.text).filter(t => /Mihai/.test(t)));
+    console.log('chat la gazdă:', JSON.stringify(msgs), msgs.length >= 2 ? '✓' : '✗');
+    console.log('bara de sus la gazdă:', await A.evaluate(() => [...document.querySelectorAll('#plist span b')].map(b => b.textContent).join(' | ')));
     // comenzi de la amândoi: țăranii la hrană și la lemne, cetatea face țărani
     const play = () => {
       const me = G.me, vils = G.C.units.filter(u => u.o === me && u.t === 'vil' && !u.task), tc = G.C.blds.find(b => b.o === me && b.t === 'cetate');

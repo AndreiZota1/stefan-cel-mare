@@ -73,7 +73,7 @@ var G = globalThis.G || (globalThis.G = {});
   }
   N.onChange = function (fn) { N.listeners.push(fn); };
   function changed() {
-    checkHashes();
+    checkHashes(); checkChat();
     if (!N.on && N.data && N.data.start && N.data.state === 'playing' && N.wantStart) begin();
     N.listeners.forEach(function (fn) { try { fn(); } catch (e) { console.error(e); } });
   }
@@ -159,6 +159,7 @@ var G = globalThis.G || (globalThis.G = {});
     st.seats.forEach(function (s, i) { if (s.uid === N.uid) me = i; });
     if (me < 0) { N.error = 'Nu ești la masa acestui joc.'; return; }
     N.seats = st.seats; N.desync = 0; out = []; pend = {}; hashSent = {}; applying = false;
+    chatSeen = {}; Object.keys(N.data.chat || {}).forEach(function (k) { chatSeen[k] = 1; });
     var ack = (N.data.ack && N.data.ack[N.uid]) || DELAY - 1;
     sent = ack;
     G.me = me; N.on = true;
@@ -288,5 +289,29 @@ var G = globalThis.G || (globalThis.G = {});
   });
   // codurile secrete nu merg online (ar strica jocul celorlalți)
   var cheat0 = G.cheat;
-  G.cheat = function (o, t) { if (N.on) { G.msg('Codurile secrete nu merg în jocul online.', 'warn'); return 'off'; } return cheat0.apply(this, arguments); };
+  G.cheat = function (o, t) {
+    if (!N.on) return cheat0.apply(this, arguments);
+    if (G.isCheat && G.isCheat(t)) { G.msg('Codurile secrete nu merg în jocul online.', 'warn'); return 'off'; }
+    return null;
+  };
+
+  // ---------- chatul (nu trece prin ture: nu schimbă jocul) ----------
+  // un număr de la 1 la 12 e strigătul cu numărul ăla, ca în AoE2: se aude la toți
+  var chatSeen = {};
+  N.say = function (text) {
+    if (!N.code) return;
+    var s = N.seats[G.me], name = (s && s.name) || myName();
+    req('POST', 'rooms/' + N.code + '/chat', { uid: N.uid, name: name, text: String(text).slice(0, 200), t: { '.sv': 'timestamp' } })
+      .catch(function () { G.msg('Mesajul n-a plecat.', 'warn'); });
+  };
+  function checkChat() {
+    var ch = N.data && N.data.chat; if (!ch || !N.on) return;
+    Object.keys(ch).sort().forEach(function (k) {
+      if (chatSeen[k]) return; chatSeen[k] = 1;
+      var m = ch[k] || {}, seat = -1, txt = String(m.text || '');
+      N.seats.forEach(function (s, i) { if (s.uid === m.uid) seat = i; });
+      if (/^\d+$/.test(txt) && +txt >= 1 && +txt <= 12 && G.UI && G.UI.taunt) G.UI.taunt(+txt, seat >= 0 ? seat : undefined, m.uid === N.uid ? 'Tu' : m.name);
+      else G.msg((m.uid === N.uid ? 'Tu' : (m.name || 'Jucător')) + ': ' + txt, m.uid === N.uid ? 'info' : 'alert');
+    });
+  }
 })();

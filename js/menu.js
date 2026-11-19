@@ -178,7 +178,7 @@ var G = globalThis.G || (globalThis.G = {});
     md.innerHTML = fresh.length ? '<div class="mdnew">🏅 Medalii noi: ' + MEDALS.filter(function (x) { return fresh.indexOf(x[0]) >= 0; }).map(function (x) { return x[1] + ' ' + esc(x[2]); }).join(' · ') + '</div>' : '';
     var P = S.players, m = Math.floor(S.t / 60);
     function row(lbl, f) { return '<tr><td>' + lbl + '</td>' + P.map(function (p) { return '<td>' + f(p) + '</td>'; }).join('') + '</tr>'; }
-    $('endStats').innerHTML = '<tr><td></td>' + P.map(function (p, i) { return '<th style="color:' + G.R.pcol(i).light + '">' + G.CIVS[p.civ].flag + ' ' + esc(i === G.me ? 'Tu' : G.CIVS[p.civ].name) + (p.alive ? '' : ' ✝') + '</th>'; }).join('') + '</tr>' +
+    $('endStats').innerHTML = '<tr><td></td>' + P.map(function (p, i) { return '<th style="color:' + G.R.pcol(i).light + '">' + G.CIVS[p.civ].flag + ' ' + esc(i === G.me ? 'Tu' : p.name && !p.ai ? p.name : G.CIVS[p.civ].name) + (p.alive ? '' : ' ✝') + '</th>'; }).join('') + '</tr>' +
       row('Scor', function (p) { return '<b>' + G.score(p.id) + '</b>'; }) +
       row('Epoca', function (p) { return G.AGE_ROMAN[p.age]; }) +
       row('Oameni făcuți', function (p) { return p.st.trained; }) +
