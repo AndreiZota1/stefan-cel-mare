@@ -285,7 +285,7 @@ G.NAR = G.NAR || {};
   var narLoaded = {};
   Camp.loadNar = function (id, cb) {
     if (narLoaded[id]) { cb(); return; }
-    var s = document.createElement('script'); s.src = 'js/nar/' + id + '.js';
+    var s = document.createElement('script'); s.src = 'js/nar/' + id + '.js' + (G.VER ? '?v=' + G.VER : '');
     var done = function () { narLoaded[id] = 1; cb(); };
     s.onload = done; s.onerror = done; document.head.appendChild(s);
   };

@@ -163,7 +163,7 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
       for (var i = 0; i < 8; i++) T.light(30 + i * 5, 48 + (i % 3) * 6, 2.5);
     },
     start: function (S, T) {
-      T.obj('o1', 'Pătrunde în tabără și dărâmă cortul cel mare al sultanului.');
+      T.obj('o1', 'Pătrunde în tabără și dărâmă cortul cel mare al sultanului (steagul roșu).');
       T.obj('o2', 'Dă foc corturilor (0/6).', { sec: 1 });
       T.obj('o3', 'Vlad trebuie să trăiască.', { sec: 1, quiet: 1 });
       T.say('vlad', 'Fără torțe până la margine. Când intrăm, să nu rămână un cort în picioare!', 'say1', 1);
@@ -171,6 +171,8 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
     timer: function (S) { return Math.max(0, 900 - S.t); },
     tick: function (S, T) {
       var v = S.scen.vars, burnt = 12 - T.alive('cortul');
+      // cortul cel mare, cu un steag roșu pe el (și în jocurile începute înainte de steag)
+      if (!v.cortMark) { v.cortMark = 1; var ct = T.byTag('cort')[0]; if (ct && !ct.dead) { T.mark('cort', ct.x, ct.y, 'Cortul sultanului', '#ff5a4a'); T.obj('o1', 'Pătrunde în tabără și dărâmă cortul cel mare al sultanului (steagul roșu).'); } }
       if (burnt !== v.burnt) { v.burnt = burnt; T.obj('o2', 'Dă foc corturilor (' + Math.min(6, burnt) + '/6).', { sec: 1 }); if (burnt >= 6) T.done('o2'); }
       if (!v.alarm && G.C.units.some(function (u) { return u.o === 1 && u.hit && S.t - u.hit < 1; })) {
         v.alarm = 1; T.say('ienicer', 'Alarmă! Ghiaurii sunt în tabără!', 'say2'); T.mode(1, 'eco'); T.aiGo(1);
@@ -186,7 +188,7 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
       if (v.esc && T.heroIn(0, 48, 8, 6) && !v.won) { v.won = 1; T.done('o4'); T.win(); }
     },
     triggers: [
-      { id: 'cort', when: function (S, T) { return !T.alive('cort'); }, do: function (S, T) { T.done('o1'); T.say('vlad', 'Cortul cel mare arde! Înapoi, spre munți!', 'say4'); } }
+      { id: 'cort', when: function (S, T) { return !T.alive('cort'); }, do: function (S, T) { T.done('o1'); T.unmark('cort'); T.say('vlad', 'Cortul cel mare arde! Înapoi, spre munți!', 'say4'); } }
     ]
   };
 

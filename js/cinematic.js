@@ -147,7 +147,7 @@ var G = globalThis.G || (globalThis.G = {});
   }
   function needNar() {
     if (G.NAR && G.NAR.film_c1) return Promise.resolve();
-    return new Promise(function (res) { var s = document.createElement('script'); s.src = 'js/nar/film.js'; s.onload = res; s.onerror = res; document.head.appendChild(s); });
+    return new Promise(function (res) { var s = document.createElement('script'); s.src = 'js/nar/film.js' + (G.VER ? '?v=' + G.VER : ''); s.onload = res; s.onerror = res; document.head.appendChild(s); });
   }
   var prepQ = [];
   function prep(name) {

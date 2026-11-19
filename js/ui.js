@@ -299,7 +299,7 @@ var G = globalThis.G || (globalThis.G = {});
     G.msg((who !== undefined ? G.ppl(who, true) + ': ' : '') + n + ' — ' + tt, who !== undefined ? 'alert' : 'info');
     var play = function () { if (!G.STRIGATE || !G.Audio || !G.Audio.on) return; var au = new Audio(G.STRIGATE[n - 1].a); au.volume = 0.9; au.play().catch(function () {}); };
     if (G.STRIGATE) play();
-    else { var sc = document.createElement('script'); sc.src = 'js/strigate.js'; sc.onload = play; document.head.appendChild(sc); }
+    else { var sc = document.createElement('script'); sc.src = 'js/strigate.js' + (G.VER ? '?v=' + G.VER : ''); sc.onload = play; document.head.appendChild(sc); }
   };
   // anunțul mare de la trecerea într-o epocă nouă
   var AGE_SUB = ['', 'Clădirile tale se schimbă: piatră în loc de lemn. Noi oșteni, tehnologii și turnuri.', 'Cetăți, universitate, fortăreață și unitatea ta unică.', 'Piatră cioplită și aur: țara ta e un imperiu. Oștenii cei mai buni.', 'Praful de pușcă și minunea. Ultima epocă.'];

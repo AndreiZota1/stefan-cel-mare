@@ -94,7 +94,7 @@ var G = globalThis.G || (globalThis.G = {});
         });
       });
     }
-    if (G.SUNETE) go(); else { var sc = document.createElement('script'); sc.src = 'js/sunete.js'; sc.onload = go; document.head.appendChild(sc); }
+    if (G.SUNETE) go(); else { var sc = document.createElement('script'); sc.src = 'js/sunete.js' + (G.VER ? '?v=' + G.VER : ''); sc.onload = go; document.head.appendChild(sc); }
   }
   // o înregistrare: una dintre variante, cu altă înălțime puțin, așezată stânga-dreapta după locul de pe ecran
   function playSample(k, x, y, vol, rate) {
@@ -202,7 +202,7 @@ var G = globalThis.G || (globalThis.G = {});
     load: function (civ) {
       if (!civ || civ === 'mol' || (G.VOCI_CIV && G.VOCI_CIV[civ]) || G.Voci['l_' + civ]) return;
       G.Voci['l_' + civ] = 1;
-      var sc = document.createElement('script'); sc.src = 'js/voci_' + civ + '.js'; sc.onerror = function () {}; document.head.appendChild(sc);
+      var sc = document.createElement('script'); sc.src = 'js/voci_' + civ + '.js' + (G.VER ? '?v=' + G.VER : ''); sc.onerror = function () {}; document.head.appendChild(sc);
     }
   };
   // units: oamenii cărora li s-a vorbit; kind: sel | ack | atk | build | alert | oto (strigătul dușmanului)
