@@ -110,13 +110,13 @@ export function C(col, kind = 'wool', rough = 0.92) {
   return cloth(col, kind, rough);
 }
 // metalele
-export const STEEL = () => cloth('#c4c9d0', 'gold', 0.3, { metal: 0.9, env: 1.2 });
+export const STEEL = () => cloth('#a9aeb6', 'gold', 0.34, { metal: 0.9, env: 1.0 });
 export const IRON = () => cloth('#6a6e75', 'gold', 0.45, { metal: 0.85 });
 export const DARKIRON = () => cloth('#3e4146', 'gold', 0.5, { metal: 0.8 });
 export const GOLD = () => cloth('#e0b445', 'gold', 0.28, { metal: 0.95, env: 1.3 });
 export const BRONZE = () => cloth('#b07a3a', 'gold', 0.35, { metal: 0.9, env: 1.2 });
 export const BRASS = () => cloth('#c89a48', 'gold', 0.32, { metal: 0.9 });
-export const MAIL = () => cloth('#b8bec6', 'mail', 0.42, { metal: 0.85, env: 1.1 });
+export const MAIL = () => cloth('#9da3ab', 'mail', 0.46, { metal: 0.85, env: 0.95 });
 export const LAMELLAR = (hex = '#a9aeb5') => cloth(hex, 'lamellar', 0.4, { metal: 0.8 });
 export const SCALES = (hex = '#b5b9bf') => cloth(hex, 'scales', 0.4, { metal: 0.8 });
 export const WOOD = (hex = '#7a5634') => { const k = 'wood' + hex; if (!MC[k]) MC[k] = new THREE.MeshStandardMaterial({ map: tex('medieval_wood'), color: new THREE.Color(hex).multiplyScalar(1.6), roughness: 0.85, side: THREE.DoubleSide }); return MC[k]; };

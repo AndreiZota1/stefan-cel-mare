@@ -14,7 +14,7 @@ const CELL = { foot: [60, 60, 26, 46], cav: [84, 76, 38, 58], siege: [110, 100, 
 const out = r => ({ webp: r.webp, mask: r.mask, lit: r.lit, snow: r.snow, meta: r.meta });
 window.bakeUnit = async (vis, civ, k) => {
   const m = unitModel(vis, civ); await texturesReady();
-  const r = bakeSheet({ root: m.root, reset: m.reset, actions: m.actions, k, ss: 2, shadow: m.cell === 'siege' ? 1.8 : 1.3, guess: CELL[m.cell], pad: 2 });
+  const r = bakeSheet({ root: m.root, reset: m.reset, actions: m.actions, k, ss: 2, shadow: m.cell === 'siege' ? 1.8 : 1.3, guess: CELL[m.cell], pad: 2, real: true, ao: m.cell === 'siege' ? 0.1 : 0.07 });
   r.meta.cell = m.cell; return out(r);
 };
 window.bakeUnitIcon = async (vis, civ) => {
@@ -49,7 +49,7 @@ import('./nature2.js').then(N2 => {
     else m = await N2.natModel(kind, v, winter);
     await texturesReady();
     const g = m.guess || [120, 150, 50, 125];
-    const r = bakeStill({ root: m.root, k, ss: 2, shadow: m.shadow || 1.8, guess: g, pad: 3, noMask: true });
+    const r = bakeStill({ root: m.root, k, ss: 2, shadow: m.shadow || 1.8, guess: g, pad: 3, noMask: true, hull: kind === 'tree' });
     return out(r);
   };
   window.natReady = true;

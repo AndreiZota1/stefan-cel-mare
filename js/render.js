@@ -825,10 +825,8 @@ var G = globalThis.G || (globalThis.G = {});
       else if (o.k === 'b') drawBld(o, sel[o.id]);
       else drawUnit(o, sel[o.id]);
     }
-    // oamenii ascunși după copaci și clădiri rămân vizibili ca siluete străvezii, ca în AoE
-    ctx.globalAlpha = 0.34;
-    for (var jg = 0; jg < list.length; jg++) { var og = list[jg]; if (og.k === 'u') ghostUnit(og); }
-    ctx.globalAlpha = 1;
+    // oamenii ascunși după copaci și clădiri: o siluetă în culoarea lor, doar pe partea acoperită (ca în AoE2)
+    hiddenUnits(list);
 
     // proiectile
     S.proj.forEach(function (p) {
@@ -1277,7 +1275,9 @@ var G = globalThis.G || (globalThis.G = {});
     }
     if (u.t === 'vil' && u.wk > 0) { var nm = TOOLACT[vilTool(u)]; if (nm && A[nm]) return [nm, Math.floor(u.an * 5.5) % A[nm].frames]; }
     if (u.mv > 0 && A.walk) { var cl = G.UNITS[u.t].cls; return ['walk', Math.floor(u.an * G.UNITS[u.t].spd * (cl === 'cav' || cl === 'har' ? 5 : 7)) % A.walk.frames]; }
-    return ['idle', 0];
+    // cât stă: respiră și se uită în jur, fiecare în ritmul lui
+    var fi = A.idle && A.idle.frames > 1 ? Math.floor(((clock * 0.3 + (u.id % 13) * 0.137) % 1) * A.idle.frames) : 0;
+    return ['idle', fi];
   }
   function bakedFrame(g, sh, act, frame, d8, sx, sy, scale, col) {
     var B = sh.B, A = B.actions[act] || B.actions.idle, d = d8 <= 4 ? d8 : 8 - d8;
@@ -1295,13 +1295,82 @@ var G = globalThis.G || (globalThis.G = {});
     bakedFrame(g, sh, act, frame, d8, sx, sy, scale / sh.B.k, col || G.PCOL[0].color); return true;
   };
   var USCALE = 1.1;
-  function ghostUnit(u) {
-    var p = R.w2s(u.x, u.y);
-    if (p[0] < -40 || p[0] > W + 40 || p[1] < -10 || p[1] > H + 50) return;
-    var sh = unitSheet(u);
-    if (!sh) return;
-    var ua = unitAction(u, sh.B.actions);
-    bakedFrame(ctx, sh, ua[0], ua[1], u.dir8 || 0, p[0], p[1], cam.z * USCALE * (G.UNITS[u.t].hero ? 1.08 : 1) / sh.B.k, pcol(u.o).color);
+
+  // ---------- oamenii ascunși după copaci și clădiri: doar conturul lor, pe partea acoperită (ca în AoE2) ----------
+  // Ce acoperă se știe din forma copacului (conturul randat odată cu el) sau a clădirii (prisma ei), fără citit pixeli.
+  function treeShape(o) {
+    var v = (G.hash2(o.tx, o.ty, 3) * 8) | 0, s = natSprite('tree', v); if (!s) return null;
+    var k = cam.z * (0.86 + G.hash2(o.tx, o.ty, 4) * 0.28), p = R.w2s(o.x, o.y), win = G.S.map && G.S.map.season === 'iarna';
+    var B2 = G.BAKED2 && (G.BAKED2['n/' + (win && G.BAKED2['n/treeS' + v] ? 'treeS' : 'tree') + v]), x0 = p[0] - s.ax * k, y0 = p[1] - s.ay * k;
+    if (B2 && B2.hull && B2.hull.length > 2) return { pts: B2.hull.map(function (q) { return [x0 + q[0] * k, y0 + q[1] * k]; }) };
+    return { ell: [p[0], p[1] - s.ay * k * 0.55, s.w * k * 0.3, s.ay * k * 0.5] };
+  }
+  function bldShape(o) {
+    var s = bldSprite(o.t, G.S.players[o.o].civ, o), T = R.bTop(o.tx, o.ty, o.n), z = cam.z, n = o.n, top = T[1] - (s ? s.ay : 40 + n * 30) * z;
+    return { pts: [[T[0] - n * 32 * z, T[1] + n * 16 * z], [T[0] - n * 32 * z, top], [T[0] + n * 32 * z, top], [T[0] + n * 32 * z, T[1] + n * 16 * z], [T[0], T[1] + n * 32 * z]] };
+  }
+  function shapeBox(sh) {
+    if (sh.ell) { var e = sh.ell; return [e[0] - e[2], e[1] - e[3], e[0] + e[2], e[1] + e[3]]; }
+    var b = [1e9, 1e9, -1e9, -1e9]; sh.pts.forEach(function (q) { b[0] = Math.min(b[0], q[0]); b[1] = Math.min(b[1], q[1]); b[2] = Math.max(b[2], q[0]); b[3] = Math.max(b[3], q[1]); }); return b;
+  }
+  // conturul unui cadru, în culoarea jucătorului: linia de un pixel și o umbră slabă a trupului (fără umbra de pe sol)
+  var olCache = new Map();
+  function outlineFrame(sh, act, frame, d, col) {
+    var B = sh.B, A = B.actions[act] || B.actions.idle, f = Math.min(frame, A.frames - 1), key = sh.key + '|' + act + f + '|' + d + '|' + col, c = olCache.get(key);
+    if (c) return c;
+    var P = 2, w = B.W + P * 2, h = B.H + P * 2, cx = f * B.W, cy = (A.row + d) * B.H;
+    c = document.createElement('canvas'); c.width = w; c.height = h;
+    var g = c.getContext('2d'); g.drawImage(sh.img, cx, cy, B.W, B.H, P, P, B.W, B.H);
+    var rgb = /^#/.test(col) ? [parseInt(col.slice(1, 3), 16), parseInt(col.slice(3, 5), 16), parseInt(col.slice(5, 7), 16)] : [255, 255, 255];
+    try {
+      var im = g.getImageData(0, 0, w, h), dd = im.data, n = w * h, sol = new Uint8Array(n), i;
+      for (i = 0; i < n; i++) sol[i] = dd[i * 4 + 3] > 150 ? 1 : 0;
+      for (i = 0; i < n; i++) {
+        var x = i % w, y = (i - x) / w, a = 0;
+        if (sol[i]) a = 0.22;
+        else if (x > 0 && y > 0 && x < w - 1 && y < h - 1) { var n4 = sol[i - 1] + sol[i + 1] + sol[i - w] + sol[i + w], n8 = sol[i - w - 1] + sol[i - w + 1] + sol[i + w - 1] + sol[i + w + 1]; a = n4 ? 1 : n8 ? 0.6 : 0; }
+        dd[i * 4] = rgb[0]; dd[i * 4 + 1] = rgb[1]; dd[i * 4 + 2] = rgb[2]; dd[i * 4 + 3] = Math.round(a * 255);
+      }
+      g.putImageData(im, 0, 0);
+    } catch (e) {
+      // din file:// pixelii nu se pot citi: silueta plină, străvezie
+      g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, w, h); g.globalCompositeOperation = 'source-over'; c.soft = 1;
+    }
+    olCache.set(key, c);
+    if (olCache.size > 1500) { var it = olCache.keys(); for (var q = 0; q < 300; q++) olCache.delete(it.next().value); }
+    return c;
+  }
+  function hiddenUnits(list) {
+    if (R.noSil) return;
+    var occ = [], i, k, z = cam.z;
+    for (i = 0; i < list.length; i++) {
+      var o = list[i], sh = null;
+      if (o.k === 'r' && o.t === 'tree') sh = treeShape(o);
+      else if (o.k === 'b' && !G.BLDS[o.t].walk) sh = bldShape(o);
+      if (sh) occ.push([i, shapeBox(sh), sh]);
+    }
+    if (!occ.length) return;
+    for (i = 0; i < list.length; i++) {
+      var u = list[i]; if (u.k !== 'u' || u.dead) continue;
+      var c = G.UNITS[u.t].cls, big = c === 'cav' || c === 'har' || c === 'sie', p = R.w2s(u.x, u.y);
+      var bb = [p[0] - (big ? 30 : 17) * z, p[1] - (big ? 62 : 50) * z, p[0] + (big ? 30 : 17) * z, p[1] + 4 * z], cov = [];
+      for (k = 0; k < occ.length; k++) { var q = occ[k]; if (q[0] <= i) continue; var b = q[1]; if (b[0] < bb[2] && b[2] > bb[0] && b[1] < bb[3] && b[3] > bb[1]) cov.push(q[2]); }
+      if (!cov.length) continue;
+      var shs = unitSheet(u); if (!shs) continue;
+      var ua = unitAction(u, shs.B.actions), d8 = u.dir8 || 0, d = d8 <= 4 ? d8 : 8 - d8, olc = outlineFrame(shs, ua[0], ua[1], d, pcol(u.o).color);
+      var scale = z * USCALE * (G.UNITS[u.t].hero ? 1.08 : 1) / shs.B.k, B = shs.B;
+      ctx.save();
+      ctx.beginPath();
+      cov.forEach(function (sh) {
+        if (sh.ell) { ctx.moveTo(sh.ell[0] + sh.ell[2], sh.ell[1]); ctx.ellipse(sh.ell[0], sh.ell[1], sh.ell[2], sh.ell[3], 0, 0, 6.2832); }
+        else { ctx.moveTo(sh.pts[0][0], sh.pts[0][1]); for (var j = 1; j < sh.pts.length; j++) ctx.lineTo(sh.pts[j][0], sh.pts[j][1]); ctx.closePath(); }
+      });
+      ctx.clip('nonzero');
+      ctx.globalAlpha = olc.soft ? 0.35 : 0.95;
+      if (d8 > 4) { ctx.translate(p[0], p[1]); ctx.scale(-1, 1); ctx.drawImage(olc, -(B.ax + 2) * scale, -(B.ay + 2) * scale, olc.width * scale, olc.height * scale); }
+      else ctx.drawImage(olc, p[0] - (B.ax + 2) * scale, p[1] - (B.ay + 2) * scale, olc.width * scale, olc.height * scale);
+      ctx.restore();
+    }
   }
   function drawUnit(u, selected) {
     var S = G.S, z = cam.z, p = R.w2s(u.x, u.y), d = G.UNITS[u.t], civ = S.players[u.o].civ;

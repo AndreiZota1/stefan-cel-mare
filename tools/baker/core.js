@@ -1,6 +1,10 @@
 // Scena 3D pentru randarea sprite-urilor: cameră izometrică (30°, ca în AoE2), soare cu umbre, sol transparent.
 // v2: a doua trecere pentru masca de culoare a jucătorului, încadrare automată (celula strânsă), ieșire WebP.
 import * as THREE from 'three';
+import { EffectComposer } from '/node_modules/three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from '/node_modules/three/examples/jsm/postprocessing/RenderPass.js';
+import { GTAOPass } from '/node_modules/three/examples/jsm/postprocessing/GTAOPass.js';
+import { OutputPass } from '/node_modules/three/examples/jsm/postprocessing/OutputPass.js';
 export { THREE };
 
 export const PX = 45.2548; // pixeli pe unitate (latura unui pătrățel) la zoom 1
@@ -65,10 +69,33 @@ export function frameCell(W, H, ax, ay, k) {
   camera.left = -ax / P; camera.right = (W - ax) / P; camera.top = ay / P; camera.bottom = -(H - ay) / P;
   camera.updateProjectionMatrix();
 }
-function renderTo(ctx, dx, dy, W, H, ss) {
+// ocluzia ambientală (GTAO): umbre fine la subsuori, sub pălării, între falduri, unde lumina nu ajunge
+let composer = null, gtao = null;
+function renderAO(w, h, radius) {
+  if (!composer) {
+    composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    gtao = new GTAOPass(scene, camera, w, h); gtao.output = GTAOPass.OUTPUT.Default; gtao.blendIntensity = 1.0;
+    composer.addPass(gtao); composer.addPass(new OutputPass());
+  }
+  composer.setPixelRatio(1); composer.setSize(w, h);
+  gtao.updateGtaoMaterial({ radius: radius || 0.08, distanceExponent: 1.6, thickness: 0.05, scale: 1.25, samples: 16, distanceFallOff: 1.0 });
+  gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, rings: 2, samples: 16 });
+  composer.render();
+}
+function renderTo(ctx, dx, dy, W, H, ss, ao) {
   renderer.setSize(W * ss, H * ss, false);
-  renderer.render(scene, camera);
+  if (ao) renderAO(W * ss, H * ss, ao); else renderer.render(scene, camera);
   ctx.drawImage(renderer.domElement, 0, 0, W * ss, H * ss, dx, dy, W, H);
+}
+// lumina oamenilor: soarele mai tare, cerul mai slab (volum și contrast), plus o lumină din spate care le desenează conturul
+export const rim = new THREE.DirectionalLight(0xdfe8ff, 0); rim.position.set(3.5, 2.8, -4.5); scene.add(rim);
+// soarele vine din spate-stânga (umbrele pe sol rămân ca la clădiri), deci fața oamenilor ar sta în umbră;
+// o lumină caldă din față-stânga, fără umbră, le dă volum: partea stângă luminată, dreapta în penumbră
+export const key = new THREE.DirectionalLight(0xfff2dc, 0); key.position.set(-2.2, 4.2, 4.6); scene.add(key);
+function unitLight(on) {
+  if (on) { hemi.intensity = 0.85; sun.intensity = 2.6; rim.intensity = 1.6; key.intensity = 2.6; }
+  else { hemi.intensity = 1.7; sun.intensity = 3.3; rim.intensity = 0; key.intensity = 0; }
 }
 
 // cele 5 direcții randate (ecran): S, SV, V, NV, N; restul se oglindesc
@@ -183,13 +210,45 @@ export function bakeSheet(spec) {
   frameCell(W, H, ax, ay, k);
   const meta = { W, H, ax, ay, k, actions: {} };
   A.forEach((a, ai) => { meta.actions[a.name] = { row: ai * ND, frames: a.frames, loop: a.loop !== false }; });
+  if (spec.real) unitLight(true);
   each((ai, d, f) => {
-    renderTo(ctx, f * W, (ai * ND + d) * H, W, H, ss);
+    renderTo(ctx, f * W, (ai * ND + d) * H, W, H, ss, spec.real ? spec.ao || 0.07 : 0);
     if (team) { const undo = maskOn(spec.root); renderTo(mctx, f * W, (ai * ND + d) * H, W, H, ss); undo(); }
   });
+  unitLight(false);
+  if (spec.real) outline(sheet);
   scene.remove(spec.root);
   if (team) { finishMask(msheet); meta.mask = true; }
   return { webp: sheet.toDataURL('image/webp', Q), mask: team ? msheet.toDataURL('image/webp', Q) : null, meta, canvas: sheet, mcanvas: msheet };
+}
+
+// un contur închis, de un pixel, în jurul siluetei (nu și al umbrei de pe sol): oamenii se desprind de iarbă, ca în AoE2
+function outline(canvas, a = 0.5) {
+  const c = canvas.getContext('2d'), w = canvas.width, h = canvas.height, im = c.getImageData(0, 0, w, h), d = im.data;
+  const solid = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) solid[i] = d[i * 4 + 3] > 160 ? 1 : 0;
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x; if (solid[i]) continue;
+    const n = solid[i - 1] + solid[i + 1] + solid[i - w] + solid[i + w], n2 = solid[i - w - 1] + solid[i - w + 1] + solid[i + w - 1] + solid[i + w + 1];
+    if (!n && !n2) continue;
+    const ao = a * (n ? 1 : 0.5), o = i * 4, ae = d[o + 3] / 255, oa = ae + ao * (1 - ae);
+    if (oa <= 0) continue;
+    for (let k = 0; k < 3; k++) d[o + k] = Math.round((d[o + k] * ae + [22, 17, 12][k] * ao * (1 - ae)) / oa);
+    d[o + 3] = Math.round(oa * 255);
+  }
+  c.putImageData(im, 0, 0);
+}
+
+// conturul simplificat al părții opace (fără umbra de pe sol), în pixeli la zoom 1: jocul îl folosește
+// ca să știe ce acoperă un copac (siluetele oamenilor ascunși), fără să citească pixeli
+function hull(canvas, k) {
+  const c = canvas.getContext('2d'), w = canvas.width, h = canvas.height, d = c.getImageData(0, 0, w, h).data, L = [], R = [], step = Math.max(2, Math.round(h / 28));
+  for (let y = 0; y < h; y += step) {
+    let x0 = -1, x1 = -1;
+    for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 200) { if (x0 < 0) x0 = x; x1 = x; }
+    if (x0 >= 0) { L.push([+(x0 / k).toFixed(1), +(y / k).toFixed(1)]); R.push([+((x1 + 1) / k).toFixed(1), +(y / k).toFixed(1)]); }
+  }
+  return L.concat(R.reverse());
 }
 
 // o singură imagine (clădiri, copaci, resurse)
@@ -206,6 +265,7 @@ export function bakeStill(spec) {
   if (team) { mc = mkCanvas(W, H); const undo = maskOn(spec.root); renderTo(mc.getContext('2d'), 0, 0, W, H, ss); undo(); finishMask(mc); }
   const meta = { W, H, ax, ay, k };
   if (team) meta.mask = true;
+  if (spec.hull) meta.hull = hull(c, k);
   let lc = null, sc2 = null;
   if (spec.lit && hasFlag(spec.root, 'win')) { lc = mkCanvas(W, H); const undo = passOn(spec.root, litPick); renderTo(lc.getContext('2d'), 0, 0, W, H, ss); undo(); finishMask(lc); meta.lit = true; }
   if (spec.snow) { sc2 = mkCanvas(W, H); const undo = passOn(spec.root, snowPick); renderTo(sc2.getContext('2d'), 0, 0, W, H, ss); undo(); finishMask(sc2); meta.snow = true; }

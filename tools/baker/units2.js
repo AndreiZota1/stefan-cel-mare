@@ -6,13 +6,41 @@ import { C, cloth, team, STEEL, IRON, DARKIRON, GOLD, BRONZE, BRASS, MAIL, LAMEL
 function mesh(geo, mat) { const m = new THREE.Mesh(geo, mat); m.castShadow = true; m.receiveShadow = true; return m; }
 function cyl(rt, rb, h, mat, seg = 12, open = false, ts, tl) { return mesh(new THREE.CylinderGeometry(rt, rb, h, seg, 1, open, ts, tl), mat); }
 function limb(rt, rb, len, mat) { const g = new THREE.CylinderGeometry(rt, rb, len, 9); g.translate(0, -len / 2, 0); return mesh(g, mat); }
+// membru de om: capete rotunde (încheietura e acoperită și când se îndoaie), puțin bombat la mijloc
+function limbR(rt, rb, len, mat, bulge = 0.08) {
+  const P = [];
+  for (let i = 0; i <= 5; i++) { const a = -Math.PI / 2 + i / 5 * Math.PI / 2; P.push(new THREE.Vector2(rb * Math.cos(a), -len + rb * Math.sin(a))); }
+  for (let i = 1; i < 4; i++) { const t = i / 4, r = rb + (rt - rb) * t; P.push(new THREE.Vector2(r * (1 + bulge * Math.sin(t * Math.PI)), -len * (1 - t))); }
+  for (let i = 0; i <= 5; i++) { const a = i / 5 * Math.PI / 2; P.push(new THREE.Vector2(Math.max(1e-4, rt * Math.cos(a)), rt * Math.sin(a))); }
+  return mesh(new THREE.LatheGeometry(P, 12), mat);
+}
 function sph(r, mat, ws = 14, hs = 10) { return mesh(new THREE.SphereGeometry(r, ws, hs), mat); }
+function dome(r, mat) { return hsph(r, mat, 24, 12); }
 function hsph(r, mat, ws = 14, hs = 8) { return mesh(new THREE.SphereGeometry(r, ws, hs, 0, Math.PI * 2, 0, Math.PI / 2), mat); }
 function box(x, y, z, mat) { return mesh(new THREE.BoxGeometry(x, y, z), mat); }
 function cone(r, h, mat, seg = 12) { return mesh(new THREE.ConeGeometry(r, h, seg), mat); }
 function torus(r, t, mat, rs = 8, ts = 18, arc) { return mesh(new THREE.TorusGeometry(r, t, rs, ts, arc), mat); }
 function at(o, x, y, z, rx, ry, rz) { o.position.set(x || 0, y || 0, z || 0); o.rotation.set(rx || 0, ry || 0, rz || 0); return o; }
-const M = (c, kind, rough) => (c && c.isMaterial) ? c : C(c, kind || 'wool', rough || 0.9);
+// albul de pânză nu strălucește: in natural, cu umbră pe el (altfel oamenii par fantome palide)
+function soften(c) {
+  if (typeof c !== 'string' || c[0] !== '#' || c.length !== 7) return c;
+  const n = parseInt(c.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255, l = (r * 0.3 + g * 0.55 + b * 0.15) / 255;
+  if (l < 0.7) return c;
+  const k = (0.7 + (l - 0.7) * 0.3) / l, f = v => Math.round(v * k).toString(16).padStart(2, '0');
+  return '#' + f(r) + f(g) + f(b * 0.97);
+}
+const M = (c, kind, rough) => (c && c.isMaterial) ? c : C(soften(c), kind || 'wool', rough || 0.9);
+// haină cu falduri: secțiunea se ondulează, mai tare spre poale, ca să pară stofă căzută, nu un con
+function folded(rt, rb, h, mat, n = 9, amp = 0.1, open = true, ts, tl) {
+  const g = new THREE.CylinderGeometry(rt, rb, h, 40, 5, open, ts, tl), P = g.attributes.position, ph = (rt * 977 + rb * 613) % 6.28;
+  for (let i = 0; i < P.count; i++) {
+    const x = P.getX(i), y = P.getY(i), z = P.getZ(i), a = Math.atan2(z, x), t = 0.5 - y / h;
+    const k = 1 + amp * (0.25 + 0.75 * t) * (Math.sin(a * n + ph) * 0.7 + Math.sin(a * n * 2.3 + 1.7 + ph) * 0.3);
+    P.setXYZ(i, x * k, y, z * k);
+  }
+  g.computeVertexNormals();
+  return mesh(g, mat);
+}
 
 // ---------- coifuri, căciuli, pălării (pe cap; +x = înainte) ----------
 function aventail(h, mat, len = 0.05) { const a = cyl(0.05, 0.058, len, mat || MAIL(), 16, true, Math.PI * 0.35, Math.PI * 1.3); at(a, -0.004, -0.018); h.add(a); }
@@ -20,7 +48,7 @@ function plume(h, col, y = 0.08, x = -0.01, big = 1) {
   for (let i = 0; i < 3; i++) { const p = cyl(0.006 * big, 0.002, 0.08 * big, M(col, 'velvet'), 5); at(p, x - i * 0.012, y + 0.03 * big, (i - 1) * 0.008, 0, 0, 0.55 + i * 0.12); h.add(p); }
 }
 const HATS = {
-  cusma(h, o) { const c = cyl(0.048, 0.052, 0.1, M(o.hatCol || '#1e1712', 'fleece', 1), 14); at(c, 0, 0.052); h.add(c); h.add(at(hsph(0.048, M(o.hatCol || '#1e1712', 'fleece', 1)), 0, 0.1)); },
+  cusma(h, o) { const m = M(o.hatCol || '#1e1712', 'fleece', 1), c = cyl(0.042, 0.05, 0.068, m, 16); at(c, -0.004, 0.04, 0, 0, 0, 0.1); h.add(c); const t = hsph(0.042, m); t.scale.y = 0.45; h.add(at(t, -0.008, 0.074, 0, 0, 0, 0.1)); },
   kalpak(h, o) {
     const c = cyl(0.04, 0.05, 0.1, M(o.hatCol || '#7a1418', 'velvet'), 14); at(c, -0.008, 0.055, 0, 0, 0, 0.18); h.add(c);
     h.add(at(torus(0.048, 0.012, M('#2a1a10', 'fur'), 6, 16), 0, 0.012, 0, Math.PI / 2));
@@ -194,13 +222,16 @@ export function human(o) {
   const R = { root: new THREE.Group(), o };
   const hips = new THREE.Group(); hips.position.y = 0.285; R.root.add(hips); R.hips = hips;
   const torso = new THREE.Group(); hips.add(torso); R.torso = torso;
-  const chest = cyl(0.058, 0.05, 0.195, M(o.shirt, o.shirtK || 'linen'), 14); at(chest, 0, 0.095); chest.scale.set(0.74, 1, 1); torso.add(chest);
+  // trunchiul: talie strânsă, piept, umeri căzuți (profil rotit, turtit în față-spate)
+  const prof = [[0.046, 0], [0.047, 0.03], [0.052, 0.07], [0.058, 0.11], [0.061, 0.145], [0.058, 0.172], [0.045, 0.192], [0.024, 0.204]].map(p => new THREE.Vector2(p[0], p[1]));
+  const chest = mesh(new THREE.LatheGeometry(prof, 22), M(o.shirt, o.shirtK || 'linen')); chest.scale.set(0.8, 1, 1.04); torso.add(chest);
+  const yoke = sph(0.06, M(o.shirt, o.shirtK || 'linen'), 18, 10); yoke.scale.set(0.74, 0.42, 1.22); at(yoke, 0, 0.172); torso.add(yoke);
   if (o.vest) { const v = cyl(0.062, 0.055, 0.15, M(o.vest, o.vestK || 'fleece'), 14, true); at(v, 0, 0.1); v.scale.set(0.76, 1, 1); torso.add(v); }
   if (o.armor) { const a = cyl(0.062, 0.056, 0.165, o.armor, 14); at(a, 0, 0.102); a.scale.set(0.77, 1, 1); torso.add(a); }
   if (o.tabard) { const t = cyl(0.064, 0.074, 0.22, M(o.tabard, 'velvet'), 14, true); at(t, 0, 0.06); t.scale.set(0.78, 1, 1); torso.add(t); }
   if (o.cuirass) { const c = sph(0.064, o.cuirass, 14, 10); c.scale.set(0.8, 1.15, 1.02); at(c, 0.01, 0.11); torso.add(c); }
   const sl = o.len === 'robe' ? 0.25 : o.len === 'long' ? 0.2 : o.len === 'tunic' ? 0.15 : 0.1;
-  const skirt = cyl(0.051, o.len === 'robe' ? 0.095 : 0.074, sl, M(o.skirt || o.shirt, o.skirtK || o.shirtK || 'wool'), 14, true);
+  const skirt = folded(0.05, o.len === 'robe' ? 0.082 : 0.066, sl, M(o.skirt || o.shirt, o.skirtK || o.shirtK || 'wool'), o.len === 'robe' ? 10 : 8, o.len === 'robe' ? 0.13 : 0.1);
   at(skirt, 0, -sl / 2 + 0.012); skirt.scale.set(0.86, 1, 1); torso.add(skirt);
   if (o.belt) { const b = cyl(0.054, 0.054, 0.024, M(o.belt, o.beltK || 'leather'), 14); at(b, 0, 0.012); b.scale.set(0.78, 1, 1); torso.add(b); }
   if (o.sash) { const b = cyl(0.055, 0.055, 0.04, M(o.sash, 'velvet'), 14); at(b, 0, 0.016); b.scale.set(0.79, 1, 1); torso.add(b); }
@@ -213,36 +244,40 @@ export function human(o) {
   neck.add(at(cyl(0.018, 0.02, 0.04, SKINM(o.skin)), 0, 0.012));
   if (o.collar) neck.add(at(torus(0.024, 0.01, M(o.collar, 'fur'), 6, 14), 0, 0.0, 0, Math.PI / 2));
   const head = new THREE.Group(); head.position.y = 0.058; neck.add(head); R.head = head;
-  const hd = sph(0.043, SKINM(o.skin), 16, 12); hd.scale.set(0.96, 1.06, 0.9); head.add(hd);
-  head.add(at(box(0.014, 0.016, 0.011, SKINM(o.skin)), 0.042, -0.004));
-  [0.016, -0.016].forEach(z => head.add(at(sph(0.005, BLACK(), 6, 4), 0.038, 0.01, z)));
-  if (o.hair) { const h = sph(0.045, HAIRM(o.hair), 14, 10); h.scale.set(0.98, 0.72, 0.96); at(h, -0.006, 0.012); head.add(h); }
+  const hd = sph(0.039, SKINM(o.skin), 18, 14); hd.scale.set(0.98, 1.14, 0.88); head.add(hd);
+  const jaw = sph(0.03, SKINM(o.skin), 14, 10); jaw.scale.set(1.0, 0.8, 0.9); at(jaw, 0.008, -0.026); head.add(jaw);
+  head.add(at(box(0.012, 0.016, 0.01, SKINM(o.skin)), 0.039, -0.006));
+  [0.014, -0.014].forEach(z => { head.add(at(sph(0.0042, BLACK(), 6, 4), 0.034, 0.008, z)); head.add(at(box(0.004, 0.003, 0.011, HAIRM(o.mustache || o.hair || '#3a2414')), 0.036, 0.016, z)); });
+  [0.036, -0.036].forEach(z => { const e = sph(0.008, SKINM(o.skin), 8, 6); e.scale.set(0.6, 1, 0.5); head.add(at(e, -0.004, -0.004, z)); });
+  if (o.hair) { const h = sph(0.041, HAIRM(o.hair), 14, 10); h.scale.set(0.98, 0.74, 0.94); at(h, -0.006, 0.014); head.add(h); }
   if (o.longHair) { const lh = box(0.03, 0.08, 0.075, HAIRM(o.hair || '#4a3020')); at(lh, -0.03, -0.025); head.add(lh); }
-  if (o.mustache) { const m = box(0.01, 0.009, 0.05, HAIRM(o.mustache)); at(m, 0.041, -0.02); head.add(m); if (o.longMus) [1, -1].forEach(s => head.add(at(box(0.008, 0.03, 0.008, HAIRM(o.mustache)), 0.04, -0.035, 0.026 * s))); }
-  if (o.beard) { const b = sph(0.032, HAIRM(o.beard), 12, 8); b.scale.set(0.8, o.longBeard ? 1.6 : 1.05, 1.1); at(b, 0.022, o.longBeard ? -0.05 : -0.038); head.add(b); }
+  if (o.mustache) { const m = box(0.01, 0.008, 0.044, HAIRM(o.mustache)); at(m, 0.037, -0.019); head.add(m); if (o.longMus) [1, -1].forEach(s => head.add(at(box(0.008, 0.03, 0.008, HAIRM(o.mustache)), 0.04, -0.035, 0.026 * s))); }
+  if (o.beard) { const b = sph(0.03, HAIRM(o.beard), 12, 8); b.scale.set(0.8, o.longBeard ? 1.6 : 1.05, 1.08); at(b, 0.02, o.longBeard ? -0.05 : -0.038); head.add(b); }
   if (o.hat) HATS[o.hat](head, o);
   ['L', 'R'].forEach(side => {
     const s = side === 'L' ? 1 : -1;
-    const sh = new THREE.Group(); sh.position.set(0, 0.172, 0.071 * s); torso.add(sh);
-    sh.add(at(sph(0.022, M(o.sleeve || o.shirt, o.sleeveK || o.shirtK || 'linen')), 0, 0));
-    sh.add(limb(0.02, 0.017, 0.115, M(o.sleeve || o.shirt, o.sleeveK || o.shirtK || 'linen')));
-    const el = new THREE.Group(); el.position.y = -0.115; sh.add(el);
-    el.add(limb(0.017, 0.014, 0.1, M(o.cuff || o.sleeve || o.shirt, o.cuffK || o.sleeveK || o.shirtK || 'linen')));
-    const hand = new THREE.Group(); hand.position.y = -0.105; el.add(hand);
-    hand.add(sph(0.017, o.gauntlet || SKINM(o.skin), 10, 8));
+    const sh = new THREE.Group(); sh.position.set(0, 0.17, 0.074 * s); torso.add(sh);
+    sh.add(at(sph(0.026, M(o.sleeve || o.shirt, o.sleeveK || o.shirtK || 'linen')), 0, -0.004));
+    sh.add(limbR(0.025, 0.02, 0.112, M(o.sleeve || o.shirt, o.sleeveK || o.shirtK || 'linen'), 0.12));
+    const el = new THREE.Group(); el.position.y = -0.112; sh.add(el);
+    const baggy = !o.cuff && (o.sleeveK || o.shirtK || 'linen') === 'linen' && !(o.sleeve && o.sleeve.isMaterial);
+    el.add(limbR(0.02, baggy ? 0.021 : 0.016, 0.098, M(o.cuff || o.sleeve || o.shirt, o.cuffK || o.sleeveK || o.shirtK || 'linen'), baggy ? 0.16 : 0.1));
+    const hand = new THREE.Group(); hand.position.y = -0.104; el.add(hand);
+    const palm = sph(0.0195, o.gauntlet || SKINM(o.skin), 10, 8); palm.scale.set(0.85, 1.15, 0.7); hand.add(palm);
     R['sh' + side] = sh; R['el' + side] = el; R['hand' + side] = hand;
   });
   ['L', 'R'].forEach(side => {
     const s = side === 'L' ? 1 : -1;
     const hip = new THREE.Group(); hip.position.set(0, 0, 0.03 * s); hips.add(hip);
-    hip.add(limb(0.025, 0.019, 0.135, M(o.pants, o.pantsK || 'wool')));
+    hip.add(limbR(0.031, 0.022, 0.135, M(o.pants, o.pantsK || 'wool'), 0.1));
     const kn = new THREE.Group(); kn.position.y = -0.135; hip.add(kn);
-    kn.add(limb(0.019, 0.015, 0.125, M(o.legwrap || o.pants, o.legK || o.pantsK || 'wool')));
-    kn.add(at(box(0.058, 0.024, 0.032, M(o.boots, 'leather')), 0.014, -0.128));
+    const calf = limbR(0.022, 0.015, 0.122, M(o.legwrap || o.pants, o.legK || o.pantsK || 'wool'), 0.18); kn.add(calf);
+    const boot = box(0.05, 0.024, 0.03, M(o.boots, 'leather')); at(boot, 0.012, -0.128); kn.add(boot);
+    const toe = sph(0.016, M(o.boots, 'leather'), 10, 6); toe.scale.set(1.2, 0.7, 0.95); kn.add(at(toe, 0.038, -0.132));
     if (o.highBoots) kn.add(at(cyl(0.02, 0.018, 0.08, M(o.boots, 'leather'), 8), 0, -0.085));
     R['hip' + side] = hip; R['kn' + side] = kn;
   });
-  if (o.cloak) { const c = cyl(0.064, 0.115, 0.34, M(o.cloak, 'velvet'), 16, true, Math.PI * 1.05, Math.PI * 0.9); at(c, -0.005, 0.03); torso.add(c); R.cloak = c; }
+  if (o.cloak) { const c = folded(0.064, 0.115, 0.34, M(o.cloak, 'velvet'), 11, 0.13, true, Math.PI * 1.05, Math.PI * 0.9); at(c, -0.005, 0.03); torso.add(c); R.cloak = c; }
   if (o.weapon) { const w = tool(o.weapon); R.handR.add(w); R.weapon = w; }
   if (o.shield) { const sd = shield(o.shield, o.shieldCol || 'T'); at(sd, 0.01, -0.05, 0.03, 0, 0, 0); R.elL.add(sd); R.shieldObj = sd; }
   if (o.bow) { const b = tool(o.bow === true ? 'bow' : o.bow); R.handL.add(b); R.bow = b; }
@@ -254,9 +289,10 @@ export function human(o) {
     R.root.position.set(0, R.baseY || 0, 0); R.root.rotation.x = 0; R.root.rotation.z = 0;
     R.hips.position.y = 0.285; R.hips.rotation.set(0, 0, 0);
     R.torso.rotation.set(0, 0, 0); R.head.rotation.set(0, 0, 0);
-    R.shL.rotation.set(-0.12, 0, 0.05); R.shR.rotation.set(0.12, 0, 0.05);
-    R.elL.rotation.set(0, 0, 0.18); R.elR.rotation.set(0, 0, 0.18);
+    R.shL.rotation.set(-0.07, 0, 0.08); R.shR.rotation.set(0.06, 0, 0.12);
+    R.elL.rotation.set(0, 0, 0.3); R.elR.rotation.set(0, 0, 0.26);
     ['L', 'R'].forEach(s => { R['hip' + s].rotation.set(0, 0, 0); R['kn' + s].rotation.set(0, 0, 0); });
+    if (!o.mounted) { R.hipL.rotation.set(0.05, 0, 0.06); R.knL.rotation.z = -0.1; R.hips.rotation.x = -0.03; R.torso.rotation.x = 0.03; R.head.rotation.y = 0.12; }
     if (R.weapon) R.weapon.rotation.set(0, 0, longW[o.weapon] ? (o.mounted ? Math.PI / 2 : -0.05) : o.weapon === 'gun' || o.weapon === 'musket' || o.weapon === 'crossbow' ? 0.3 : 1.25);
     if (o.weapon === 'gun' || o.weapon === 'musket' || o.weapon === 'crossbow') { R.shR.rotation.z = 0.5; R.elR.rotation.z = 1.2; }
     if (o.shield) { R.shL.rotation.z = 0.6; R.elL.rotation.z = 0.9; R.shL.rotation.x = -0.05; }
@@ -450,7 +486,7 @@ export function outfit(vis, civ) {
     const f = vis === 'vilf', tools = ['axe', 'pick', 'hammer', 'sickle'];
     const V = {
       mol: f ? { shirt: '#f2ede2', skirt: '#2a2420', skirtK: 'stripes', sash: 'T', pants: '#f2ede2', boots: '#5a3a22', hat: 'scarf', hatCol: '#f2ede2', hatTop: '#a01c1c', len: 'robe' }
-             : { shirt: '#efe9dc', vest: '#efe4cc', vestK: 'fleece', pants: '#e6e0d2', legwrap: '#d9d0bd', boots: '#6b4a2e', belt: 'T', hat: 'cusma', mustache: '#3a2414', len: 'tunic' },
+             : { shirt: '#efe9dc', vest: '#a07c52', vestK: 'fleece', pants: '#d4ccb8', legwrap: '#8a7a62', boots: '#5a3a22', belt: 'T', hat: 'cusma', mustache: '#3a2414', len: 'tunic' },
       val: f ? { shirt: '#f2ede2', skirt: '#7a1a14', skirtK: 'stripes', sash: 'T', pants: '#f2ede2', boots: '#3a2416', hat: 'scarf', hatCol: '#e8d8b8', hatTop: '#1a1a1a', len: 'robe' }
              : { shirt: '#ece6d6', vest: '#5a2a1a', vestK: 'wool', pants: '#d8d0bc', boots: '#3a2416', belt: 'T', hat: 'kalpak', hatCol: '#3a2418', mustache: '#2a1a10', longMus: true, len: 'long' },
       ung: f ? { shirt: '#f0eadc', skirt: '#3a5a2a', skirtK: 'plaid', sash: 'T', pants: '#f0eadc', boots: '#4a3020', hat: 'scarf', hatCol: '#e8d090', hatTop: '#b02a20', len: 'robe' }
@@ -484,7 +520,7 @@ export function outfit(vis, civ) {
     tat: { skin: s, shirt: '#7a1a2a', shirtK: 'velvet', armor: LAMELLAR('#c8a050'), skirt: '#7a1a2a', sleeve: '#7a1a2a', pants: '#3a2a1a', boots: '#1a1210', belt: '#d9ab3c', hat: 'khan', beard: '#1a1210', mustache: '#1a1210', longMus: true, len: 'long', cloak: '#3a2a1a', weapon: 'saber', bow: 'cbow', mounted: true, coat: '#c8a070', small: true, saddle: 'T', cape: 'T', bridle: true }
   }[civ];
   // ---- unitățile unice ----
-  if (base === 'raz') return W({ skin: s, shirt: '#efe9dc', vest: 'T', vestK: 'fleece', pants: '#e6e0d2', legwrap: '#d9d0bd', boots: '#6b4a2e', belt: 'T', sash: 'T', hat: 'cusma', mustache: '#3a2414', longMus: true, len: 'tunic', weapon: 'baltag' }, tier > 1 ? { armor: MAIL(), shield: 'round' } : {});
+  if (base === 'raz') return W({ skin: s, shirt: '#efe9dc', vest: 'T', vestK: 'fleece', pants: '#c8bea6', legwrap: '#8a7a62', boots: '#5a3a22', belt: 'T', sash: 'T', hat: 'cusma', mustache: '#3a2414', longMus: true, len: 'tunic', weapon: 'baltag' }, tier > 1 ? { armor: MAIL(), shield: 'round' } : {});
   if (base === 'vit') return W({ skin: s, shirt: 'T', sleeve: '#3a2a20', armor: LAMELLAR('#9aa0a8'), skirt: 'T', pants: '#2a1e18', boots: '#1a1210', belt: '#d9ab3c', hat: 'nasal', plume: tier > 1 ? '#c8202a' : null, mustache: '#1a1210', longMus: true, len: 'tunic', weapon: 'saber', shield: 'round', cloak: tier > 1 ? '#3a0e10' : null });
   if (base === 'hus') return W({ skin: s, shirt: 'T', shirtK: 'velvet', sleeve: 'T', skirt: 'T', pants: '#2a2a3a', boots: '#e8d0a0', highBoots: true, belt: '#d9ab3c', hat: 'kucsma', mustache: '#5a3a1e', longMus: true, len: 'tunic', weapon: 'lance', shield: 'hus', mounted: true, coat: '#4a3020', saddle: '#c8a050', saddleK: 'fur', cape: tier > 1 ? '#c8a050' : null, bridle: true }, tier > 1 ? { collar: '#c8a050' } : {});
   if (base === 'cpl') return W({ skin: s, shirt: 'T', armor: MAIL(), cuirass: STEEL(), pauldrons: STEEL(), gauntlet: STEEL(), sleeve: '#5a5e64', skirt: 'T', pants: '#5a5e64', boots: '#2a2a2e', hat: 'armet', plume: '#f0f0f0', len: 'tunic', weapon: 'lance', shield: 'heater', mounted: true, coat: '#3a2a1e', barding: team('velvet'), chanfron: true, bridle: true });
@@ -492,7 +528,7 @@ export function outfit(vis, civ) {
   if (base === 'nog') return W({ skin: s, shirt: '#8a5a2a', shirtK: 'quilt', skirt: '#8a5a2a', skirtK: 'quilt', sleeve: '#8a5a2a', pants: '#5a4a3a', boots: '#2a1a10', sash: 'T', hat: 'malakhai', hatCol: '#3a2a1a', hatTop: 'T', mustache: '#1a1210', len: 'long', bow: 'cbow', quiver: true, mounted: true, coat: '#c8a070', small: true, saddle: 'T', bridle: true }, tier > 1 ? { armor: LAMELLAR('#8a7a5a') } : {});
   // ---- oștenii obișnuiți: culorile civilizației sunt închise și neutre, ca să nu se confunde cu ale echipelor ----
   const L = {
-    mol: { under: '#efe9dc', skirt: '#efe9dc', skirtK: 'linen', len: 'long', pants: '#e6e0d2', legwrap: '#d9d0bd', boots: '#5a3a22', vest: '#e8dcc0', vestK: 'fleece', hats: ['cusma', 'cusma', 'spike', 'spike', 'spike'], hatCol: '#1e1712', heavy: t => SCALES(t >= 5 ? '#d8b860' : '#b4ac98'), shield: 'round', sword: 'sword', mus: '#3a2414', cloak: '#5a1410', bow: 'bow', coat: '#7a5232' },
+    mol: { under: '#e8e0cc', skirt: '#6a4e34', skirtK: 'felt', len: 'long', pants: '#c8bea6', legwrap: '#8a7a62', boots: '#4a3020', vest: '#9a7650', vestK: 'fleece', hats: ['cusma', 'cusma', 'spike', 'spike', 'spike'], hatCol: '#1e1712', heavy: t => SCALES(t >= 5 ? '#d8b860' : '#b4ac98'), shield: 'round', sword: 'sword', mus: '#3a2414', cloak: '#5a1410', bow: 'bow', coat: '#7a5232' },
     val: { under: '#ece6d6', skirt: '#2e1612', skirtK: 'velvet', len: 'long', pants: '#2a1e18', boots: '#1a1210', highBoots: true, hats: ['kalpak', 'kalpak', 'nasal', 'nasal', 'nasal'], hatCol: '#3a1414', heavy: t => LAMELLAR(t >= 5 ? '#c8a050' : '#7a7e86'), shield: 'round', sword: 'saber', mus: '#1a1210', longMus: true, cloak: '#141014', plume: '#141414', bow: 'bow', coat: '#2a1e16' },
     ung: { under: '#e8e0cc', skirt: '#2e3a2c', len: 'tunic', pants: '#2e3a2c', boots: '#2a2a2e', hats: ['kettle', 'kettle', 'kettle', 'armet', 'armet'], heavy: t => STEEL(), plate: true, shield: 'heater', sword: 'sword', mus: '#5a3a1e', longMus: true, cloak: '#1a221a', plume: '#141414', bow: 'crossbow', pavise: true, coat: '#6a4a2a', tabard: true },
     pol: { under: '#f0eadc', skirt: '#4a4e54', len: 'tunic', pants: '#4a4e54', boots: '#2a2a2e', hats: ['bascinet', 'bascinet', 'sallet', 'sallet', 'sallet'], heavy: t => STEEL(), plate: true, shield: 'heater', sword: 'sword', mus: '#8a5a2a', cloak: '#d8d0c0', plume: '#f4f0e8', bow: 'crossbow', coat: '#5a4030', tabard: true },
@@ -670,7 +706,8 @@ export function unitModel(vis, civ) {
     const thrust = t => { R.shR.rotation.z = key([0.5, 0.4, 0.9, 1.25, 0.9], t); R.elR.rotation.z = key([1.0, 1.2, 0.5, 0.1, 0.6], t); R.torso.rotation.z = -key([0, -0.05, 0.1, 0.2, 0.05], t); };
     const shoot = t => { R.shL.rotation.set(0, 0, 1.45); R.elL.rotation.z = 0.05; R.shR.rotation.z = key([1.3, 1.38, 1.4, 1.3, 1.1], t); R.shR.rotation.x = 0.1; R.elR.rotation.z = key([1.6, 2.3, 2.55, 2.55, 0.9], t); R.torso.rotation.y = 0.35; };
     const actions = [
-      { name: 'idle', frames: 1, pose: () => { H.neck.rotation.z = -0.15; } },
+      // cât stă: calul își mișcă gâtul, călărețul se uită în jur
+      { name: 'idle', frames: 4, pose: t => { const a = t * TAU; H.neck.rotation.z = -0.15 + 0.07 * Math.sin(a); R.head.rotation.y = 0.2 * Math.sin(a + 1.2); R.torso.rotation.z = -0.02 * Math.sin(a); } },
       { name: 'walk', frames: 6, pose: t => { gallop(H, t * TAU); R.root.position.y = ry + Math.abs(Math.sin(t * TAU)) * 0.015; } },
       { name: 'atk', frames: 5, loop: false, pose: t => { (o.bow ? shoot : o.weapon === 'lance' ? thrust : swing)(t); H.neck.rotation.z = -0.1; } },
       { name: 'die', frames: 4, loop: false, pose: t => { const e = Math.min(1, t * 1.35); H.root.rotation.x = e * 1.35; H.root.position.y = e * 0.02; R.root.rotation.z = e * 0.5; ['FL', 'FR', 'BL', 'BR'].forEach(n => H['hip' + n].rotation.z = (n[0] === 'F' ? 0.6 : -0.6) * e); } }
@@ -695,7 +732,8 @@ export function unitModel(vis, civ) {
   const die = t => { const e = Math.min(1, t * 1.35), s2 = e * e * (3 - 2 * e); R.root.rotation.z = s2 * 1.5; R.root.position.y = s2 * 0.02; R.shL.rotation.z = -s2 * 0.9; R.shR.rotation.z = -s2 * 0.7; R.knL.rotation.z = -s2 * 0.5; R.hipL.rotation.z = s2 * 0.4; };
   const long = o.weapon === 'spear' || o.weapon === 'pike' || o.weapon === 'halberd';
   const actions = [
-    { name: 'idle', frames: 1, pose: () => {} },
+    // cât stă: respiră, își mută greutatea, se uită în jur (nu mai stă ca o statuie)
+    { name: 'idle', frames: 4, pose: t => { const a = t * TAU; R.torso.rotation.z += -0.025 * Math.sin(a); R.hips.position.y -= 0.002 * (1 - Math.cos(a)); R.head.rotation.y += 0.2 * Math.sin(a + 1.2); R.elL.rotation.z += 0.06 * Math.sin(a); R.elR.rotation.z += 0.05 * Math.sin(a + 0.6); R.hips.rotation.x += 0.02 * Math.sin(a); } },
     { name: 'walk', frames: 6, pose: t => { const a = t * TAU; walkLegs(R, a); if (!o.shield && !o.bow && !gun) R.shL.rotation.z = -0.4 * Math.sin(a); if (!gun && !xbow) { if (long) { R.shR.rotation.z = 0.05; R.elR.rotation.z = 0.6; R.weapon.rotation.z = -0.5; } else { R.shR.rotation.z = 0.4 * Math.sin(a); R.elR.rotation.z = 0.3; } } } }
   ];
   if (vis === 'vil' || vis === 'vilf') {
