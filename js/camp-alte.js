@@ -119,6 +119,17 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
     },
     triggers: []
   };
+  // poteca spre munți, prin pădurea din nord: pe aici scapă Vlad
+  var VL3_TRAIL = [[48, 26], [47, 14], [48, 0]];
+  function trailDist(x, y) {
+    var best = 99;
+    for (var i = 0; i < VL3_TRAIL.length - 1; i++) {
+      var a = VL3_TRAIL[i], b = VL3_TRAIL[i + 1], dx = b[0] - a[0], dy = b[1] - a[1];
+      var t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy)));
+      best = Math.min(best, Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy));
+    }
+    return best;
+  }
   M.vl3 = {
     id: 'vl3', title: 'Atacul de noapte', short: 'Atacul de noapte', year: '1462', place: 'Tabăra sultanului, lângă Târgoviște', lon: 25.3, lat: 44.75,
     view: { lon: 26.0, lat: 44.3, z: 1.8 },
@@ -138,8 +149,7 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
       ['forest', [[96, 30], [84, 36], [86, 72], [96, 80]], 0.55],
       ['river', [[-2, 92], [40, 88], [96, 94]], 4],
       ['clear', 48, 56, 22], ['clear', 48, 22, 6],
-      // poteca spre munți, prin pădurea din nord: pe aici scapă Vlad
-      ['road', [[48, 26], [47, 14], [48, 0]], 2]
+      ['road', VL3_TRAIL, 2]
     ] },
     night: 1, losMul: 0.6, popMax: 120, noHero: 1, keepHero: 'Vlad a căzut în tabăra turcească.',
     setup: function (S, T) {
@@ -166,8 +176,11 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
         v.alarm = 1; T.say('ienicer', 'Alarmă! Ghiaurii sunt în tabără!', 'say2'); T.mode(1, 'eco'); T.aiGo(1);
       }
       if (S.t > 900 && !v.dawn) { v.dawn = 1; T.night(0); T.say('narator', 'Se luminează. Toată oastea sultanului se trezește.', 'say3'); T.mode(1, 'eco'); T.aiGo(1); }
-      if (T.isDone('o1') && !v.esc) {
-        v.esc = 1; T.obj('o4', 'Scapă spre munți: du-l pe Vlad la steagul galben din nord, pe poteca prin pădure.'); T.mark('nord', 48, 8, 'Spre munți');
+      if (T.isDone('o1') && !v.esc) v.esc = 1;
+      // fuga: steagul și poteca. Și în jocurile salvate înainte să existe poteca: copacii de pe ea cad acum.
+      if (v.esc && !v.trail) {
+        v.trail = 1; T.obj('o4', 'Scapă spre munți: du-l pe Vlad la steagul galben din nord, pe poteca prin pădure.'); T.mark('nord', 48, 8, 'Spre munți');
+        S.ents.forEach(function (e) { if (e.k === 'r' && e.t === 'tree' && !e.dead && trailDist(e.x, e.y) < 1.6) G.kill(e, null); });
         for (var py = 26; py >= 2; py -= 3) T.reveal(48, py, 3);
       }
       if (v.esc && T.heroIn(0, 48, 8, 6) && !v.won) { v.won = 1; T.done('o4'); T.win(); }
