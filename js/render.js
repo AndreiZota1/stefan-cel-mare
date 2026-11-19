@@ -1126,6 +1126,11 @@ var G = globalThis.G || (globalThis.G = {});
     }
     var dx = top[0] - s.ax * z, dy = top[1] - s.ay * z, dw = s.w * z, dh = s.h * z;
     if (b.built) ctx.drawImage(s.c, dx, dy, dw, dh);
+    // ogorul care se golește: pământul se vede tot mai mult prin grâu
+    if (b.built && G.BLDS[b.t].farm && b.food !== undefined) {
+      var fl0 = 1 - Math.max(0, b.food) / G.farmMax(b.o);
+      if (fl0 > 0.05) { ctx.fillStyle = 'rgba(96,68,40,' + (fl0 * 0.55).toFixed(3) + ')'; ctx.beginPath(); ctx.moveTo(top[0], top[1] + 2 * z); ctx.lineTo(top[0] + n * 32 * z - 3 * z, top[1] + n * 16 * z); ctx.lineTo(top[0], top[1] + n * 32 * z - 2 * z); ctx.lineTo(top[0] - n * 32 * z + 3 * z, top[1] + n * 16 * z); ctx.closePath(); ctx.fill(); }
+    }
     else {
       // fundația și clădirea care „crește”
       ctx.fillStyle = 'rgba(120,95,60,0.75)';

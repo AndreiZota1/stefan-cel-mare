@@ -460,6 +460,13 @@ var G = globalThis.G || (globalThis.G = {});
           act: function () { var e2 = G.cmdMarket(0, 'sell', r); if (e2) { G.msg(e2, 'warn'); G.sfx('err'); } } });
       });
     }
+    if (b.t === 'moara' && b.built) {
+      var oc = G.BLDS.ogor.cost;
+      out.push({ id: 'reseed' + (P.reseed || 0), icon: '🌱', label: 'Reînnoiește ogor' + (P.reseed ? ' (' + P.reseed + ')' : ''), cost: oc, enabled: G.canAfford(P, oc), err: G.lackMsg(P, oc), tip: 'Plătești dinainte lemnele pentru un ogor: când se termină unul, se reînnoiește singur din cele plătite.',
+        act: function () { var e2 = G.cmdReseed(0); if (e2) { G.msg(e2, 'warn'); G.sfx('err'); } else G.sfx('click'); lastSig = ''; } });
+      out.push({ id: 'autors' + (P.autoReseed === false ? 0 : 1), icon: P.autoReseed === false ? '⏸️' : '🔁', label: 'Automat: ' + (P.autoReseed === false ? 'nu' : 'da'), enabled: true, tip: 'Ogoarele terminate se reînnoiesc singure, pe lemnele din cămară.',
+        act: function () { P.autoReseed = P.autoReseed === false; lastSig = ''; G.sfx('click'); } });
+    }
     if (b.t === 'cetate' || (bd.gar && P.bell)) out.push({ id: 'bell', icon: '🔔', label: P.bell ? 'Înapoi la treabă' : 'Clopotul', enabled: true, cls: P.bell ? 'ok' : '',
       tip: P.bell ? 'Țăranii ies și se întorc la ce făceau.' : 'Toți țăranii fug în cetate, turnuri și fortărețe. Cetatea trage cu mai multe săgeți.',
       act: function () { var e2 = G.cmdBell(0); if (e2 && e2 !== 'back') { G.msg(e2, 'warn'); G.sfx('err'); } lastSig = ''; } });
@@ -529,6 +536,8 @@ var G = globalThis.G || (globalThis.G = {});
     var owner = e.o === 0 ? '' : ' <em style="color:' + G.R.pcol(e.o).light + '">(' + (G.ally(0, e.o) ? 'aliați: ' : '') + esc(G.ppl(e.o)) + ')</em>', civE = S.players[e.o].civ;
     html += '<img class="portrait" src="' + G.R.icon(e.k === 'u' ? 'u' : 'b', e.t, civE) + '">';
     html += '<div class="nm">' + esc(G.ename(e)) + owner + '</div>' + hpHTML(e);
+    if (e.k === 'b' && G.BLDS[e.t].farm && e.built && e.food !== undefined) html += '<div class="st">🌾 ' + Math.max(0, Math.ceil(e.food)) + ' / ' + G.farmMax(e.o) + ' hrană în ogor</div>';
+    if (e.k === 'b' && e.t === 'moara' && e.o === 0 && S.players[0].reseed) html += '<div class="st">🌱 Ogoare plătite dinainte: ' + S.players[0].reseed + '</div>';
     if (e.k === 'u') {
       var st = G.ust(e);
       html += '<div class="st">' + (st.atk ? '⚔️ ' + Math.round(st.atk + G.auraBonus(e)) : (st.heal ? '✚ vindecă' : '')) + (st.rng ? ' &nbsp;🏹 ' + String(Math.round(st.rng * 10) / 10).replace('.', ',') : '') + ' &nbsp;🛡️ ' + st.ma + '/' + st.pa + '</div>';

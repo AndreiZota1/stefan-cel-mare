@@ -202,7 +202,7 @@ G.BLDS = {
   joagar:    { name: 'Joagăr', n: 2, hp: 600, cost: { w: 100 }, time: 15, age: 0, los: 3, drop: 'w', tech: ['topor', 'ferastrau', 'ferastrau2'], desc: 'Aici duc țăranii lemnul. Pune-l lângă pădure.' },
   mina:      { name: 'Mină', n: 2, hp: 600, cost: { w: 100 }, time: 15, age: 0, los: 3, drop: 'gs', tech: ['tarnacop', 'puturi'], desc: 'Aici duc țăranii aurul și piatra.' },
   moara:     { name: 'Moară', n: 2, hp: 600, cost: { w: 100 }, time: 18, age: 0, los: 3, drop: 'f', tech: ['jug', 'plug', 'rotatie'], desc: 'Aici duc țăranii hrana. Trebuie pentru ogoare.' },
-  ogor:      { name: 'Ogor', n: 3, hp: 300, cost: { w: 60 }, time: 10, age: 0, los: 1, walk: true, farm: true, need: 'moara', desc: 'Hrană fără sfârșit. Un țăran pe ogor.' },
+  ogor:      { name: 'Ogor', n: 3, hp: 300, cost: { w: 60 }, time: 10, age: 0, los: 1, walk: true, farm: true, need: 'moara', desc: 'Hrană pentru un țăran. Se termină după o vreme; moara îl reînnoiește pe lemne (singur, dacă ai lemne).' },
   cazarma:   { name: 'Cazarmă', n: 3, hp: 1200, cost: { w: 175 }, time: 25, age: 0, los: 4, train: ['mil', 'spr'],
                tech: ['up_mil2', 'up_mil3', 'up_mil4', 'up_mil5', 'up_spr2', 'up_spr3', 'mars'], desc: 'Pedestrași.' },
   palisada:  { name: 'Gard de pari', n: 1, hp: 250, cost: { w: 2 }, time: 3, age: 0, los: 1, wall: 'pal', desc: 'Gard de lemn. Tras cu mouse-ul, pui un șir întreg.' },
@@ -387,6 +387,7 @@ G.RESD = {
   fishd: { name: 'Banc de pești', r: 'f', amt: 450, block: true, rate: 0.55, lim: 4, water: 1, deep: 1 }
 };
 G.FARM_RATE = 0.4;
+G.FARM_FOOD = 300; // hrana unui ogor nou; +100 cu fiecare unealtă de la moară
 G.RELIC_GOLD = 0.5; // aur pe secundă pentru fiecare moaște din mănăstire
 
 G.FACTS = [

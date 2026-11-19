@@ -937,6 +937,7 @@ var G = globalThis.G || (globalThis.G = {});
     var rate = (kind === 'farm' ? G.FARM_RATE : G.RESD[kind].rate) * gmul(u.o, kind);
     var amt = rate * dt;
     if (e.k === 'r') { if (amt > e.amt) amt = e.amt; e.amt -= amt; if (e.amt <= 0.001) G.kill(e, null); }
+    else if (G.BLDS[e.t].farm) { if (e.food === undefined) e.food = farmMax(e.o); e.food -= amt; if (e.food <= 0) farmOut(e); }
     if (!u.carry) u.carry = { r: rt, n: 0 };
     u.carry.n += amt;
     if (kind === 'tree' && Math.random() < dt * 1.2) G.sfx('chop', u.x, u.y);
@@ -984,9 +985,26 @@ var G = globalThis.G || (globalThis.G = {});
       b.hp = Math.min(mh, b.hp + mh * dt / (d.time * 3));
     }
   }
+  // ogoarele se termină, ca în AoE2: 300 de hrană, +100 cu fiecare unealtă de la moară
+  function farmMax(o) { var P = S.players[o]; return G.FARM_FOOD + 100 * ((P.techs.jug ? 1 : 0) + (P.techs.plug ? 1 : 0) + (P.techs.rotatie ? 1 : 0)); }
+  G.farmMax = farmMax;
+  function farmOut(b) {
+    var P = S.players[b.o], cost = G.BLDS.ogor.cost;
+    if (P.reseed > 0) { P.reseed--; b.food = farmMax(b.o); S.fx.push({ k: 'heal', x: b.x, y: b.y, t: S.t }); return; }
+    if (P.autoReseed !== false && G.canAfford(P, cost)) { G.pay(P, cost); b.food = farmMax(b.o); S.fx.push({ k: 'heal', x: b.x, y: b.y, t: S.t }); return; }
+    if (b.o === 0) G.msg('Un ogor s-a terminat și n-ai lemne să-l reînnoiești (' + cost.w + ' lemne).', 'warn', { x: b.x, y: b.y });
+    vanish(b);
+  }
+  // reînnoirea plătită dinainte, la moară
+  G.cmdReseed = function (o) {
+    var P = S.players[o], cost = G.BLDS.ogor.cost;
+    if (!G.canAfford(P, cost)) return G.lackMsg(P, cost);
+    G.pay(P, cost); P.reseed = (P.reseed || 0) + 1; return '';
+  };
   function completeBld(b) {
     var d = G.BLDS[b.t];
     b.prog = 1; b.built = true; b.mhp = bstT(b.o, b.t).hp;
+    if (d.farm) b.food = farmMax(b.o);
     if (d.gate) occupy(b, true);
     if (d.wonder) {
       S.wonder = { o: b.o, id: b.id, t0: S.t };
