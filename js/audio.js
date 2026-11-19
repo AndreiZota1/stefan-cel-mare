@@ -162,6 +162,7 @@ var G = globalThis.G || (globalThis.G = {});
       case 'boom': burst(t, 0.35, 0.35, 'lowpass', 700, 1, 150); break;
       case 'collapse': burst(t, 0.9, 0.35, 'lowpass', 600, 1, 80); break;
       case 'death': tone('sine', 220, t, 0.18, 0.06, 90); break;
+      case 'howl': tone('sine', 360, t, 0.55, 0.06, 640); tone('sine', 640, t + 0.55, 1.1, 0.055, 430); tone('sine', 720, t + 0.05, 0.5, 0.02, 1280); break;
       case 'select': tone('sine', 660, t, 0.04, 0.05); break;
       case 'click': tone('sine', 880, t, 0.03, 0.05); break;
       case 'ack': tone('triangle', 520, t, 0.05, 0.06); tone('triangle', 780, t + 0.05, 0.05, 0.05); break;

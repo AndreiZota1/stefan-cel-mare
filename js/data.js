@@ -363,7 +363,12 @@ G.RESD = {
   stone: { name: 'Piatră', r: 's', amt: 350, block: true, rate: 0.38, lim: 3 },
   berry: { name: 'Tufă de mure', r: 'f', amt: 125, block: true, rate: 0.42, lim: 2 },
   sheep: { name: 'Oaie', r: 'f', amt: 100, block: false, rate: 0.55, lim: 4 },
-  relic: { name: 'Moaște', r: null, amt: 0, block: false, rate: 0, lim: 0, relic: true }
+  relic: { name: 'Moaște', r: null, amt: 0, block: false, rate: 0, lim: 0, relic: true },
+  // vânatul: întâi îl dobori (hp), apoi îl jupoi (amt); cerbul fuge, mistrețul se apără, lupul atacă singur
+  deer:  { name: 'Cerb', r: 'f', amt: 140, block: false, rate: 0.62, lim: 3, hunt: 1, hp: 5, spd: 2.0, flee: 1 },
+  boar:  { name: 'Mistreț', r: 'f', amt: 340, block: false, rate: 0.62, lim: 6, hunt: 1, hp: 60, atk: 5, spd: 1.35 },
+  wolf:  { name: 'Lup', r: 'f', amt: 40, block: false, rate: 0.5, lim: 2, hunt: 1, hp: 30, atk: 4, spd: 1.75, wild: 1 },
+  fish:  { name: 'Pește', r: 'f', amt: 220, block: true, rate: 0.45, lim: 3, water: 1 }
 };
 G.FARM_RATE = 0.4;
 G.RELIC_GOLD = 0.5; // aur pe secundă pentru fiecare moaște din mănăstire

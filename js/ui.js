@@ -192,7 +192,7 @@ var G = globalThis.G || (globalThis.G = {});
   var CURS = {};
   function cursor(kind) {
     if (CURS[kind] !== undefined) return CURS[kind];
-    var em = { atk: '⚔️', tree: '🪓', gold: '⛏️', stone: '⛏️', berry: '🧺', sheep: '🧺', farm: '🌾', build: '🔨', rally: '🚩', gar: '🛡️', relic: '✨' }[kind];
+    var em = { atk: '⚔️', tree: '🪓', gold: '⛏️', stone: '⛏️', berry: '🧺', sheep: '🧺', deer: '🏹', boar: '🏹', wolf: '🏹', fish: '🎣', farm: '🌾', build: '🔨', rally: '🚩', gar: '🛡️', relic: '✨' }[kind];
     if (!em) return CURS[kind] = 'default';
     var c = document.createElement('canvas'); c.width = c.height = 32;
     var g = c.getContext('2d'); g.font = '24px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif'; g.textBaseline = 'top';
@@ -413,7 +413,7 @@ var G = globalThis.G || (globalThis.G = {});
   }
 
   // ---------- panoul de informații ----------
-  var GAT = { tree: 'Taie lemne', gold: 'Scoate aur', stone: 'Scoate piatră', berry: 'Culege mure', sheep: 'Ciobănește', farm: 'Lucrează ogorul' };
+  var GAT = { tree: 'Taie lemne', gold: 'Scoate aur', stone: 'Scoate piatră', berry: 'Culege mure', sheep: 'Ciobănește', deer: 'Vânează', boar: 'Vânează mistrețul', wolf: 'Vânează', fish: 'Pescuiește', farm: 'Lucrează ogorul' };
   function unitStatus(u) {
     var T = u.task;
     if (!T) return u.t === 'vil' ? 'Fără treabă' : 'Stă de pază';
@@ -455,6 +455,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (e.k === 'r') {
       var rd = G.RESD[e.t];
       if (rd.relic) return '<div class="nm">Moaște</div><div class="st dim">Doar un călugăr le poate lua. Duse la mănăstire, îți aduc aur în fiecare clipă.</div>';
+      if (rd.hunt) return '<div class="nm">' + esc(rd.name) + (e.hp > 0 ? '' : ' (doborât)') + '</div><div class="st">' + (e.hp > 0 ? '❤️ ' + Math.ceil(e.hp) + '/' + rd.hp + ' · ' : '') + G.RES_ICON[rd.r] + ' ' + Math.ceil(e.amt) + ' carne</div><div class="st dim">' + (rd.wild ? 'Atacă oamenii singuri. Oștenii îl pot vâna.' : rd.flee ? 'Fuge când e lovit. Trimite câțiva țărani să-l vâneze.' : 'Se apără! Trimite mai mulți țărani deodată.') + '</div>';
       return '<div class="nm">' + esc(rd.name) + '</div><div class="st">' + G.RES_ICON[rd.r] + ' ' + Math.ceil(e.amt) + ' rămas</div><div class="st dim">Alege un țăran și atinge-o ca s-o strângă.</div>';
     }
     var owner = e.o === 0 ? '' : ' <em style="color:' + G.R.pcol(e.o).light + '">(' + (G.ally(0, e.o) ? 'aliați: ' : '') + esc(G.ppl(e.o)) + ')</em>', civE = S.players[e.o].civ;

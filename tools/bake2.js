@@ -37,6 +37,7 @@ const save = (rel, dataUrl) => { const f = path.join(OUT, rel); fs.mkdirSync(pat
     for (const t of WALLS) if (want(t)) { if (GRP.includes('b')) jobs.push(['b', t, c]); if (GRP.includes('j') && /_p$|poarta_x/.test(t)) jobs.push(['j', t, c]); }
   }
   if (CIVS.includes('mol')) {
+    for (const v of ['deer', 'boar', 'wolf']) if (want(v) && GRP.includes('u')) jobs.push(['u', v, 'all']);
     for (const v of SIEGE) if (want(v)) { if (GRP.includes('u')) jobs.push(['u', v, 'all']); if (GRP.includes('i')) jobs.push(['i', v, 'all']); }
     for (const t of SHARED) if (want(t)) { if (GRP.includes('b')) jobs.push(['b', t, 'all']); if (GRP.includes('j') && !/^(ruina|schela)/.test(t)) jobs.push(['j', t, 'all']); }
   }

@@ -529,8 +529,39 @@ function gallop(H, a, amp = 0.55) {
   H.neck.rotation.z = -Math.sin(a) * 0.12;
 }
 
+// vânatul: cerb, mistreț, lup (scheletul calului, cu alte proporții); ultimul cadru din „die” e animalul doborât
+function animalModel(kind) {
+  const o = kind === 'deer' ? { coat: '#a8784a', mane: '#7a5634' } : kind === 'boar' ? { coat: '#3e3026', mane: '#1e1610' } : { coat: '#8a8a90', mane: '#4a4a50' };
+  const H = horse(o), bone = BONE(), wrap = new THREE.Group(); wrap.add(H.root);
+  if (kind === 'deer') {
+    H.root.scale.set(0.72, 0.84, 0.6);
+    [1, -1].forEach(sd => {
+      const a = cyl(0.006, 0.009, 0.16, bone, 5); at(a, 0.11, 0.33, 0.03 * sd, sd * 0.35, 0, 0.45); H.neck.add(a);
+      [0.05, 0.1].forEach((h, i) => { const tn = cyl(0.004, 0.006, 0.07, bone, 4); at(tn, 0.09 + i * 0.02, 0.32 + h, 0.04 * sd, sd * 0.5, 0, -0.3 + i * 0.4); H.neck.add(tn); });
+    });
+    H.body.add(at(sph(0.03, cloth('#f2ece0', 'fur', 1), 8, 6), -0.25, 0.02, 0));
+  } else if (kind === 'boar') {
+    H.root.scale.set(0.8, 0.5, 1.05);
+    [1, -1].forEach(sd => { const tk = cone(0.008, 0.05, bone, 5); at(tk, 0.25, 0.13, 0.022 * sd, 0, 0, -0.6); H.neck.add(tk); });
+    H.body.add(at(box(0.3, 0.05, 0.03, cloth('#1e1610', 'fur', 1)), 0.02, 0.09, 0));
+    const hump = sph(0.11, cloth('#3e3026', 'fur', 1), 12, 8); hump.scale.set(1.4, 1.05, 1.0); at(hump, 0.08, 0.03, 0); H.body.add(hump);
+  } else {
+    H.root.scale.set(0.62, 0.6, 0.5);
+    const tail = cone(0.035, 0.2, cloth('#6a6a70', 'fur', 1), 8); at(tail, -0.27, -0.02, 0, 0, 0, 2.2); H.body.add(tail);
+  }
+  const reset = () => H.reset(), off = { deer: 0, boar: -0.6, wolf: -0.55 }[kind];
+  const actions = [
+    { name: 'idle', frames: 1, pose: () => { H.neck.rotation.z = kind === 'deer' ? -0.6 : off; } },
+    { name: 'walk', frames: 6, pose: t => { gallop(H, t * TAU, kind === 'boar' ? 0.45 : 0.6); H.neck.rotation.z += off; } },
+    { name: 'atk', frames: 4, loop: false, pose: t => { H.neck.rotation.z = key([0, -0.5, 0.25, 0], t) + off; H.body.rotation.z = key([0, 0.12, -0.15, 0], t); } },
+    { name: 'die', frames: 4, loop: false, pose: t => { const e = Math.min(1, t * 1.35); H.neck.rotation.z = off; H.root.rotation.x = e * 1.45; H.root.position.y = e * 0.03; ['FL', 'FR', 'BL', 'BR'].forEach(n => H['hip' + n].rotation.z = (n[0] === 'F' ? 0.5 : -0.5) * e); } }
+  ];
+  return { root: wrap, reset, actions, cell: 'cav' };
+}
+
 // { root, reset, actions, cell } pentru o imagine de unitate (vis = vil, mil3, hero, raz...)
 export function unitModel(vis, civ) {
+  if (vis === 'deer' || vis === 'boar' || vis === 'wolf') return animalModel(vis);
   if (/^(ram|cat|can|treb|car)/.test(vis)) {
     const S = siege(vis, civ);
     const actions = [

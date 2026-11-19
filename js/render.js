@@ -992,10 +992,37 @@ var G = globalThis.G || (globalThis.G = {});
     return (snowC[v] = { c: c, w: o.w, h: o.h, ax: o.ax, ay: o.ay });
   }
   R.preloadNature = function () { for (var v = 0; v < 8; v++) natSprite('tree', v); ['gold', 'stone', 'berry'].forEach(function (k) { natSprite(k, 0); }); natSprite('sheep', 0); natSprite('sheep', 1); };
+  // vânatul: foaie animată (u/deer_all); doborât = ultimul cadru din „die”
+  function drawAnimal(e, p, z, RD) {
+    var ash = sheet2('u/' + e.t + '_all');
+    if (ash) {
+      var A = ash.B.actions, act = e.hp <= 0 ? 'die' : e.sw > 0 ? 'atk' : e.mv > 0 ? 'walk' : 'idle', fr = 0;
+      if (act === 'die') fr = A.die.frames - 1;
+      else if (act === 'walk') fr = Math.floor((e.an || 0) * 9) % A.walk.frames;
+      else if (act === 'atk') fr = Math.min(A.atk.frames - 1, Math.floor((1 - e.sw / 0.4) * A.atk.frames));
+      bakedFrame(ctx, ash, act, fr, e.dir8 || 0, p[0], p[1], z * USCALE / ash.B.k, null);
+    } else ell(ctx, p[0], p[1] - 4 * z, 8 * z, 4 * z, RD.wild ? '#7a7a80' : e.t === 'boar' ? '#3e3026' : '#a8784a');
+    if (G.UI && G.UI.selSet()[e.id]) { ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(p[0], p[1], 12 * z, 6 * z, 0, 0, 6.3); ctx.stroke(); }
+    if (e.hp > 0 && e.hit && G.S.t - e.hit < 2.5) { var w = 18 * z; ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(p[0] - w / 2, p[1] - 26 * z, w, 3); ctx.fillStyle = '#e04a3a'; ctx.fillRect(p[0] - w / 2, p[1] - 26 * z, w * e.hp / RD.hp, 3); }
+  }
+  // peștele: cercuri pe apă, umbre care se rotesc, din când în când unul sare
+  function drawFish(e, p, z) {
+    var t = clock * 1.3 + e.id * 1.7;
+    ctx.strokeStyle = 'rgba(230,245,255,0.6)'; ctx.lineWidth = 1.1 * z;
+    for (var k = 0; k < 2; k++) { var ph = (t * 0.35 + k * 0.5) % 1; ctx.globalAlpha = 0.7 * (1 - ph); ctx.beginPath(); ctx.ellipse(p[0], p[1], (5 + ph * 13) * z, (2.5 + ph * 6.5) * z, 0, 0, 6.3); ctx.stroke(); }
+    ctx.globalAlpha = Math.max(0.35, Math.min(1, e.amt / G.RESD.fish.amt + 0.3));
+    for (var f = 0; f < 3; f++) { var a = t * 0.8 + f * 2.1; ctx.fillStyle = 'rgba(25,45,65,0.6)'; ctx.beginPath(); ctx.ellipse(p[0] + Math.cos(a) * 7 * z, p[1] + Math.sin(a) * 3.5 * z, 3.2 * z, 1.3 * z, a + 1.57, 0, 6.3); ctx.fill(); }
+    ctx.globalAlpha = 1;
+    var jp = (t * 0.17) % 1; if (jp < 0.12) { ctx.fillStyle = '#d0dce4'; ctx.beginPath(); ctx.ellipse(p[0] + 4 * z, p[1] - Math.sin(jp / 0.12 * Math.PI) * 9 * z, 3 * z, 1.3 * z, 0.6, 0, 6.3); ctx.fill(); }
+    if (G.UI && G.UI.selSet()[e.id]) { ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(p[0], p[1], 14 * z, 7 * z, 0, 0, 6.3); ctx.stroke(); }
+  }
   function drawRes(e) {
     var p = R.w2s(e.x, e.y), z = cam.z;
     if (p[0] < -90 || p[0] > W + 90 || p[1] < -20 || p[1] > H + 140) return;
     if (e.t === 'relic') { drawRelic(e, p, z); return; }
+    var RD = G.RESD[e.t];
+    if (RD.hunt) { drawAnimal(e, p, z, RD); return; }
+    if (e.t === 'fish') { drawFish(e, p, z); return; }
     if (e.t === 'sheep') {
       var sp = natSprite('sheep', Math.sin(clock * 0.7 + e.id * 1.7) > 0.3 ? 1 : 0);
       if (!sp) { drawSheep(ctx, e, p[0], p[1], z); return; }
@@ -1285,7 +1312,7 @@ var G = globalThis.G || (globalThis.G = {});
     mc.width = Math.round(mc.clientWidth * d); mc.height = Math.round(mc.clientHeight * d);
   };
   var TCOL = [[96, 140, 58], [152, 128, 88], [50, 96, 150], [88, 138, 178], [128, 98, 60]];
-  var RCOL = { tree: [36, 78, 34], gold: [232, 196, 70], stone: [176, 176, 170], berry: [130, 60, 140], sheep: [240, 240, 236], relic: [255, 236, 150] };
+  var RCOL = { tree: [36, 78, 34], gold: [232, 196, 70], stone: [176, 176, 170], berry: [130, 60, 140], sheep: [240, 240, 236], relic: [255, 236, 150], deer: [170, 120, 70], boar: [90, 60, 40], wolf: [120, 120, 125], fish: [200, 230, 255] };
   R.drawMini = function () {
     var S = G.S; if (!S || !mc) return;
     var C = G.C, N = S.N;

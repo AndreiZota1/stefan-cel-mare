@@ -233,7 +233,7 @@ var G = globalThis.G || (globalThis.G = {});
   function gatherRes(v, r) {
     var e = null;
     if (r === 'f') {
-      e = G.findRes(pid, 'sheep', tc.x, tc.y, 12) || G.findRes(pid, 'berry', tc.x, tc.y, 18) || G.findRes(pid, 'farm', tc.x, tc.y, 40);
+      e = G.findRes(pid, 'sheep', tc.x, tc.y, 12) || G.findRes(pid, 'deer', tc.x, tc.y, 19) || G.findRes(pid, 'berry', tc.x, tc.y, 18) || G.findRes(pid, 'fish', tc.x, tc.y, 16) || G.findRes(pid, 'farm', tc.x, tc.y, 40);
       if (!e) {
         if (my.cnt.moara) {
           if (!G.hasBuilt(pid, 'moara') || !G.canAfford(P, G.BLDS.ogor.cost)) return false;

@@ -172,7 +172,9 @@ var G = globalThis.G || (globalThis.G = {});
     return b;
   };
   G.addRes = function (t, tx, ty) {
-    return addEnt({ k: 'r', t: t, tx: tx, ty: ty, x: tx + 0.5, y: ty + 0.5, amt: G.RESD[t].amt, v: (G.hash2(tx, ty, 9) * 4) | 0 });
+    var R = G.RESD[t], e = addEnt({ k: 'r', t: t, tx: tx, ty: ty, x: tx + 0.5, y: ty + 0.5, amt: R.amt, v: (G.hash2(tx, ty, 9) * 4) | 0 });
+    if (R.hunt) { e.hp = e.mhp = R.hp; e.hx = e.x; e.hy = e.y; e.cd = 0; e.sw = 0; e.mv = 0; e.an = Math.random() * 6; e.dir8 = (Math.random() * 8) | 0; }
+    return e;
   };
   // pune n oameni de tipul t lângă (x, y) (pentru misiuni și ajutoare)
   G.placeUnits = function (o, t, n, x, y) {
@@ -399,6 +401,11 @@ var G = globalThis.G || (globalThis.G = {});
       if (e.t === 'vil') d += 6;
       if (d < bd) { bd = d; best = e; }
     });
+    // lupii din apropiere sunt ținte pentru oșteni
+    if (!best && u.k === 'u' && C.wild && C.wild.length && G.UNITS[u.t].cls !== 'vil') for (var w = 0; w < C.wild.length; w++) {
+      var a = C.wild[w]; if (a.dead || a.hp <= 0) continue;
+      var d2 = (a.x - u.x) * (a.x - u.x) + (a.y - u.y) * (a.y - u.y); if (d2 <= r * r && d2 < bd) { bd = d2; best = a; }
+    }
     if (best) return best;
     if (st.proj === 'arrow' || st.proj === 'bolt' || st.proj === 'jav') return null; // săgețile nu fac aproape nimic zidurilor
     for (var i = 0; i < C.blds.length; i++) {
@@ -536,8 +543,8 @@ var G = globalThis.G || (globalThis.G = {});
 
   // ---------- luptă ----------
   function doAtk(u, T, dt) {
-    var e = getE(T.id), st = ust(u);
-    if (!e || e.gin || e.k === 'r' || !G.enemy(u.o, e.o) || (st.onlyBld && e.k !== 'b') || !st.atk) { finish(u, T); return; }
+    var e = getE(T.id), st = ust(u), huntE = e && e.k === 'r' && G.RESD[e.t].hunt && e.hp > 0;
+    if (!e || e.gin || (e.k === 'r' && !huntE) || (!huntE && !G.enemy(u.o, e.o)) || (st.onlyBld && e.k !== 'b') || !st.atk) { finish(u, T); return; }
     if (T.auto && G.dist(u, e) > st.los + 3) { finish(u, T); return; }
     if (st.minr && e.k === 'u') {
       var dm = G.distTo(u, e);
@@ -573,6 +580,7 @@ var G = globalThis.G || (globalThis.G = {});
   }
   function applyHit(src, e, atk, bonus, ranged) {
     if (!e || e.dead || e.gin) return;
+    if (e.k === 'r') { if (G.RESD[e.t].hunt && e.hp > 0) animalHit(e, atk, src); return; }
     var armor;
     if (e.k === 'b') armor = (ranged ? G.BLD_ARMOR.p : G.BLD_ARMOR.m) + bstT(e.o, e.t).arm;
     else { var es = ust(e); armor = ranged ? es.pa : es.ma; if (S.players[e.o].techs.bucium && inAura(e)) armor += 1; }
@@ -584,6 +592,8 @@ var G = globalThis.G || (globalThis.G = {});
     e.hp -= dmg; e.hit = S.t;
     if (e.o === 0 && src && src.o !== undefined && G.enemy(src.o, 0)) alertAttack(e);
     if (e.hp <= 0) { G.kill(e, src); return; }
+    // oștenii mușcați de un lup sau de un mistreț se întorc spre el
+    if (e.k === 'u' && src && src.k === 'r' && !src.dead && G.isMil(e) && (!e.task || e.task.k === 'amove')) { setTask(e, { k: 'atk', id: src.id, auto: 1, then: e.task }); return; }
     if (e.k === 'u' && src && !src.dead && src.o !== undefined && G.enemy(src.o, e.o) && (src.k === 'u' || src.k === 'b')) {
       var ed = G.UNITS[e.t];
       if (ed.cls !== 'vil' && ed.cls !== 'mon' && ed.cls !== 'car' && !(ed.onlyBld && src.k !== 'b') && (!e.task || e.task.k === 'amove')) {
@@ -642,6 +652,67 @@ var G = globalThis.G || (globalThis.G = {});
   };
   // îndepărtare fără urme (jucător învins, ziduri înlocuite de porți)
   function vanish(e) { if (e.dead) return; e.dead = 1; S.dirty = 1; if (blocks(e)) occupy(e, false); if (e.k === 'u' && C.hero[e.o] === e.id) C.hero[e.o] = 0; }
+
+  // ---------- vânatul ----------
+  // țăranul aruncă sulița până cade animalul; apoi îl jupoaie ca pe o resursă obișnuită (doGat)
+  function doHunt(u, e, T, dt) {
+    var r = approach(u, e, 2.2, dt);
+    if (r === 'fail') { u.why = 'nu ajunge la vânat'; u.task = null; u.path = null; return; }
+    if (!r) return;
+    u.path = null; faceTo(u, e.x - u.x, e.y - u.y); u.wk = 0.25;
+    if (u.cd > 0) return;
+    u.cd = 1.5; u.sw = 0.4;
+    S.proj.push({ k: 'jav', sx: u.x, sy: u.y, tx: e.x, ty: e.y, id: e.id, sid: u.id, o: u.o, p: 0, dur: Math.max(0.12, G.dist(u, e) / 9), atk: 5, bonus: null });
+    G.sfx('arrow', u.x, u.y);
+  }
+  function animalHit(e, dmg, src) {
+    var R = G.RESD[e.t];
+    e.hp -= dmg; e.hit = S.t;
+    if (e.hp <= 0) { e.hp = 0; e.mv = 0; e.tgt = 0; G.sfx('death', e.x, e.y); return; }
+    if (R.flee && src) { e.flee = S.t + 2.6; e.fx = src.x; e.fy = src.y; }
+    else if (src && src.k === 'u' && !src.dead) e.tgt = src.id;
+  }
+  G.animalHit = animalHit;
+  function stepAnimal(e, dx, dy, spd, dt) {
+    var l = Math.hypot(dx, dy), N = S.N; if (l < 1e-6) return;
+    dx /= l; dy /= l;
+    var here = C.pass[Math.floor(e.y) * N + Math.floor(e.x)];
+    for (var k = 0; k < 5; k++) {
+      var a = [0, 0.9, -0.9, 1.8, -1.8][k], cx = dx * Math.cos(a) - dy * Math.sin(a), cy = dx * Math.sin(a) + dy * Math.cos(a);
+      var nx = e.x + cx * spd * dt, ny = e.y + cy * spd * dt, ix = Math.floor(nx), iy = Math.floor(ny);
+      // poate ieși de pe un loc blocat și se poate mișca în interiorul aceluiași pătrățel
+      if (ix < 1 || iy < 1 || ix >= N - 1 || iy >= N - 1 || !(C.pass[iy * N + ix] || !here || (ix === Math.floor(e.x) && iy === Math.floor(e.y)))) continue;
+      e.x = nx; e.y = ny; e.tx = ix; e.ty = iy; e.mv = 0.15; e.an = (e.an || 0) + dt; faceTo(e, cx, cy); return;
+    }
+  }
+  function wildAlert(u) {
+    if (S.t - (S.tm.wolf || -99) < 25) return;
+    S.tm.wolf = S.t; G.msg('Lupii atacă!', 'alert', { x: u.x, y: u.y }); G.sfx('howl', u.x, u.y);
+  }
+  // cerbii pasc și fug când sunt loviți; mistrețul se ține de cine l-a lovit; lupii sar la oamenii din apropiere
+  function updAnimals(dt) {
+    for (var i = 0; i < C.mob.length; i++) {
+      var e = C.mob[i], R = G.RESD[e.t];
+      if (e.dead || !R.hunt || e.hp <= 0) continue;
+      if (e.cd > 0) e.cd -= dt; if (e.sw > 0) e.sw -= dt; if (e.mv > 0) e.mv -= dt;
+      var t = e.tgt ? getE(e.tgt) : null;
+      if (t && (t.k !== 'u' || t.gin || Math.hypot(e.x - e.hx, e.y - e.hy) > 10)) { e.tgt = 0; t = null; }
+      if (!t && R.wild && (e.look = (e.look || 0) - dt) <= 0) {
+        e.look = 0.5;
+        var bd = 12.25, best = null;
+        forUnitsNear(e.x, e.y, 3.5, function (u) { if (u.dead || u.gin || G.UNITS[u.t].cls === 'sie' || G.UNITS[u.t].naval) return; var d = (u.x - e.x) * (u.x - e.x) + (u.y - e.y) * (u.y - e.y); if (d < bd) { bd = d; best = u; } });
+        if (best) { e.tgt = best.id; t = best; if (G.ally(0, best.o)) wildAlert(best); }
+      }
+      if (t) {
+        var d = G.dist(e, t);
+        if (d > 0.65) stepAnimal(e, t.x - e.x, t.y - e.y, R.spd, dt);
+        else { faceTo(e, t.x - e.x, t.y - e.y); if (e.cd <= 0) { e.cd = 1.5; e.sw = 0.4; damage(t, Math.max(1, R.atk - ust(t).ma), e); G.sfx('hit', e.x, e.y); } }
+      } else if (e.flee && e.flee > S.t) stepAnimal(e, e.x - e.fx, e.y - e.fy, R.spd, dt);
+      else if (Math.hypot(e.x - e.hx, e.y - e.hy) > 4) stepAnimal(e, e.hx - e.x, e.hy - e.y, R.spd * 0.5, dt);
+      else if ((e.wt = (e.wt || 0) - dt) <= 0) { e.wt = 3 + Math.random() * 5; e.wa = Math.random() * 6.28; e.wl = Math.random() < 0.5 ? 1.2 : 0; }
+      else if (e.wl > 0) { e.wl -= dt; stepAnimal(e, Math.cos(e.wa), Math.sin(e.wa), R.spd * 0.3, dt); }
+    }
+  }
 
   // ---------- resurse ----------
   function resKind(e) { return e.k === 'b' ? 'farm' : e.t; }
@@ -744,6 +815,8 @@ var G = globalThis.G || (globalThis.G = {});
       if (ne) { T.id = ne.id; T.ox = ne.x; T.oy = ne.y; e = ne; u.gk = null; }
       else { u.path = null; u.why = 'nu mai e ' + T.kind + ' aproape'; u.task = (u.carry && u.carry.n >= 1) ? { k: 'ret', back: null } : null; return; }
     }
+    if (e.k === 'r' && G.RESD[e.t].hunt && e.hp > 0) { T.hunt = 1; doHunt(u, e, T, dt); return; }
+    if (T.hunt) { T.hunt = 0; u.path = null; u.gk = null; }
     var rt = resType(e);
     if (u.carry && u.carry.r !== rt) u.carry = null;
     if (u.carry && u.carry.n >= st.cap) { setTask(u, { k: 'ret', back: T }); return; }
@@ -1202,11 +1275,11 @@ var G = globalThis.G || (globalThis.G = {});
   function refreshLists() {
     var nP = S.players.length, us = C.units = [], bs = C.blds = [], pop = [], cap = [], p;
     for (p = 0; p < nP; p++) { pop.push(0); cap.push(0); }
-    C.fear = []; C.tepe = []; C.mob = [];
+    C.fear = []; C.tepe = []; C.mob = []; C.wild = [];
     for (var i = 0; i < S.ents.length; i++) {
       var e = S.ents[i];
       if (e.dead) continue;
-      if (e.k === 'r') { if (!G.RESD[e.t].block) C.mob.push(e); continue; }
+      if (e.k === 'r') { if (!G.RESD[e.t].block) { C.mob.push(e); if (G.RESD[e.t].wild && e.hp > 0) C.wild.push(e); } continue; }
       if (e.k === 'u') {
         pop[e.o]++;
         if (!e.gin) { us.push(e); if (G.UNITS[e.t].hero && S.players[e.o].civ === 'val') C.fear.push(e); }
@@ -1301,6 +1374,7 @@ var G = globalThis.G || (globalThis.G = {});
     C.budget = 10 + S.players.length * 2;
     refreshLists();
     for (var i = 0; i < C.units.length; i++) { var u = C.units[i]; if (!u.dead) updUnit(u, dt); }
+    updAnimals(dt);
     separate(dt);
     for (var j = 0; j < C.blds.length; j++) { var b = C.blds[j]; if (!b.dead) updBld(b, dt); }
     updProj(dt);
@@ -1401,6 +1475,8 @@ var G = globalThis.G || (globalThis.G = {});
     }
     var vils = units.filter(function (u) { return u.t === 'vil'; });
     var others = units.filter(function (u) { return u.t !== 'vil'; });
+    // oștenii vânează și ei (lupii, mistreții): atacă, nu doar merg acolo
+    if (others.length && e.k === 'r' && G.RESD[e.t].hunt && e.hp > 0) { others.forEach(function (u) { if (ust(u).atk) setTask(u, { k: 'atk', id: e.id }); else G.cmdMove([u], e.x, e.y); }); others = []; }
     if (others.length) G.cmdMove(others, e.x, e.y);
     if (!vils.length) return;
     var kind = e.k === 'b' ? 'farm' : e.t, list = [e];

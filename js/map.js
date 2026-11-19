@@ -190,6 +190,9 @@ G.hash2 = function (x, y, s) {
     spot('stone', -0.45, 12, 5, 2.2);
     spot('stone', 1.15, 15, 4, 2);
     if (kind === 'munti') { spot('gold', 0.95, 18, 5, 2.2); spot('stone', -1.0, 18, 5, 2.2); }
+    // vânatul: o turmă de cerbi mai încolo, un mistreț pe o latură
+    spot('deer', -1.0, 16, kind === 'stepa' ? 5 : 4, 2.2);
+    spot('boar', -2.0, 11.5, 1, 1.4);
     if (kind === 'stepa') spot('sheep', 0, 13, 4, 1.8);
     // dacă ceva n-a încăput, completăm în altă parte, tot în fața bazei
     var want = { gold: 11, stone: 9, sheep: 8, berry: 5 };
@@ -353,6 +356,26 @@ G.hash2 = function (x, y, s) {
       if (!far || (sym && !canonical(N, sym, ex | 0, ey | 0))) continue;
       C.cluster(['gold', 'stone', 'sheep', 'berry', 'gold'][e % 5], ex, ey, 4 + ((R() * 3) | 0));
     }
+    // vânatul din mijloc: turme de cerbi, iar prin păduri haite de lupi
+    var packs = [['deer', 3, 2 + (type === 'stepa' ? 2 : 0)], ['wolf', 2, type === 'codri' ? 4 : type === 'munti' ? 3 : 1]];
+    packs.forEach(function (pk) {
+      for (var pn = 0, pt = 0; pn < Math.ceil(pk[2] * Math.max(1, N / 96) / (sym || 1)) && pt++ < 300;) {
+        var hx = (R() * (N - 10) + 5) | 0, hy = (R() * (N - 10) + 5) | 0;
+        if (!C.free(hx, hy) || (sym && !canonical(N, sym, hx, hy))) continue;
+        if (bases.some(function (b) { return Math.hypot(hx - b[0], hy - b[1]) < (pk[0] === 'wolf' ? 24 : 19); })) continue;
+        C.cluster(pk[0], hx, hy, pk[1]); pn++;
+      }
+    });
+    // peștele de la mal: pe apă, lângă uscat, la câțiva pași unul de altul (țăranii pescuiesc de pe mal)
+    var fishAt = [];
+    for (var fy = 3; fy < N - 3; fy++) for (var fx = 3; fx < N - 3; fx++) {
+      if (C.get(fx, fy) !== WA || C.blk[fy * N + fx] || (sym && !canonical(N, sym, fx, fy))) continue;
+      var land = 0; for (var q = 0; q < 8; q++) { var tt2 = C.get(fx + [1, -1, 0, 0, 1, 1, -1, -1][q], fy + [0, 0, 1, -1, 1, -1, 1, -1][q]); if (tt2 === GR || tt2 === DI || tt2 === SA) land++; }
+      if (land < 2 || R() > 0.2) continue;
+      if (fishAt.some(function (f) { return Math.hypot(f[0] - fx, f[1] - fy) < 7; })) continue;
+      if (bases.some(function (b) { return Math.hypot(fx - b[0], fy - b[1]) < 9; })) continue;
+      fishAt.push([fx, fy]); C.blk[fy * N + fx] = 2; C.objs.push({ t: 'fish', x: fx, y: fy });
+    }
     // moaștele: 5 la doi jucători, +2 pentru fiecare jucător în plus
     var relics = 5 + (nP - 2) * 2, placed = 0, tries = 0;
     while (placed < (sym ? Math.ceil(relics / sym) : relics) && tries++ < 400) {
@@ -370,7 +393,7 @@ G.hash2 = function (x, y, s) {
     }
     var seen2 = reach(C, [Math.floor(bases[0][0]), Math.floor(bases[0][1])]);
     C.objs.forEach(function (o) {
-      if (o.t === 'tree' || o.t === 'sheep' || o.t === 'deer' || o.t === 'boar' || o.t === 'relic') return;
+      if (o.t === 'tree' || o.t === 'sheep' || o.t === 'deer' || o.t === 'boar' || o.t === 'wolf' || o.t === 'fish' || o.t === 'relic') return;
       if (!bases.some(function (b) { return Math.hypot(o.x - b[0], o.y - b[1]) < 22; })) return;
       var ok = false;
       for (var dy3 = -1; dy3 <= 1; dy3++) for (var dx3 = -1; dx3 <= 1; dx3++) { var X = o.x + dx3, Y = o.y + dy3; if (C.ok(X, Y) && seen2[Y * N + X]) ok = true; }
