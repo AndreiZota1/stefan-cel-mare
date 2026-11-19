@@ -67,12 +67,49 @@ P = {
     'erou_vlad': 'Portrait of Vlad III Dracula (Vlad the Impaler), prince of Wallachia (1460s), as in the Ambras castle portrait: red velvet cap with pearls and a gold star, long black mustache, piercing dark eyes, stern pale face, dark fur cloak, a dark forest and a castle behind him at dusk. Intense, dramatic.',
     'erou_stefan': 'Portrait of Stephen the Great, prince of Moldavia (1457–1504), as in the Humor gospel miniature: long brown hair, mustache, golden crown, red velvet robe with gold, holding a sword, a painted Moldavian monastery and green hills behind him. Heroic, proud.',
     'erou_mihai': 'Portrait of Michael the Brave (Mihai Viteazul), prince of Wallachia, Transylvania and Moldavia (1600), as in the Sadeler engraving but in color: tall fur hat with a white heron feather and a jewel, dark full beard, red caftan with fur collar over armor, holding a battle axe, three banners behind him. Brave, determined.',
+    # ---- filmul „Zugravul de la Moldovița” (1537) ----
+    'z_manastire': 'Dawn in Bucovina, 1537: the small painted monastery church of Moldovița with its tall dark shingled roof inside fortified stone walls; wooden scaffolding along its south wall, where the fresh lime plaster is still bare and white; a lone painter in a simple dark robe climbs a ladder carrying a wooden bucket and brushes; morning mist over green hills and fir forests, first golden sunlight.',
+    'z_pigment': 'Intimate close-up of a medieval painter\'s weathered hands grinding brilliant deep blue pigment (lapis lazuli) in a stone mortar; beside it small clay pots of red cinnabar, yellow ochre and green earth, squirrel-hair brushes and a wooden palette on a rough table; soft morning light from a small window.',
+    'z_pensula': 'Close-up of a painter\'s brush tracing, in red ochre, the outline of a horseman on the fresh wet lime plaster of a church wall; the half-finished fresco around it shows a row of horsemen in Byzantine style, some filled with deep blue, ochre and gold, others only drawn; the painter\'s hand and paint-stained sleeve in the foreground; warm morning light.',
+    'z_zid': 'From behind and below: an old painter on high wooden scaffolding paints the walls and towers of besieged Constantinople on the exterior wall of the Moldovița monastery; in his half-finished fresco the attackers wear Ottoman turbans and fire cannons at the city, while the defenders stand on the walls; afternoon light, the painter\'s brush raised.',
+    'z_chip': 'Portrait of an old monastery painter in 1537: weathered face, grey beard, paint-stained hands, simple dark robe, looking up at his work in the warm light of sunset, the colors of the painted wall reflecting on his face; emotional, contemplative.',
+    'z_final': 'Sunset over Bucovina: the painted monastery church of Moldovița inside its fortified walls, seen from the courtyard at three-quarter view; every exterior wall is now completely covered, from the ground to the eaves, in dense colorful frescoes: rows of saints and scenes on a deep intense blue background, with red, ochre and gold, glowing in the last golden light under the wide dark shingled eaves; the scaffolding is gone; the small figure of the old painter stands in the courtyard looking up at his work; fir forests and soft hills behind; peaceful and grand.',
 }
-SIZE = {k: ('1536x1024' if not k.startswith('erou_') else '1024x1536') for k in P}
+# fresca, ca o fotografie a unui perete pictat (nu pictură în ulei); apoi aceeași scenă „vie” (editare cu fresca drept model)
+FRESCO = {
+    'z_fresca': 'A close view of a finished 16th-century Moldavian monastery fresco: the Siege of Constantinople as painted at Moldovița: stylized Byzantine-Moldavian horsemen and soldiers charging toward a walled city with tall towers, Ottoman cannons and tents below the walls, deep blue (Voroneț blue) background, ochre, red and gold, flat medieval perspective, halos, matte lime-plaster texture with small cracks and faded patches. Wide composition, no text, no letters, no inscriptions.',
+}
+EDITS = {
+    'z_viu': ('z_fresca', 'Transform this fresco into a realistic, dramatic oil painting of exactly the same scene and composition: real horsemen in armor and fur hats galloping toward the walled city, real towers, cannon smoke, dust, motion, cinematic sunset light. Keep the same positions of the riders and the city. No text, no letters.'),
+}
+P.update(FRESCO)
+SIZE = {k: ('1536x1024' if not k.startswith('erou_') else '1024x1536') for k in list(P) + list(EDITS)}
+
+
+def edit(key, k, quality):
+    base, prompt = EDITS[k]
+    img = open(os.path.join(OUT, base + '.png'), 'rb').read()
+    bnd = '----picturi' + os.urandom(8).hex()
+    parts = []
+    for name, val in [('model', 'gpt-image-2'), ('prompt', prompt + STYLE), ('size', SIZE[k]), ('quality', quality), ('n', '1')]:
+        parts.append(('--' + bnd + '\r\nContent-Disposition: form-data; name="' + name + '"\r\n\r\n' + val + '\r\n').encode())
+    parts.append(('--' + bnd + '\r\nContent-Disposition: form-data; name="image[]"; filename="' + base + '.png"\r\nContent-Type: image/png\r\n\r\n').encode() + img + b'\r\n')
+    parts.append(('--' + bnd + '--\r\n').encode())
+    req = urllib.request.Request('https://api.openai.com/v1/images/edits', data=b''.join(parts),
+                                 headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'multipart/form-data; boundary=' + bnd})
+    try:
+        r = json.load(urllib.request.urlopen(req, timeout=400))
+        open(os.path.join(OUT, k + '.png'), 'wb').write(base64.b64decode(r['data'][0]['b64_json']))
+        return k, r.get('usage', {}).get('output_tokens', 0)
+    except urllib.error.HTTPError as e:
+        return k, 'EROARE ' + str(e.code) + ' ' + e.read().decode()[:300]
 
 
 def gen(key, k, quality):
-    body = {'model': 'gpt-image-2', 'prompt': P[k] + STYLE, 'size': SIZE[k], 'quality': quality, 'n': 1}
+    if k in EDITS:
+        return edit(key, k, quality)
+    style = ' No text, no letters, no writing, no watermark, no signature, no frame, no border.' if k in FRESCO else STYLE
+    body = {'model': 'gpt-image-2', 'prompt': P[k] + style, 'size': SIZE[k], 'quality': quality, 'n': 1}
     req = urllib.request.Request('https://api.openai.com/v1/images/generations', data=json.dumps(body).encode(),
                                  headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'})
     for attempt in range(3):
@@ -94,15 +131,18 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     args = [a for a in sys.argv[1:] if not a.startswith('--') and a not in (sys.argv[sys.argv.index('--keychain') + 1] if '--keychain' in sys.argv else '',)]
     quality = 'high' if '--high' in sys.argv else 'medium'
-    todo = args or [k for k in P if not os.path.exists(os.path.join(OUT, k + '.png'))]
+    todo = args or [k for k in list(P) + list(EDITS) if not os.path.exists(os.path.join(OUT, k + '.png'))]
+    # editările au nevoie de imaginea de bază, deci vin după ea
+    first = [k for k in todo if k not in EDITS]; later = [k for k in todo if k in EDITS]
     lock = threading.Lock()
     tot = 0
-    with ThreadPoolExecutor(4) as ex:
-        for k, res in ex.map(lambda k: gen(key, k, quality), todo):
-            with lock:
-                if isinstance(res, int):
-                    tot += res
-                print(k, res, flush=True)
+    for batch in (first, later):
+        with ThreadPoolExecutor(4) as ex:
+            for k, res in ex.map(lambda k: gen(key, k, quality), batch):
+                with lock:
+                    if isinstance(res, int):
+                        tot += res
+                    print(k, res, flush=True)
     print('jetoane de imagine:', tot)
 
 

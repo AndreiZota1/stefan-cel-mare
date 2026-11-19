@@ -206,15 +206,18 @@ var G = globalThis.G || (globalThis.G = {});
     window.addEventListener('pagehide', function () { if (G.running) G.saveGame(); });
     requestAnimationFrame(frame);
     // filmul: prima dată pornește singur (după o apăsare, ca să se audă), apoi din butonul 🎬 Filmul
-    function film() {
-      show('start', false);
-      G.Cine.play({ onEnd: function () { refreshStart(); show('start', true); setTimeout(startDemo, 50); } });
+    function film(name) {
+      show('start', false); show('films', false);
+      G.Cine.play({ film: name || 'zugravul', onEnd: function () { refreshStart(); show('start', true); setTimeout(startDemo, 50); } });
     }
-    if ($('bFilm')) $('bFilm').addEventListener('click', function () { if (!G.running) film(); });
+    if ($('bFilm')) $('bFilm').addEventListener('click', function () { if (!G.running) show('films', true); });
+    if ($('fZugrav')) $('fZugrav').addEventListener('click', function () { film('zugravul'); });
+    if ($('fTrailer')) $('fTrailer').addEventListener('click', function () { film('trailer'); });
+    if ($('fClose')) $('fClose').addEventListener('click', function () { show('films', false); });
     var seen = false; try { seen = !!localStorage.getItem('scm_film'); } catch (e) {}
     if (G.Cine && !seen && !navigator.webdriver && !G.spectate) {
       show('splash', true);
-      $('splash').addEventListener('click', function () { show('splash', false); film(); }, { once: true });
+      $('splash').addEventListener('click', function () { show('splash', false); film('zugravul'); }, { once: true });
     } else setTimeout(startDemo, 300);
   });
 })();
