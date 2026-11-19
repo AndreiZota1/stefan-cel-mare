@@ -405,6 +405,8 @@ var G = globalThis.G || (globalThis.G = {});
       var dx = e.x - u.x, dy = e.y - u.y, d = dx * dx + dy * dy;
       if (d > r * r || (minr && d < minr * minr)) return;
       if (e.t === 'vil') d += 6;
+      // asediul și călugării sunt ținte bune: lovite întâi
+      var ecls = G.UNITS[e.t].cls; if (ecls === 'sie') d -= 9; else if (ecls === 'mon') d -= 4;
       if (d < bd) { bd = d; best = e; }
     });
     // lupii din apropiere sunt ținte pentru oșteni
@@ -459,9 +461,16 @@ var G = globalThis.G || (globalThis.G = {});
   function dir8(dx, dy) { var i = Math.round((Math.atan2(dy, dx) - Math.PI / 4) / (Math.PI / 4)); return ((i % 8) + 8) % 8; }
   function faceTo(u, dx, dy) { if (dx * dx + dy * dy < 1e-6) return; u.face = (dx - dy) >= 0 ? 1 : -1; u.dir8 = dir8(dx, dy); }
   G.faceTo = faceTo;
-  function setTask(u, T) { u.task = T; u.path = null; u.gk = null; u.fails = 0; u.rp = 0; }
+  function setTask(u, T) {
+    if (G.qmode && u.task && u.k === 'u') { (u.oq || (u.oq = [])).push(T); return; }
+    u.task = T; u.path = null; u.gk = null; u.fails = 0; u.rp = 0;
+  }
   G.setTask = setTask;
-  function finish(u, T) { u.task = T ? (T.then || null) : null; u.path = null; u.gk = null; }
+  function finish(u, T) {
+    u.task = T ? (T.then || null) : null; u.path = null; u.gk = null;
+    // ordinele puse la coadă cu Shift
+    if (!u.task && u.oq && u.oq.length) { u.task = u.oq.shift(); u.fails = 0; u.rp = 0; }
+  }
 
   // apropie unitatea de entitatea e până la distanța reach; true când a ajuns
   function approach(u, e, reach, dt) {
@@ -535,6 +544,19 @@ var G = globalThis.G || (globalThis.G = {});
     }
     doMove(u, T, dt);
   }
+  // patrularea: du-te-vino între două puncte, cu ochii după dușmani
+  function doPatrol(u, T, dt) {
+    u.scan = (u.scan || 0) - dt;
+    if (u.scan <= 0) { u.scan = 0.5; var st = ust(u); if (st.atk) { var e = findEnemy(u, st.los * S.losMul); if (e) { setTask(u, { k: 'atk', id: e.id, auto: 1, then: T }); return; } } }
+    if (Math.hypot(u.x - T.x, u.y - T.y) < 0.8) { T.leg = 1 - T.leg; T.x = T.leg ? T.bx : T.ax; T.y = T.leg ? T.by : T.ay; u.path = null; u.gk = null; }
+    var mv = T.mv || (T.mv = { k: 'move', then: T }); mv.x = T.x; mv.y = T.y;
+    doMove(u, mv, dt);
+    if (u.task !== T && u.task !== mv) return;
+    u.task = T;
+  }
+  G.cmdPatrol = function (units, x, y) {
+    units.forEach(function (u) { if (u && !u.dead && !u.gin && u.t !== 'vil' && ust(u).atk) setTask(u, { k: 'patrol', ax: u.x, ay: u.y, bx: x, by: y, leg: 1, x: x, y: y }); });
+  };
   function doIdle(u, dt) {
     var d = G.UNITS[u.t];
     if (u.t === 'vil' || d.cls === 'car') return;
@@ -548,8 +570,8 @@ var G = globalThis.G || (globalThis.G = {});
       return;
     }
     if (!st.atk) return;
-    var e = findEnemy(u, st.los * S.losMul);
-    if (e) setTask(u, { k: 'atk', id: e.id, auto: 1 });
+    var hold = u.stance === 'hold', e = findEnemy(u, hold ? Math.max(st.rng || 0, 1.2) : st.los * S.losMul);
+    if (e) setTask(u, { k: 'atk', id: e.id, auto: 1, hold: hold, def: u.stance === 'def', ox: u.x, oy: u.y });
   }
 
   // ---------- luptă ----------
@@ -567,6 +589,8 @@ var G = globalThis.G || (globalThis.G = {});
       }
     }
     var reach = st.rng > 0 ? st.rng : (e.k === 'u' ? st.r + G.UNITS[e.t].r + 0.3 : 0.75);
+    if (T.hold && G.distTo(u, e) > reach + 0.25) { finish(u, T); return; }
+    if (T.def && T.ox !== undefined && Math.hypot(u.x - T.ox, u.y - T.oy) > 7) { setTask(u, { k: 'move', x: T.ox, y: T.oy }); return; }
     var r = approach(u, e, reach, dt);
     if (r === 'fail') { (u.ign || (u.ign = {}))[e.id] = S.t + 25; finish(u, T); return; }
     if (!r) return;
@@ -608,7 +632,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (e.k === 'u' && src && !src.dead && src.o !== undefined && G.enemy(src.o, e.o) && (src.k === 'u' || src.k === 'b')) {
       var ed = G.UNITS[e.t];
       if (ed.cls !== 'vil' && ed.cls !== 'mon' && ed.cls !== 'car' && !(ed.onlyBld && src.k !== 'b') && (!e.task || e.task.k === 'amove')) {
-        setTask(e, { k: 'atk', id: src.id, auto: 1, then: e.task });
+        if (!(e.stance === 'hold' && G.distTo(e, src) > (ust(e).rng || 1.2) + 0.3)) setTask(e, { k: 'atk', id: src.id, auto: 1, then: e.task, hold: e.stance === 'hold', def: e.stance === 'def', ox: e.x, oy: e.y });
       }
     }
   }
@@ -970,6 +994,7 @@ var G = globalThis.G || (globalThis.G = {});
     return best;
   }
   function afterBuild(u, b) {
+    if (u.oq && u.oq.length) { setTask(u, u.oq.shift()); return; }
     var d = G.BLDS[b.t];
     if (d.farm) { setTask(u, { k: 'gat', id: b.id, kind: 'farm', ox: b.x, oy: b.y }); return; }
     if (d.drop && b.t !== 'cetate') {
@@ -1156,6 +1181,7 @@ var G = globalThis.G || (globalThis.G = {});
       case 'bld': doBld(u, T, dt); break;
       case 'heal': doHeal(u, T, dt); break;
       case 'conv': doConv(u, T, dt); break;
+      case 'patrol': doPatrol(u, T, dt); break;
       case 'relic': doRelic(u, T, dt); break;
       case 'gar': doGar(u, T, dt); break;
       case 'trade': doTrade(u, T, dt); break;

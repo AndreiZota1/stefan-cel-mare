@@ -1251,6 +1251,12 @@ var G = globalThis.G || (globalThis.G = {});
       var hr = (d.cls === 'cav' ? 12 : d.cls === 'sie' ? 14 : 8) * z;
       ctx.beginPath(); ctx.ellipse(p[0], p[1], hr, hr * 0.5, 0, 0, 6.3); ctx.stroke();
     }
+    // ordinele puse la coadă (Shift): o linie punctată prin punctele următoare
+    if (selected && u.o === 0 && u.oq && u.oq.length) {
+      ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.2; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(p[0], p[1]);
+      [u.task].concat(u.oq).forEach(function (T) { if (!T) return; var tx = T.x, ty = T.y; if (tx === undefined && T.id) { var te = G.getE(T.id); if (te) { tx = te.x; ty = te.y; } } if (tx === undefined) return; var q = R.w2s(tx, ty); ctx.lineTo(q[0], q[1]); ell(ctx, q[0], q[1], 2.5, 1.5, 'rgba(255,255,255,0.8)'); ctx.moveTo(q[0], q[1]); });
+      ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+    }
     if (d.hero) { ctx.fillStyle = 'rgba(255,215,90,0.18)'; ctx.beginPath(); ctx.ellipse(p[0], p[1], 15 * z, 7.5 * z, 0, 0, 6.3); ctx.fill(); }
     var sh = unitSheet(u);
     if (sh) {

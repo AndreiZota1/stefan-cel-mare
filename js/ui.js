@@ -85,7 +85,7 @@ var G = globalThis.G || (globalThis.G = {});
     UI.place = null; UI.rallyMode = false; UI.amove = false; lastSig = ''; acc = 1;
     if (ents.length) G.sfx('select');
   };
-  UI.reset = function () { UI.sel = []; UI.place = null; UI.rallyMode = false; UI.amove = false; UI.bpage = 0; lastSig = ''; msgIdx = G.msgQ.length; els.msgs.innerHTML = ''; if (G.Camp && G.Camp.reset) G.Camp.reset(); };
+  UI.reset = function () { UI.sel = []; UI.place = null; UI.rallyMode = false; UI.amove = false; UI.patrol = false; UI.bpage = 0; lastSig = ''; msgIdx = G.msgQ.length; els.msgs.innerHTML = ''; if (G.Camp && G.Camp.reset) G.Camp.reset(); };
   function idleVils() { return G.C.units.filter(function (u) { return u.o === 0 && !u.dead && u.t === 'vil' && !u.task; }); }
   function mark(x, y, c) { G.R.marks.push({ x: x, y: y, t: performanceClock(), c: c }); }
   function performanceClock() { return G.R.clock ? G.R.clock() : 0; }
@@ -140,6 +140,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (UI.rallyMode) { var rb = UI.selOne(); if (rb && rb.k === 'b') setRally(rb, w, e); UI.rallyMode = false; lastSig = ''; return; }
     var mine = mineSel();
     if (UI.amove && mine.length) { orderUnits(mine, w, e); return; }
+    if (UI.patrol && mine.length) { G.cmdPatrol(mine, w[0], w[1]); mark(w[0], w[1], RED); G.sfx('ack'); UI.patrol = false; lastSig = ''; return; }
     if (dbl && e && e.k === 'u' && e.o === 0) { selectSame(e); return; }
     if (mine.length) {
       if (e && e.k === 'u' && e.o === 0) { UI.select([e]); return; }
@@ -160,6 +161,7 @@ var G = globalThis.G || (globalThis.G = {});
     var w = G.R.s2w(sx, sy), e = G.R.pick(sx, sy);
     if (UI.rallyMode) { var rb = UI.selOne(); if (rb && rb.k === 'b') setRally(rb, w, e); UI.rallyMode = false; lastSig = ''; return; }
     if (UI.amove) { var am = mineSel(); if (am.length) orderUnits(am, w, e); UI.amove = false; lastSig = ''; return; }
+    if (UI.patrol) { var pm = mineSel(); if (pm.length) { G.cmdPatrol(pm, w[0], w[1]); mark(w[0], w[1], RED); G.sfx('ack'); } UI.patrol = false; lastSig = ''; return; }
     if (m.dbl && e && e.k === 'u' && e.o === 0) { selectSame(e); return; }
     if (m.shift && e && e.k === 'u' && e.o === 0) {
       var mine = mineSel();
@@ -172,10 +174,17 @@ var G = globalThis.G || (globalThis.G = {});
     UI.select(e ? [e] : []);
     if (e && e.k === 'u' && e.o === 0 && G.voice) G.voice([e], 'sel');
   };
-  UI.commandAt = function (sx, sy) {
+  UI.commandAt = function (sx, sy, shift) {
     if (!G.S || G.S.over) return;
     var w = G.R.s2w(sx, sy), e = G.R.pick(sx, sy), mine = mineSel();
-    if (mine.length) { orderUnits(mine, w, e); return; }
+    if (UI.patrol && mine.length) { G.cmdPatrol(mine, w[0], w[1]); mark(w[0], w[1], RED); G.sfx('ack'); UI.patrol = false; lastSig = ''; return; }
+    if (mine.length) {
+      // cu Shift, ordinul se pune la coadă; fără Shift, coada veche se șterge
+      if (!shift) mine.forEach(function (u) { u.oq = null; });
+      G.qmode = !!shift;
+      try { orderUnits(mine, w, e); } finally { G.qmode = false; }
+      return;
+    }
     var b = UI.selOne();
     if (b && b.k === 'b' && b.o === 0 && b.built && G.BLDS[b.t].train) setRally(b, w, e);
   };
@@ -283,6 +292,7 @@ var G = globalThis.G || (globalThis.G = {});
     c.act(); lastSig = '';
   };
   UI.escape = function () {
+    if (UI.patrol) { UI.patrol = false; lastSig = ''; return; }
     if (UI.place) { UI.cancelPlace(); return; }
     if (UI.amove) { UI.amove = false; lastSig = ''; return; }
     if (UI.rallyMode) { UI.rallyMode = false; lastSig = ''; return; }
@@ -373,6 +383,12 @@ var G = globalThis.G || (globalThis.G = {});
       if (hero) {
         var pw = G.POWERS[G.CIVS[civ].power], perr = G.powerError(0);
         out.push({ id: 'power', icon: pw.icon, label: pw.name, enabled: !perr, err: perr, tip: pw.desc, cls: 'age', act: function () { var e2 = G.cmdPower(0); if (e2) { G.msg(e2, 'warn'); G.sfx('err'); } } });
+      }
+      var fighters = units.filter(function (u) { return u.t !== 'vil' && G.UNITS[u.t].atk > 0; });
+      if (fighters.length) {
+        out.push({ id: 'patrol', icon: '🔁', label: 'Patrulează', enabled: true, act: function () { UI.patrol = true; UI.amove = false; lastSig = ''; G.msg('Atinge locul până unde patrulează (dus-întors).', 'info'); } });
+        var stc = fighters[0].stance || 'agr', ST = { agr: ['⚔️', 'Agresiv', 'def'], def: ['🛡️', 'Defensiv', 'hold'], hold: ['⛔', 'Pe loc', 'agr'] }[stc];
+        out.push({ id: 'stance', icon: ST[0], label: ST[1], enabled: true, act: function () { fighters.forEach(function (u) { u.stance = ST[2] === 'agr' ? undefined : ST[2]; }); lastSig = ''; G.sfx('click'); } });
       }
       var carriers = units.filter(function (u) { return G.UNITS[u.t].carry && G.shipLoad(u); });
       if (carriers.length) out.push({ id: 'unl', icon: '⚓', label: 'Coboară aici', enabled: true, act: function () { carriers.forEach(function (s2) { G.cmdUnload(s2, s2.x, s2.y); }); } });

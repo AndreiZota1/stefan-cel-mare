@@ -18,7 +18,11 @@ var G = globalThis.G || (globalThis.G = {});
     D = pid === 0 ? G.DIFF.normal : (G.DIFF[S.diff] || G.DIFF.normal);
     A = S.ai[pid] || (S.ai[pid] = { wave: 0, next: Math.max(D.first, S.opt.peace || 0), reb: 0, feud: 0, threat: 0, mkt: 0, relic: 0, bell: 0, calm: 0 });
     collect();
-    if (tc && P.aiMode !== 'defend') { economy(); buildings(); naval(); }
+    // cere pace și se predă când a pierdut tot (ca în AoE2)
+    if (!tc && !S.scen && S.t > 300 && my.vils.length <= 2 && my.army.length + my.navy.length <= 2 && !my.blds.some(function (b) { return b.t === 'cetate'; })) {
+      G.msg(G.ppl(pid, true) + ' cer pace și se predau.', G.enemy(0, pid) ? 'good' : 'alert'); G.defeat(pid); return;
+    }
+    if (tc && P.aiMode !== 'defend') { economy(); buildings(); naval(); palisade(); }
     military();
   };
 
@@ -456,7 +460,70 @@ var G = globalThis.G || (globalThis.G = {});
     hero();
     monks();
     defend();
-    if (P.aiMode === 'full' || (P.aiMode === 'eco' && A.go)) attack();
+    if (P.aiMode === 'full' || (P.aiMode === 'eco' && A.go)) { attack(); retreat(); raid(); }
+  }
+  // ---------- raidurile: câțiva călăreți repezi lovesc țăranii dușmani departe de cetăți și turnuri ----------
+  function guarded(x, y, o) {
+    for (var i = 0; i < C.blds.length; i++) { var b = C.blds[i]; if (b.dead || b.o !== o || !b.built || !(b.t === 'cetate' || b.t === 'turn' || b.t === 'fortareata')) continue; if (G.dist(b, { x: x, y: y }) < 9.5) return true; }
+    return false;
+  }
+  function raidPrey(from, p, rad) {
+    var best = null, bd = rad * rad;
+    C.units.forEach(function (e) {
+      if (e.dead || e.gin || e.t !== 'vil' || !G.enemy(pid, e.o) || (p >= 0 && e.o !== p) || guarded(e.x, e.y, e.o)) return;
+      var d = (e.x - from.x) * (e.x - from.x) + (e.y - from.y) * (e.y - from.y); if (d < bd) { bd = d; best = e; }
+    });
+    return best;
+  }
+  function raid() {
+    if (S.diff === 'usor' || P.age < 1 || A.threat || S.t < (S.opt.peace || 0)) return;
+    var raiders = my.army.filter(function (u) { return u.raid; });
+    raiders.forEach(function (u) {
+      if (u.hp < u.mhp * 0.45 || S.t > A.raidEnd) { u.raid = 0; if (my.home) G.cmdMove([u], my.home.x, my.home.y); return; }
+      if (u.task && u.task.k === 'atk') return;
+      var prey = raidPrey(u, -1, 14);
+      if (prey) G.cmdAttack([u], prey); else { u.raid = 0; if (my.home) G.cmdMove([u], my.home.x, my.home.y); }
+    });
+    if (raiders.length || S.t < (A.raidT || 0)) return;
+    A.raidT = S.t + (S.diff === 'foarte' ? 120 : S.diff === 'greu' ? 160 : 220);
+    var fast = my.army.filter(function (u) { var c = G.UNITS[u.t].cls; return !u.wave && !(u.task && u.task.k === 'atk') && u.hp > u.mhp * 0.75 && (c === 'cav' || c === 'har') && !G.UNITS[u.t].hero; });
+    var nr = S.diff === 'normal' ? 3 : 5;
+    if (fast.length < 3 || !my.home) return;
+    var p = targetPlayer(), prey = p >= 0 ? raidPrey(my.home, p, 90) : null;
+    if (!prey) return;
+    var grp = fast.slice(0, nr);
+    grp.forEach(function (u) { u.raid = 1; });
+    A.raidEnd = S.t + 70;
+    G.cmdAttack(grp, prey);
+  }
+  // ---------- retragerea: un val care pierde se întoarce acasă să se refacă ----------
+  function retreat() {
+    if (!my.home) return;
+    var w = A.wave; if (!w) return;
+    var wave = my.army.filter(function (u) { return u.wave === w; });
+    if (!wave.length) return;
+    var hp = 0, mhp = 0, cx = 0, cy = 0;
+    wave.forEach(function (u) { hp += u.hp; mhp += u.mhp; cx += u.x; cy += u.y; }); cx /= wave.length; cy /= wave.length;
+    if (!A.wHp || A.wId !== w) { A.wId = w; A.wHp = mhp; A.wT = S.t; return; }
+    if (S.t - A.wT < 15 || hp > A.wHp * 0.35) return;
+    var foes = 0; C.units.forEach(function (e) { if (!e.dead && !e.gin && G.enemy(pid, e.o) && G.isMil(e) && Math.hypot(e.x - cx, e.y - cy) < 9) foes++; });
+    if (foes < wave.length) return;
+    wave.forEach(function (u) { u.wave = 0; });
+    G.cmdMove(wave, my.home.x, my.home.y);
+    A.next = Math.max(A.next, S.t + D.every * 0.6); A.wHp = 0;
+    if (G.enemy(0, pid)) G.msg('Oastea ' + G.ppl(pid).replace(/ii$/, 'ilor') + ' se retrage!', 'good', { x: cx, y: cy });
+  }
+  // ---------- palisada: un gard de pari în jurul satului, cu porți pe fiecare latură ----------
+  function palisade() {
+    if (A.walled || S.diff === 'usor' || P.age < 1 || S.t < 480 || P.res.w < 320 || my.vils.length < 22 || S.scen) return;
+    A.walled = 1;
+    var r = 13, N = S.N, x0 = Math.max(2, Math.round(tc.x - r)), y0 = Math.max(2, Math.round(tc.y - r)), x1 = Math.min(N - 3, Math.round(tc.x + r)), y1 = Math.min(N - 3, Math.round(tc.y + r));
+    var bl = [pickBuilder(x0, y0), pickBuilder(x1, y1)].filter(Boolean);
+    [[x0, y0, x1, y0], [x1, y0, x1, y1], [x1, y1, x0, y1], [x0, y1, x0, y0]].forEach(function (sd, i) {
+      G.cmdPlaceWall(pid, 'palisada', sd[0], sd[1], sd[2], sd[3], i % 2 ? bl.slice(1) : bl.slice(0, 1));
+      var mx = Math.round((sd[0] + sd[2]) / 2), myy = Math.round((sd[1] + sd[3]) / 2);
+      for (var k = -1; k <= 1; k++) { var gx = sd[0] === sd[2] ? mx : mx + k, gy = sd[1] === sd[3] ? myy : myy + k; if (G.canPlace(pid, 'poartal', gx, gy)) { G.cmdPlace(pid, 'poartal', gx, gy, null); break; } }
+    });
   }
   function techs(R) {
     var started = 0;
