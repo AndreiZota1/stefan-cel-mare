@@ -382,7 +382,7 @@ G.RESD = {
   // vânatul: întâi îl dobori (hp), apoi îl jupoi (amt); cerbul fuge, mistrețul se apără, lupul atacă singur
   deer:  { name: 'Cerb', r: 'f', amt: 140, block: false, rate: 0.62, lim: 3, hunt: 1, hp: 5, spd: 2.0, flee: 1 },
   boar:  { name: 'Mistreț', r: 'f', amt: 340, block: false, rate: 0.62, lim: 6, hunt: 1, hp: 60, atk: 5, spd: 1.35 },
-  wolf:  { name: 'Lup', r: 'f', amt: 40, block: false, rate: 0.5, lim: 2, hunt: 1, hp: 30, atk: 4, spd: 1.75, wild: 1 },
+  wolf:  { name: 'Lup', r: 'f', amt: 40, block: false, rate: 0.5, lim: 2, hunt: 1, hp: 25, atk: 3, spd: 1.75, wild: 1 },
   fish:  { name: 'Pește', r: 'f', amt: 220, block: true, rate: 0.45, lim: 3, water: 1 },
   fishd: { name: 'Banc de pești', r: 'f', amt: 450, block: true, rate: 0.55, lim: 4, water: 1, deep: 1 }
 };

@@ -188,6 +188,7 @@ var G = globalThis.G || (globalThis.G = {});
       e.preventDefault(); return;
     }
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (k === 'Enter') { G.UI.openChat(); e.preventDefault(); return; }
     if (k === 'Escape') G.UI.escape();
     else if (lk === 'h') G.UI.goHome();
     else if (k === '.' || k === ',') G.UI.nextIdle(k === ',');

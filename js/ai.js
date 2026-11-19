@@ -395,6 +395,9 @@ var G = globalThis.G || (globalThis.G = {});
   }
   function naval() {
     if (A.noWater && S.t < A.noWater) return;
+    // pe apă merge doar dacă e mare de-adevăratelea: hartă de mare/lac sau bancuri de pești în larg aproape
+    if (A.waterOK === undefined) { var mt = S.map && S.map.type; A.waterOK = mt === 'mare' || mt === 'lac' || S.ents.some(function (e) { return e.t === 'fishd' && !e.dead && G.dist(e, tc) < 40; }); }
+    if (!A.waterOK && !my.blds.some(function (b) { return b.t === 'port'; })) return;
     var port = null, anyPort = false;
     my.blds.forEach(function (b) { if (b.t === 'port') { anyPort = true; if (b.built && !port) port = b; } });
     if (!anyPort) {
@@ -515,7 +518,7 @@ var G = globalThis.G || (globalThis.G = {});
   }
   // ---------- palisada: un gard de pari în jurul satului, cu porți pe fiecare latură ----------
   function palisade() {
-    if (A.walled || S.diff === 'usor' || P.age < 1 || S.t < 480 || P.res.w < 320 || my.vils.length < 22 || S.scen) return;
+    if (A.walled || S.diff === 'usor' || P.age < 2 || S.t < 1000 || P.res.w < 450 || my.vils.length < 28 || S.scen) return;
     A.walled = 1;
     var r = 13, N = S.N, x0 = Math.max(2, Math.round(tc.x - r)), y0 = Math.max(2, Math.round(tc.y - r)), x1 = Math.min(N - 3, Math.round(tc.x + r)), y1 = Math.min(N - 3, Math.round(tc.y + r));
     var bl = [pickBuilder(x0, y0), pickBuilder(x1, y1)].filter(Boolean);
@@ -615,6 +618,16 @@ var G = globalThis.G || (globalThis.G = {});
       if (threat || b.dead || b.o === pid || !G.ally(pid, b.o) || !b.hit || S.t - b.hit > 3) return;
       G.forUnitsNear(b.x, b.y, 10, function (e) { if (!threat && G.enemy(pid, e.o) && !e.dead) threat = e; });
     });
+    // țăranii loviți departe de case: fug în cetate, iar oastea vine după cel care i-a lovit
+    my.vils.forEach(function (v) {
+      if (!v.hit || S.t - v.hit > 2.5) return;
+      var att = null, na = 0; G.forUnitsNear(v.x, v.y, 5, function (e) { if (!e.dead && G.enemy(pid, e.o) && G.isMil(e)) { na++; if (!att) att = e; } });
+      if (!att) return;
+      A.vHit = S.t; if (!threat) { threat = att; near++; }
+      if (tc && (na >= 2 || v.hp < v.mhp * 0.6) && G.dist(v, tc) < 30 && !(v.task && v.task.k === 'gar')) G.cmdGarrison([v], tc);
+    });
+    // s-a liniștit: țăranii adăpostiți ies la treabă
+    if (!threat && tc && tc.gar && tc.gar.length && !P.bell && S.t - (A.vHit || 0) > 6) G.cmdUngarrison(tc);
     A.threat = threat ? threat.id : 0;
     // clopotul: când dușmanii mulți sunt lângă cetate și oastea e mică
     if (tc && threat && near >= 5 && my.army.length < near * 0.6 && !P.bell && G.dist(threat, tc) < 14) { G.cmdBell(pid); A.bell = S.t; }

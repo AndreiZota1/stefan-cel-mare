@@ -627,8 +627,14 @@ var G = globalThis.G || (globalThis.G = {});
     e.hp -= dmg; e.hit = S.t;
     if (e.o === 0 && src && src.o !== undefined && G.enemy(src.o, 0)) alertAttack(e);
     if (e.hp <= 0) { G.kill(e, src); return; }
-    // oștenii mușcați de un lup sau de un mistreț se întorc spre el
+    // oștenii mușcați de un lup sau de un mistreț se întorc spre el; țăranii se apără și ei, cu cei din jur
     if (e.k === 'u' && src && src.k === 'r' && !src.dead && G.isMil(e) && (!e.task || e.task.k === 'amove')) { setTask(e, { k: 'atk', id: src.id, auto: 1, then: e.task }); return; }
+    if (e.k === 'u' && e.t === 'vil' && src && src.k === 'r' && !src.dead && G.RESD[src.t].wild) {
+      [e].concat((function () { var a = []; forUnitsNear(e.x, e.y, 3, function (v) { if (v !== e && !v.dead && !v.gin && v.t === 'vil' && v.o === e.o && !(v.task && v.task.k === 'atk')) a.push(v); }); return a; })()).forEach(function (v) {
+        if (!(v.task && v.task.k === 'atk')) setTask(v, { k: 'atk', id: src.id, auto: 1, then: v.task && v.task.k !== 'bld' ? v.task : null });
+      });
+      return;
+    }
     if (e.k === 'u' && src && !src.dead && src.o !== undefined && G.enemy(src.o, e.o) && (src.k === 'u' || src.k === 'b')) {
       var ed = G.UNITS[e.t];
       if (ed.cls !== 'vil' && ed.cls !== 'mon' && ed.cls !== 'car' && !(ed.onlyBld && src.k !== 'b') && (!e.task || e.task.k === 'amove')) {
@@ -965,6 +971,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (Math.random() < dt * 1.5) G.sfx('build', b.x, b.y);
     if (!b.built) {
       var inc = dt / d.time;
+      if (S.players[b.o].fast) inc *= 40;
       b.prog += inc; b.hp = Math.min(mh, b.hp + mh * inc);
       if (b.prog >= 1) completeBld(b);
     } else {
@@ -1240,7 +1247,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (!b.built) return;
     if (b.q.length) {
       var it = b.q[0];
-      if (it.left > 0) it.left -= dt * (it.u ? trainMul(b.o, b.t) : researchMul(b.o));
+      if (it.left > 0) it.left -= dt * (it.u ? trainMul(b.o, b.t) : researchMul(b.o)) * (S.players[b.o].fast ? 40 : 1);
       if (it.left <= 0) {
         if (it.u) {
           var ut = curType(b.o, it.u);
@@ -1678,6 +1685,22 @@ var G = globalThis.G || (globalThis.G = {});
     units.forEach(function (u) { if (u && !u.dead && u.carry && u.carry.n > 0) setTask(u, { k: 'ret', back: u.task && u.task.k === 'gat' ? u.task : null }); });
   };
   // clopotul: țăranii fug în cetate, turnuri și fortărețe; încă o dată, se întorc la treabă
+  // codurile secrete (ca „cheese steak jimmy's” din AoE2); o partidă cu coduri nu mai dă medalii
+  var CHEATS = {
+    'mamaliga': function (P) { P.res.f += 1000; return '+1000 hrană'; }, 'padurea': function (P) { P.res.w += 1000; return '+1000 lemn'; },
+    'galbeni': function (P) { P.res.g += 1000; return '+1000 aur'; }, 'cariera': function (P) { P.res.s += 1000; return '+1000 piatră'; },
+    'iscoade': function () { S.exp.fill(1); S.opt.reveal = 'tot'; return 'toată harta la vedere'; },
+    'repede': function (P) { P.fast = !P.fast; return P.fast ? 'construiești și pregătești pe loc' : 'timpul curge iar normal'; },
+    'oastea cea mare': function (P) { var tc = C.blds.find(function (b) { return b.o === P.id && b.t === 'cetate'; }) || C.units.find(function (u) { return u.o === P.id; }); if (!tc) return ''; G.placeUnits(P.id, G.curType(P.id, 'kni'), 6, tc.x + 3, tc.y + 3); G.placeUnits(P.id, G.curType(P.id, 'arc'), 6, tc.x + 3, tc.y + 4); return 'a sosit oastea cea mare'; },
+    'victorie': function (P) { S.players.forEach(function (Q) { if (G.enemy(P.id, Q.id) && Q.alive) defeat(Q.id); }); return 'victorie!'; }
+  };
+  G.cheat = function (o, text) {
+    var k = (text || '').toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, ''), fn = CHEATS[k];
+    if (!fn) return null;
+    var P = S.players[o], r = fn(P); S.cheated = 1;
+    if (o === 0 && r) { G.msg('Cod secret: ' + r + '.', 'good'); G.sfx('built'); }
+    return r;
+  };
   G.cmdBell = function (o) {
     var P = S.players[o];
     if (P.bell) {

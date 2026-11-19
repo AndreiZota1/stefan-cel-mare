@@ -9,7 +9,7 @@ Cerut de Andrei pe 19.11: punctele 2–5 din evaluare (echilibru, vânătoare ș
 - [x] 3. Călugării convertesc dușmanii (cântare bisericească / ezan)
 - [ ] 4. Calculatorul: raiduri pe țărani, retragere și regrupare, palisade, ținte bune (asediu, călugări, țărani), cere pace când e pierdut, dificultăți reglate
 - [x] 5. Ordine: lanț cu Shift, patrulare, atitudini (agresiv / defensiv / pe loc)
-- [ ] 6. Coduri secrete (mămăligă etc.) și strigăte pe numere
+- [x] 6. Coduri secrete (mămăligă etc.) și strigăte pe numere
 - [ ] 7. Moduri: Regele dealului, Nomazi, zi–noapte opțional
 - [ ] 8. Diplomație: tribut către aliați
 - [ ] 9. Medalii salvate în browser
