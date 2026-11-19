@@ -249,8 +249,11 @@ var G = globalThis.G || (globalThis.G = {});
       var base = d.gate ? (d.wall === 'pal' ? 'ppal' : 'poarta') : d.wall, wk = 'b/' + base + '_' + (b ? wallDir(b) : (d.gate ? 'x' : 'p'));
       return G.BAKED2 && G.BAKED2[wk + '_' + civ] ? wk + '_' + civ : wk + '_all';
     }
-    if (t === 'turn') { var P = G.S && G.S.players[b ? b.o : (o || 0)]; return 'b/turn' + (P && P.techs.turn2 ? 2 : 1) + '_' + civ; }
-    return 'b/' + t + '_' + civ;
+    var P = G.S && G.S.players[b ? b.o : (o || 0)];
+    if (t === 'turn') return 'b/turn' + (P && P.techs.turn2 ? 2 : 1) + '_' + civ;
+    // clădirile se schimbă cu epocile, ca în AoE2: lemn și stuf la început, piatră și aur în Epoca Imperială
+    var k = 'b/' + t + '_' + civ, tk = !P ? '' : P.age <= 0 ? '_r' : P.age >= 3 ? '_g' : '';
+    return tk && G.BAKED2 && G.BAKED2[k + tk] ? k + tk : k;
   }
   // capcana din Codrii Cosminului: un trunchi tăiat și bușteni
   var capS = null;

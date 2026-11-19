@@ -10,6 +10,8 @@ const UNIQ = { mol: 'raz', val: 'vit', ung: 'hus', pol: 'cpl', oto: 'ien', tat: 
 const unitsOf = c => ['vil', 'vilf', 'mon', 'hero', 'mil1', 'mil2', 'mil3', 'mil4', 'mil5', 'spr1', 'spr2', 'spr3', 'skr1', 'skr2', 'arc1', 'arc2', 'arc3'].concat(c === 'tat' ? [] : ['gun1', 'gun2'], ['lcv1', 'lcv2', 'lcv3', 'kni1', 'kni2', 'kni3', 'har1', 'har2', UNIQ[c] + '1', UNIQ[c] + '2', 'car', 'pesc', 'gal1', 'gal2', 'foc', 'tra']);
 const SIEGE = ['ram1', 'ram2', 'cat1', 'cat2', 'can1', 'can2', 'treb', 'car'];
 const BLDS = ['port', 'cetate', 'casa', 'joagar', 'mina', 'moara', 'ogor', 'cazarma', 'poligon', 'grajd', 'fierarie', 'targ', 'turn1', 'turn2', 'manastire', 'universitate', 'atelier', 'fortareata', 'minune'];
+const TIER_R = ['cetate', 'casa', 'joagar', 'mina', 'moara', 'cazarma', 'port'];
+const TIER_G = ['cetate', 'casa', 'joagar', 'mina', 'moara', 'cazarma', 'port', 'poligon', 'grajd', 'fierarie', 'targ', 'manastire', 'universitate', 'atelier', 'fortareata'];
 const WALLS = ['zid_x', 'zid_y', 'zid_p', 'poarta_x', 'poarta_y'];
 const SHARED = ['pal_x', 'pal_y', 'pal_p', 'ppal_x', 'ppal_y', 'zid_x', 'zid_y', 'zid_p', 'poarta_x', 'poarta_y', 'ruina2', 'ruina3', 'ruina4', 'ruina5', 'schela2', 'schela3', 'schela4', 'schela5'];
 const MIME = { '.js': 'text/javascript', '.html': 'text/html', '.json': 'application/json', '.jpg': 'image/jpeg', '.png': 'image/png' };
@@ -34,6 +36,8 @@ const save = (rel, dataUrl) => { const f = path.join(OUT, rel); fs.mkdirSync(pat
   for (const c of CIVS) {
     for (const v of unitsOf(c)) if (want(v)) { if (GRP.includes('u')) jobs.push(['u', v, c]); if (GRP.includes('i')) jobs.push(['i', v, c]); }
     for (const t of BLDS) if (want(t)) { if (GRP.includes('b')) jobs.push(['b', t, c]); if (GRP.includes('j')) jobs.push(['j', t, c]); }
+    // clădirile pe epoci: _r (Epoca Întunecată: lemn, lut, stuf), _g (Imperială și Renașterea: piatră, ornamente, aur)
+    if (GRP.includes('b')) for (const [suf, tier, list] of [['r', 0, TIER_R], ['g', 2, TIER_G]]) for (const t of list) if (want(t) || want(t + '_' + suf)) jobs.push(['b', t, c, tier, suf]);
     for (const t of WALLS) if (want(t)) { if (GRP.includes('b')) jobs.push(['b', t, c]); if (GRP.includes('j') && /_p$|poarta_x/.test(t)) jobs.push(['j', t, c]); }
   }
   if (CIVS.includes('mol')) {
@@ -42,11 +46,11 @@ const save = (rel, dataUrl) => { const f = path.join(OUT, rel); fs.mkdirSync(pat
     for (const t of SHARED) if (want(t)) { if (GRP.includes('b')) jobs.push(['b', t, 'all']); if (GRP.includes('j') && !/^(ruina|schela)/.test(t)) jobs.push(['j', t, 'all']); }
   }
   let bytes = 0; const T0 = Date.now();
-  for (const [grp, t, c] of jobs) {
-    const key = grp + '/' + t + '_' + c, civ = c, t0 = Date.now();
+  for (const [grp, t, c, tier, suf] of jobs) {
+    const key = grp + '/' + t + '_' + c + (suf ? '_' + suf : ''), civ = c, t0 = Date.now();
     const fn = { u: 'bakeUnit', i: 'bakeUnitIcon', b: 'bakeBld', j: 'bakeBldIcon' }[grp];
     let r;
-    try { r = await page.evaluate(([fn, t, c, k]) => window[fn](t, c, k), [fn, t, civ, grp === 'u' ? KU : KB]); }
+    try { r = await page.evaluate(([fn, t, c, k, tier]) => window[fn](t, c, k, tier), [fn, t, civ, grp === 'u' ? KU : KB, tier === undefined ? 1 : tier]); }
     catch (e) { console.log('EȘUAT', key, e.message.split('\n')[0]); continue; }
     save(key + '.webp', r.webp); bytes += r.webp.length * 0.75;
     if (r.mask) { save(key + '_m.webp', r.mask); bytes += r.mask.length * 0.75; }

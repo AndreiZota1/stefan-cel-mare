@@ -9,7 +9,7 @@ const civs = (civsArg || 'mol,val,ung,pol,oto,tat').split(','), scale = +(scaleA
   const meta = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/baked.json'), 'utf8'));
   const cols = ['#2f6fd6', '#d23b2e', '#3fa34d', '#e3c13a', '#2f6fd6', '#d23b2e'];
   const cells = [];
-  keys.split(',').forEach(k => civs.forEach((c, ci) => { const key = grp + '/' + k + '_' + (meta[grp + '/' + k + '_' + c] ? c : 'all'); if (meta[key]) cells.push({ key, m: meta[key], col: cols[ci], row: k, ci }); }));
+  keys.split(',').forEach(k => civs.forEach((c, ci) => { const key = k.includes('{c}') ? grp + '/' + k.replace('{c}', c) : grp + '/' + k + '_' + (meta[grp + '/' + k + '_' + c] ? c : 'all'); if (meta[key]) cells.push({ key, m: meta[key], col: cols[ci], row: k, ci }); }));
   const html = `<body style="margin:0;background:#6f8a4a"><canvas id=c></canvas><script>
   const cells=${JSON.stringify(cells)}, civs=${JSON.stringify(civs)}, S=${scale}, act=${JSON.stringify(actArg || '')};
   const load=s=>new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=s;});

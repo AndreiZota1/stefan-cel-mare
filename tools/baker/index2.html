@@ -22,14 +22,14 @@ window.bakeUnitIcon = async (vis, civ) => {
   m.reset(); faceDir(m.root, 1); m.root.updateMatrixWorld(true);
   return out(bakeIcon({ root: m.root, size: 96, k0: 3, guess: CELL[m.cell], shadow: 1.4, fill: m.cell === 'foot' ? 0.9 : 0.92 }));
 };
-function model(t, civ) {
+function model(t, civ, tier) {
   if (/^ruina\d$/.test(t)) { const n = +t.slice(5); return { root: ruin(n), info: { n } }; }
   if (/^schela\d$/.test(t)) { const n = +t.slice(6); return { root: scaffold(n), info: { n } }; }
   const w = t.match(/^(pal|ppal|zid|poarta)_(x|y|p)$/); if (w) return { root: wallPiece(w[1], w[2], civ === 'all' ? null : civ), info: { n: 1 } };
-  return building2(t, civ);
+  return building2(t, civ, tier);
 }
-window.bakeBld = async (t, civ, k) => {
-  const b = model(t, civ); await texturesReady();
+window.bakeBld = async (t, civ, k, tier) => {
+  const b = model(t, civ, tier); await texturesReady();
   const n = b.info.n, head = 40 + n * 46, guess = [n * 64 + 80, n * 32 + head + 30, 40 + n * 32, head];
   const r = bakeStill({ root: b.root, k, ss: 2, shadow: n * 1.1 + 1.6, scx: n / 2, scz: n / 2, guess, pad: 3, lit: true, snow: true });
   if (b.info.hub) r.meta.hub = r.proj(b.info.hub);

@@ -556,10 +556,9 @@ var G = globalThis.G || (globalThis.G = {});
     u.scan = (u.scan || 0) - dt;
     if (u.scan <= 0) { u.scan = 0.5; var st = ust(u); if (st.atk) { var e = findEnemy(u, st.los * S.losMul); if (e) { setTask(u, { k: 'atk', id: e.id, auto: 1, then: T }); return; } } }
     if (Math.hypot(u.x - T.x, u.y - T.y) < 0.8) { T.leg = 1 - T.leg; T.x = T.leg ? T.bx : T.ax; T.y = T.leg ? T.by : T.ay; u.path = null; u.gk = null; }
-    var mv = T.mv || (T.mv = { k: 'move', then: T }); mv.x = T.x; mv.y = T.y;
+    // sarcina de mers se face din nou la fiecare pas: fără legături circulare, salvarea rămâne posibilă
+    var mv = { k: 'move', x: T.x, y: T.y, then: T };
     doMove(u, mv, dt);
-    if (u.task !== T && u.task !== mv) return;
-    u.task = T;
   }
   G.cmdPatrol = function (units, x, y) {
     units.forEach(function (u) { if (u && !u.dead && !u.gin && u.t !== 'vil' && ust(u).atk) setTask(u, { k: 'patrol', ax: u.x, ay: u.y, bx: x, by: y, leg: 1, x: x, y: y }); });

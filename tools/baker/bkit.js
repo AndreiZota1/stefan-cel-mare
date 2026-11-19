@@ -291,7 +291,7 @@ export function paintedEave(g, x0, z0, x1, z1, y, d = 0.07) {
 }
 
 // ---------- trusa de stil a fiecărei civilizații ----------
-export function kit(civ) {
+export function kit(civ, tier = 1) {
   const K = { civ, gold: PM('#d9ab3c', 0.3, 0.9), lead: PM('#66717c', 0.55, 0.4), dark: PM('#3e2a1a', 0.85) };
   K.planks = TM('medieval_wood', '#d8c2a6', 0.9, 1.2); K.logs = TM('raw_plank_wall', '#d2b090', 0.9, 1.2);
   K.thatch = TM('reed_roof_04', '#e8d8b0', 1, 1.4); K.rubble = TM('old_stone_wall', '#ffffff', 0.95, 1.2);
@@ -322,6 +322,30 @@ export function kit(civ) {
       pitch: 0.55, eave: 0.18, roofKind: 'hip', towerRound: false, towerTop: 'woodhip', towerPitch: 0.9, fin: 'crescent', accent: '#2a5a8a', yurts: true }); break;
   }
   if (!K.brick) K.brick = TM('castle_brick_07', '#ffffff', 0.9, 1.2);
+  K.tier = tier || 1;
+  if (tier === 0) {
+    // Epoca Întunecată: lemn, lut și stuf; fără cărămidă, fără piatră cioplită, fără ornamente
+    const daub = TM('clay_plaster', civ === 'oto' ? '#f0d8b0' : '#ecdcbc', 0.97, 0.9), logs = TM('raw_plank_wall', '#cfae8c', 0.9, 1.2);
+    Object.assign(K, {
+      wall: civ === 'mol' || civ === 'val' ? logs : daub, base: TM('old_stone_wall', '#cfc6b8', 0.97, 1.2), stone: logs,
+      roof: civ === 'oto' ? TMb('roof_09', '#e8a080', 0.95, 0.9, 1.1) : civ === 'tat' ? cloth('#a88458', 'hide', 0.95) : TM('reed_roof_04', '#dccca0', 1, 1.4),
+      halfTimber: civ === 'ung' || civ === 'pol', stepGable: false, bandedWalls: false, paintedEaves: false, glazed: false,
+      pitch: civ === 'oto' ? 0.5 : civ === 'tat' ? 0.7 : 1.45, eave: 0.12, roofKind: civ === 'oto' || civ === 'tat' ? 'hip' : civ === 'ung' || civ === 'pol' ? 'gable' : 'hip',
+      towerRound: false, towerTop: 'woodhip', towerPitch: 1.2, winStyle: 'rect', shut: '#5a3a22', winCol: '#2a2018', rustic: true
+    });
+    K.brick = logs;
+  } else if (tier === 2) {
+    // Epoca Imperială și Renașterea: piatră cioplită, ornamente, aur, acoperișuri bogate
+    K.grand = true;
+    K.base = TMb('large_sandstone_blocks', '#f4ead8', 1.7, 0.95, 1.2);
+    K.gold = PM('#e8b84a', 0.25, 0.95);
+    if (civ === 'mol') Object.assign(K, { roof: TM('grey_roof_tiles', '#7a5e48', 0.95, 1.2), stone: TMb('large_sandstone_blocks', '#f0e8dc', 1.6, 0.95, 1.2) });
+    else if (civ === 'val') Object.assign(K, { roof: TM('roof_tiles', '#f0a080', 0.85, 1.2), wall: TM('plastered_wall', '#fbf6ee', 0.95, 0.8) });
+    else if (civ === 'ung') Object.assign(K, { roof: glazedMat(['#9a3a24', '#d8a838', '#2a5a3a', '#e8dcc0']), stone: TMb('large_sandstone_blocks', '#f4ecdc', 1.7, 0.95, 1.2), glazed: true });
+    else if (civ === 'pol') Object.assign(K, { roof: K.copper, attic: true });
+    else if (civ === 'oto') Object.assign(K, { wall: TM('plastered_wall', '#ffffff', 0.9, 0.8), stone: TMb('large_sandstone_blocks', '#fff4e0', 2.0, 0.95, 1.2) });
+    else if (civ === 'tat') Object.assign(K, { wall: TM('plastered_wall', '#ffffff', 0.9, 0.8), stone: TMb('old_stone_wall', '#fff4e4', 1.6, 0.95, 1.2) });
+  }
   return K;
 }
 // zidurile unei clădiri, în stilul civilizației (soclu, benzi, schelet de lemn)
@@ -332,6 +356,8 @@ export function kwalls(g, K, x0, z0, x1, z1, y0, h, o = {}) {
   if (K.bandedWalls && !o.m) banded(g, x0, z0, x1, z1, y0 + pl, h - pl, K.wall, K.brick, 0.055);
   else g.add(blk(x0, z0, x1, z1, y0 + pl, h - pl, M, 1.6));
   if (K.halfTimber && !o.m && o.timber !== false) { timberFace(g, 'z', x0, x1, z1, y0 + pl, y0 + h, K.timber); timberFace(g, 'x', z0, z1, x1, y0 + pl, y0 + h, K.timber); }
+  if (K.grand && !o.m && h > 0.3) [z1, x1].forEach((f, i) => { const face = i ? 'x' : 'z', a = i ? z0 : x0, b = i ? z1 : x1; onFace(g, face, box(b - a + 0.02, 0.04, 0.025, K.base), (a + b) / 2, y0 + h - 0.02, f, 0.012); onFace(g, face, box(b - a + 0.02, 0.03, 0.02, K.base), (a + b) / 2, y0 + 0.08, f, 0.012); });
+  if (K.attic && !o.m && h > 0.3) { [[x0, z1, x1, z1], [x1, z0, x1, z1]].forEach(([ax, az, bx, bz]) => crenels(g, ax, az - (bz === az ? 0.02 : 0), bx, bz, y0 + h, PM('#f4eee2', 0.9), 0.1, 0.09)); }
   if (K.civ === 'pol' && !o.m) [z1, x1].forEach((f, i) => { const face = i ? 'x' : 'z', a = i ? z0 : x0, b = i ? z1 : x1; onFace(g, face, box(b - a, 0.035, 0.02, PM('#efe8dc', 0.9)), (a + b) / 2, y0 + h - 0.06, f, 0.012); });
   if (K.civ === 'oto' && !o.m) [z1, x1].forEach((f, i) => { const face = i ? 'x' : 'z', a = i ? z0 : x0, b = i ? z1 : x1; onFace(g, face, box(b - a, 0.03, 0.02, K.stone), (a + b) / 2, y0 + h - 0.03, f, 0.01); });
 }
@@ -389,7 +415,7 @@ export function ktower(g, K, x, z, r, h, o = {}) {
     // tătari: foișor de lemn cu acoperiș jos, streașină pictată
     g.add(blk(x - r * 1.05, z - r * 1.05, x + r * 1.05, z + r * 1.05, h, 0.05, K.planks, 2));
     [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => g.add(at(cyl(0.018, 0.018, 0.22, K.timber, 6), x + sx * r * 0.95, h + 0.16, z + sz * r * 0.95)));
-    const rh = r * P; g.add(hipRoof(x - r * 1.3, z - r * 1.3, x + r * 1.3, z + r * 1.3, h + 0.27, rh, K.roof)); paintedEave(g, x - r * 1.3, z - r * 1.3, x + r * 1.3, z + r * 1.3, h + 0.27); y = h + 0.27 + rh;
+    const rh = r * P; g.add(hipRoof(x - r * 1.3, z - r * 1.3, x + r * 1.3, z + r * 1.3, h + 0.27, rh, K.roof)); if (K.paintedEaves) paintedEave(g, x - r * 1.3, z - r * 1.3, x + r * 1.3, z + r * 1.3, h + 0.27); y = h + 0.27 + rh;
   } else if (top === 'crenel') { if (round) ringCrenels(g, x, z, r * 0.95, h, M, 12); else { crenels(g, x - r, z + r - 0.04, x + r, z + r - 0.04, h, M); crenels(g, x + r - 0.04, z - r, x + r - 0.04, z + r, h, M); } y = h + 0.07; }
   if (o.fin !== false) finial(g, x, y, z, o.fin || K.fin);
   return y;

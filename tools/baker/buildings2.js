@@ -21,6 +21,7 @@ function hall(g, K, x0, z0, x1, z1, h, o = {}) {
   const df = o.doorFace || 'z', dc = o.dc !== undefined ? o.dc : (df === 'z' ? (x0 + x1) / 2 : (z0 + z1) / 2), dw = o.dw || 0.22;
   if (o.door !== false) door(g, df, dc - dw / 2, dc + dw / 2, df === 'z' ? z1 : x1, Math.min(h * 0.78, o.dh || 0.36), { style: K.winStyle === 'rect' ? 'rect' : 'arch', col: o.doorCol || '#3a2414' });
   if (o.wins !== false) { const wy = o.wy || Math.max(0.16, h * 0.42); winsAlong(g, K, 'z', x0, x1, z1, wy, df === 'z' ? dc : null); winsAlong(g, K, 'x', z0, z1, x1, wy, df === 'x' ? dc : null); }
+  if (K.grand && h > 0.4) { if (x1 - x0 > 1.1) banner(g, 'z', x0 + 0.22, z1, h - 0.06, 0.11, 0.24); if (z1 - z0 > 1.1) banner(g, 'x', z0 + 0.22, x1, h - 0.06, 0.11, 0.24); }
   return h + (o.noRoof ? 0 : kroof(g, K, x0, z0, x1, z1, h, o.roof || {}));
 }
 // arcadă (loggie) pe fața +z sau +x: coloane, arce, brâu deasupra
@@ -134,7 +135,7 @@ B.casa = (g, K) => {
     posts(g, [0.42, 0.98, 1.56], 1.7, 0.46, K.timber);
     g.add(blk(0.36, 1.47, 1.64, 1.76, 0, 0.045, K.planks, 2));
     g.add(at(box(0.4, 0.13, 0.012, team('wool')), 1.27, 0.19, 1.745));
-    kroof(g, K, 0.38, 0.43, 1.62, 1.72, 0.46, { m: K.thatch, eave: 0.12 });
+    kroof(g, K, 0.38, 0.43, 1.62, 1.72, 0.46, { m: K.grand ? K.roof : K.thatch, eave: 0.12 });
     wattle(g, [[1.9, 1.25], [1.9, 1.9], [1.45, 1.9]], 0.16);
   } else if (c === 'val') {
     kwalls(g, K, 0.4, 0.42, 1.6, 1.58, 0, 0.5);
@@ -586,6 +587,20 @@ B.port = (g, K) => {
 B.cetate = (g, K) => {
   const c = K.civ;
   ground(g, 0.25, 0.25, 3.75, 3.75, 'forest_ground_04', '#c8b8a0');
+  const tw = (x, z, r, h, o = {}) => { const y = ktower(g, K, x, z, r, h + (K.grand ? 0.22 : 0), o); if (K.grand && !K.rustic) topFlag(g, x, y - 0.04, z, 0.3, 0.18); return y; };
+  if (K.grand && c !== 'tat') g.add(blk(0.64, 0.64, 3.36, 3.36, 0, 0.012, K.base, 3));
+  if (K.rustic && c !== 'tat') {
+    // cetatea din Epoca Întunecată: o curte cu gard de pari, turnuri de lemn, casa mare cu acoperiș de stuf
+    const stake = TM('medieval_wood', '#a08060');
+    const ring = (x0, z0, x1, z1) => { const L = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(L / 0.11)); for (let i = 0; i <= n; i++) { const x = x0 + (x1 - x0) * i / n, z = z0 + (z1 - z0) * i / n, h = 0.46 + ((i * 7) % 3) * 0.03; g.add(at(cyl(0.045, 0.05, h, stake, 7, 2), x, h / 2, z)); g.add(at(cone(0.045, 0.08, stake, 7), x, h + 0.04, z)); } };
+    ring(0.35, 0.35, 3.65, 0.35); ring(0.35, 0.35, 0.35, 3.65); ring(0.35, 3.65, 1.7, 3.65); ring(2.3, 3.65, 3.65, 3.65); ring(3.65, 0.35, 3.65, 3.65);
+    [1.72, 2.28].forEach(x => g.add(at(cyl(0.06, 0.065, 0.78, stake, 8, 2), x, 0.39, 3.65))); g.add(at(box(0.62, 0.06, 0.08, K.timber), 2.0, 0.7, 3.65)); banner(g, 'z', 2.0, 3.7, 0.66, 0.14, 0.26);
+    [[0.5, 0.5], [3.5, 0.5], [0.5, 3.5], [3.5, 3.5]].forEach(([x, z]) => tw(x, z, 0.28, 0.72, { round: false, top: 'woodhip', m: K.wall, fin: false }));
+    hall(g, K, 1.15, 1.2, 2.85, 2.6, 0.62, { dw: 0.3, roof: { pitch: 1.3, eave: 0.14 } });
+    topFlag(g, 1.35, 0, 1.35, 1.55, 0.24);
+    logPile(g, 0.9, 3.0, 2, 0.4); hay(g, 3.05, 2.9, 0.2);
+    return;
+  }
   if (c === 'tat') {
     // tabăra hanului: gard de pari, iurta mare cu bandă și vârf de aur, iurte mici, stindarde
     const ring = []; for (let i = 0; i <= 26; i++) { const a = Math.PI * 0.85 + i / 26 * Math.PI * 1.55; ring.push([2 + Math.cos(a) * 1.75, 2 + Math.sin(a) * 1.75]); }
@@ -594,7 +609,9 @@ B.cetate = (g, K) => {
     yurt(g, 0.85, 2.85, 0.42, {}); yurt(g, 2.95, 0.85, 0.42, {}); yurt(g, 0.8, 1.0, 0.36, { felt: '#d8c8a8' });
     tug(g, 2.85, 2.85, 1.15); tug(g, 2.55, 3.15, 0.95); tug(g, 3.15, 2.55, 0.95);
     carpet(g, 2.75, 2.15, 0.6, 0.4, 0.785, 0); carpet(g, 2.2, 2.85, 0.6, 0.4, 0.785, 2);
-    ktower(g, K, 3.35, 3.35, 0.2, 0.75, { round: false, fin: false });
+    // în epocile de sus, hanul își ridică o aripă de palat (Bahcisarai) și mai multe stindarde
+    if (K.grand) { kwalls(g, K, 0.55, 2.55, 1.55, 3.45, 0, 0.5); kroof(g, K, 0.55, 2.55, 1.55, 3.45, 0.5, { pitch: 0.6 }); posts(g, [0.6, 1.05, 1.5], 3.5, 0.48, PM('#2a5a8a', 0.7), 0.02); tug(g, 3.35, 1.0, 1.0); tug(g, 1.0, 3.6, 0.9); }
+    tw(3.35, 3.35, 0.2, 0.75, { round: false, fin: false });
     return;
   }
   const WH = c === 'oto' ? 0.5 : 0.62;
@@ -608,28 +625,28 @@ B.cetate = (g, K) => {
   const gh = WH + 0.28; g.add(blk(1.7, 3.3, 1.88, 3.76, 0, gh, c === 'val' ? K.brick : cm, 2)); g.add(blk(2.12, 3.3, 2.3, 3.76, 0, gh, c === 'val' ? K.brick : cm, 2)); g.add(blk(1.7, 3.3, 2.3, 3.76, WH - 0.04, gh - WH + 0.04, c === 'val' ? K.brick : cm, 2));
   g.add(at(box(0.24, 0.4, 0.03, K.planks, 3), 2.0, 0.2, 3.62)); banner(g, 'z', 1.79, 3.76, gh - 0.04, 0.14, 0.34); banner(g, 'z', 2.21, 3.76, gh - 0.04, 0.14, 0.34);
   if (c === 'mol') {
-    [[0.45, 0.45], [3.55, 0.45], [0.45, 3.55], [3.55, 3.55]].forEach(([x, z]) => ktower(g, K, x, z, 0.4, 1.0, { fin: 'ball' }));
+    [[0.45, 0.45], [3.55, 0.45], [0.45, 3.55], [3.55, 3.55]].forEach(([x, z]) => tw(x, z, 0.4, 1.0, { fin: 'ball' }));
     g.add(blk(1.3, 1.3, 2.7, 2.7, 0, 0.62, K.stone, 1.6)); kwalls(g, K, 1.32, 1.32, 2.68, 2.68, 0.62, 0.68, { plinth: false });
     [[1.6, 1.82], [2.15, 2.37]].forEach(p => { kwin(g, K, 'z', p[0], p[1], 2.68, 0.85, 1.07); kwin(g, K, 'x', p[0], p[1], 2.68, 0.85, 1.07); });
     door(g, 'z', 1.88, 2.12, 2.7, 0.42, { style: 'arch' });
     kroof(g, K, 1.32, 1.32, 2.68, 2.68, 1.3, { eave: 0.14, pitch: 1.2 }); topFlag(g, 2, 2.1, 2, 0.4, 0.26);
   } else if (c === 'val') {
-    [[3.55, 0.45], [0.45, 3.55], [3.55, 3.55]].forEach(([x, z]) => ktower(g, K, x, z, 0.36, 0.95, { m: K.brick, top: 'cone', pitch: 1.8, fin: 'ball' }));
-    ktower(g, K, 0.62, 0.62, 0.5, 1.95, { m: K.stone });
+    [[3.55, 0.45], [0.45, 3.55], [3.55, 3.55]].forEach(([x, z]) => tw(x, z, 0.36, 0.95, { m: K.brick, top: 'cone', pitch: 1.8, fin: 'ball' }));
+    tw(0.62, 0.62, 0.5, 1.95, { m: K.stone });
     banded(g, 1.3, 1.25, 2.75, 2.6, 0, 1.0, K.wall, K.brick, 0.07);
     g.add(blk(1.3, 2.6, 2.75, 2.95, 0, 0.04, K.base, 2)); arcade(g, 'z', 1.32, 2.73, 2.93, 0.48, 4, K.brick, K.wall); g.add(blk(1.3, 2.6, 2.75, 2.95, 0.52, 0.48, K.wall, 1.6));
     winsAlong(g, K, 'z', 1.3, 2.75, 2.95, 0.66, null, 0.36, 0.13, 0.2); winsAlong(g, K, 'x', 1.25, 2.95, 2.75, 0.66, null, 0.36, 0.13, 0.2);
     kroof(g, K, 1.3, 1.25, 2.75, 2.95, 1.0); topFlag(g, 2.02, 1.55, 2.1, 0.4, 0.26);
   } else if (c === 'ung') {
-    [[3.55, 0.45], [0.45, 3.55], [3.55, 3.55], [0.45, 0.45]].forEach(([x, z]) => ktower(g, K, x, z, 0.3, 0.98, { round: false, top: 'spire4', pitch: 3.0 }));
+    [[3.55, 0.45], [0.45, 3.55], [3.55, 3.55], [0.45, 0.45]].forEach(([x, z]) => tw(x, z, 0.3, 0.98, { round: false, top: 'spire4', pitch: 3.0 }));
     kwalls(g, K, 1.25, 1.35, 2.75, 2.6, 0, 0.5, { m: K.stone }); kwalls(g, K, 1.25, 1.35, 2.75, 2.6, 0.5, 0.5, { plinth: false });
     winsAlong(g, K, 'z', 1.25, 2.75, 2.6, 0.2, 2.0, 0.42, 0.14, 0.2); winsAlong(g, K, 'z', 1.25, 2.75, 2.6, 0.66, null, 0.42, 0.14, 0.18, { style: 'rect' }); winsAlong(g, K, 'x', 1.35, 2.6, 2.75, 0.66, null, 0.42, 0.14, 0.18);
     door(g, 'z', 1.88, 2.12, 2.6, 0.4, { style: 'lancet' });
     kroof(g, K, 1.25, 1.35, 2.75, 2.6, 1.0, { alongX: true });
-    ktower(g, K, 1.1, 1.15, 0.3, 2.1, { round: false, top: 'spire4', pitch: 3.6, glazed: true });
+    tw(1.1, 1.15, 0.3, 2.1, { round: false, top: 'spire4', pitch: 3.6, glazed: true });
     win(g, 'z', 1.03, 1.17, 1.45, 1.75, 1.95, { col: '#f0eadc', frame: '#3a2a1a' }); topFlag(g, 2.75, 1.9, 2.0, 0.36, 0.22);
   } else if (c === 'pol') {
-    [[3.55, 0.45], [0.45, 3.55], [3.55, 3.55], [0.45, 0.45]].forEach(([x, z]) => ktower(g, K, x, z, 0.32, 1.1, { round: false, m: K.brick }));
+    [[3.55, 0.45], [0.45, 3.55], [3.55, 3.55], [0.45, 0.45]].forEach(([x, z]) => tw(x, z, 0.32, 1.1, { round: false, m: K.brick }));
     kwalls(g, K, 1.25, 1.35, 2.75, 2.6, 0, 1.05);
     for (let i = 0; i < 4; i++) win(g, 'z', 1.38 + i * 0.34, 1.52 + i * 0.34, 2.6, 0.62, 0.92, { style: 'lancet', col: '#1a2026', frame: '#efe8dc' });
     winsAlong(g, K, 'x', 1.35, 2.6, 2.75, 0.62, null, 0.4, 0.13, 0.28);
@@ -637,7 +654,7 @@ B.cetate = (g, K) => {
     kroof(g, K, 1.25, 1.35, 2.75, 2.6, 1.05, { alongX: true });
     topFlag(g, 2.0, 1.85, 1.97, 0.4, 0.24);
   } else if (c === 'oto') {
-    [[3.55, 0.45], [0.45, 3.55], [3.55, 3.55], [0.45, 0.45]].forEach(([x, z]) => ktower(g, K, x, z, 0.36, 0.85));
+    [[3.55, 0.45], [0.45, 3.55], [3.55, 3.55], [0.45, 0.45]].forEach(([x, z]) => tw(x, z, 0.36, 0.85));
     g.add(blk(1.25, 1.25, 2.75, 2.75, 0, 0.75, K.stone, 1.6));
     domeOn(g, 2.0, 2.0, 0.75, 0.62, K.lead, { drum: 0.14, drumM: K.stone, wins: 12, fs: 1.3 });
     g.add(blk(1.25, 2.75, 2.75, 3.05, 0, 0.03, K.base, 2)); arcade(g, 'z', 1.28, 2.72, 3.03, 0.52, 4, PM('#f2ead8', 0.9)); g.add(blk(1.25, 2.75, 2.75, 3.05, 0.55, 0.05, K.stone));
@@ -875,8 +892,12 @@ export function scaffold(n) {
   logPile(g, n * 0.3, n + 0.12, 2, 0.4); for (let i = 0; i < 4; i++) g.add(at(box(0.09, 0.06, 0.07, TM('castle_wall_slates', '#d8d0c4')), n + 0.08 + (i % 2) * 0.1, 0.03 + Math.floor(i / 2) * 0.06, n * 0.3 + (i % 2) * 0.05));
   return g;
 }
-export function building2(t, civ) {
-  const K = kit(civ), g = new THREE.Group(), info = { n: NB[t] };
+export function building2(t, civ, tier = 1) {
+  const K = kit(civ, tier), g = new THREE.Group(), info = { n: NB[t] };
   B[t](g, K, info);
+  if (K.grand && ['casa', 'joagar', 'mina', 'moara'].indexOf(t) >= 0) {
+    const n = info.n; topFlag(g, n - 0.22, 0, n - 0.22, 0.75, 0.18);
+    const pv = blk(n - 0.62, n - 0.5, n - 0.06, n - 0.06, 0, 0.01, K.base, 4); pv.castShadow = false; g.add(pv);
+  }
   return { root: g, info };
 }
