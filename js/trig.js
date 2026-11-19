@@ -90,6 +90,7 @@ G.MISSIONS = G.MISSIONS || {};
     var s = S(), m = M();
     if (!s || !m || s.over) return;
     var sc = s.scen;
+    resend(s);
     (m.triggers || []).forEach(function (tr, i) {
       var id = tr.id || ('t' + i);
       if (tr.once !== false && sc.fired[id]) return;
@@ -165,8 +166,18 @@ G.MISSIONS = G.MISSIONS || {};
     G.refreshLists();
     return out;
   };
-  T.attackMove = function (units, x, y) { G.cmdMove(units.filter(function (u) { return !u.dead; }), x, y, true); units.forEach(function (u) { u.wave = 99; }); };
-  T.moveTo = function (units, x, y) { G.cmdMove(units.filter(function (u) { return !u.dead; }), x, y, false); };
+  // oamenii trimiși de misiune își țin minte ținta: dacă rămân fără ordin înainte s-o atingă (o înghesuială le-a anulat
+  // drumul, de exemplu), îl primesc din nou (vezi T.tick). Altfel un val pornit dintr-o tabără strâmtă rămânea pe loc.
+  T.attackMove = function (units, x, y) { G.cmdMove(units.filter(function (u) { return !u.dead; }), x, y, true); units.forEach(function (u) { u.wave = 99; u.sx = x; u.sy = y; u.sa = 1; }); };
+  T.moveTo = function (units, x, y) { G.cmdMove(units.filter(function (u) { return !u.dead; }), x, y, false); units.forEach(function (u) { u.sx = x; u.sy = y; u.sa = 0; }); };
+  function resend(s) {
+    if ((s.vars._rs = (s.vars._rs || 0) - 0.25) > 0) return;
+    s.vars._rs = 2;
+    G.C.units.forEach(function (u) {
+      if (u.dead || u.gin || u.task || u.o === 0 || u.sx === undefined) return;
+      if (G.hyp(u.x - u.sx, u.y - u.sy) > 3) G.cmdMove([u], u.sx, u.sy, !!u.sa); else u.sx = undefined;
+    });
+  }
   T.wave = function (o, comp, from, to, tag) { var u = T.spawn(o, comp, from[0], from[1], tag); T.attackMove(u, to[0], to[1]); return u; };
   T.aiGo = function (o) { if (G.aiAttackNow) G.aiAttackNow(o); };
   T.mode = function (o, mode) { S().players[o].aiMode = mode; };
