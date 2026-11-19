@@ -148,10 +148,10 @@ G.MISSIONS = G.MISSIONS || {};
   T.count = function (o, t) { return S().ents.filter(function (e) { return !e.dead && e.o === o && (e.t === t || (e.k === 'u' && G.lineBase(e.t) === t)) && (e.k !== 'b' || e.built); }).length; };
   T.inArea = function (o, x, y, r, f) {
     var n = 0, list = [];
-    G.C.units.forEach(function (u) { if ((o === -1 || u.o === o) && !u.dead && Math.hypot(u.x - x, u.y - y) <= r && (!f || f(u))) { n++; list.push(u); } });
+    G.C.units.forEach(function (u) { if ((o === -1 || u.o === o) && !u.dead && G.hyp(u.x - x, u.y - y) <= r && (!f || f(u))) { n++; list.push(u); } });
     return list;
   };
-  T.heroIn = function (o, x, y, r) { var h = G.heroOf(o); return !!(h && Math.hypot(h.x - x, h.y - y) <= r); };
+  T.heroIn = function (o, x, y, r) { var h = G.heroOf(o); return !!(h && G.hyp(h.x - x, h.y - y) <= r); };
 
   // ---------- oaste nouă, atacuri ----------
   // comp: [['mil', 5], ['arc', 3]]; tipurile de bază se transformă în treapta jucătorului
@@ -210,11 +210,11 @@ G.MISSIONS = G.MISSIONS || {};
     function set(x, y, t) { if (x >= 0 && y >= 0 && x < N && y < N) ter[y * N + x] = t; }
     function line(pts, w, fn) {
       for (var i = 0; i < pts.length - 1; i++) {
-        var a = pts[i], b = pts[i + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.ceil(L * 2);
+        var a = pts[i], b = pts[i + 1], L = G.hyp(b[0] - a[0], b[1] - a[1]), n = Math.ceil(L * 2);
         for (var k = 0; k <= n; k++) {
           var x = a[0] + (b[0] - a[0]) * k / n, y = a[1] + (b[1] - a[1]) * k / n, r = w / 2;
           for (var yy = Math.floor(y - r - 1); yy <= Math.ceil(y + r + 1); yy++) for (var xx = Math.floor(x - r - 1); xx <= Math.ceil(x + r + 1); xx++)
-            if (Math.hypot(xx + 0.5 - x, yy + 0.5 - y) <= r) fn(xx, yy);
+            if (G.hyp(xx + 0.5 - x, yy + 0.5 - y) <= r) fn(xx, yy);
         }
       }
     }
@@ -233,15 +233,15 @@ G.MISSIONS = G.MISSIONS || {};
       if (k === 'forest' || k === 'forestc') {
         var dens = (k === 'forest' ? op[2] : op[4]) || 0.6;
         for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) {
-          var inside = k === 'forest' ? inPoly(x + 0.5, y + 0.5, op[1]) : Math.hypot(x + 0.5 - op[1], y + 0.5 - op[2]) <= op[3];
+          var inside = k === 'forest' ? inPoly(x + 0.5, y + 0.5, op[1]) : G.hyp(x + 0.5 - op[1], y + 0.5 - op[2]) <= op[3];
           if (inside && ter[y * N + x] === g0 && R() < dens) put('tree', x, y);
         }
-      } else if (k === 'res') { var n = op[4] || 1; for (var i = 0, tries = 0; i < n && tries < n * 30; tries++) { var a = R() * 6.28, r = Math.sqrt(R()) * (1 + n * 0.22); var xx = Math.round(op[2] + Math.cos(a) * r), yy = Math.round(op[3] + Math.sin(a) * r); if (free(xx, yy)) { put(op[1], xx, yy); i++; } } }
+      } else if (k === 'res') { var n = op[4] || 1; for (var i = 0, tries = 0; i < n && tries < n * 30; tries++) { var a = R() * 6.28, r = Math.sqrt(R()) * (1 + n * 0.22); var xx = Math.round(op[2] + G.dcos(a) * r), yy = Math.round(op[3] + G.dsin(a) * r); if (free(xx, yy)) { put(op[1], xx, yy); i++; } } }
       else if (k === 'decor') S.decor.push({ k: op[1], x: op[2], y: op[3] });
     });
     (spec.ops || []).forEach(function (op) {
       if (op[0] !== 'clear') return;
-      objs = objs.filter(function (o) { return Math.hypot(o.x + 0.5 - op[1], o.y + 0.5 - op[2]) > op[3]; });
+      objs = objs.filter(function (o) { return G.hyp(o.x + 0.5 - op[1], o.y + 0.5 - op[2]) > op[3]; });
     });
     S.base = [];
     return { objs: objs };

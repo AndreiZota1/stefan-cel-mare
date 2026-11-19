@@ -1459,6 +1459,28 @@ var G = globalThis.G || (globalThis.G = {});
 
   // ---------- harta mică ----------
   var mc, mctx, moff, mimg;
+  // între doi pași ai simulării: oamenii, proiectilele și timpul, la poziția intermediară (doar cât se desenează;
+  // R.unlerp le pune la loc). Un salt mai mare de 2 pătrățele (urcat pe corabie, ieșit din cetate) nu se netezește.
+  var lerpSaved = null;
+  R.lerp = function (al) {
+    var S = G.S; lerpSaved = null;
+    if (!S || !(al > 0)) return;
+    var us = G.C.units, su = [], pr = S.proj, sp = [];
+    for (var i = 0; i < us.length; i++) {
+      var u = us[i]; if (u.px === undefined) continue;
+      var dx = u.x - u.px, dy = u.y - u.py; if (dx * dx + dy * dy > 4) continue;
+      su.push(u, u.x, u.y); u.x = u.px + dx * al; u.y = u.py + dy * al;
+    }
+    for (var j = 0; j < pr.length; j++) { var p = pr[j]; if (p.p >= 0 && p.dur > 0) { sp.push(p, p.p); p.p = Math.min(1, p.p + al * 0.05 / p.dur); } }
+    lerpSaved = { u: su, p: sp, t: S.t }; S.t += al * 0.05;
+  };
+  R.unlerp = function () {
+    if (!lerpSaved) return;
+    var a = lerpSaved.u, b = lerpSaved.p;
+    for (var i = 0; i < a.length; i += 3) { a[i].x = a[i + 1]; a[i].y = a[i + 2]; }
+    for (var j = 0; j < b.length; j += 2) b[j].p = b[j + 1];
+    G.S.t = lerpSaved.t; lerpSaved = null;
+  };
   R.initMini = function (canvas) {
     mc = canvas; mctx = mc.getContext('2d');
   };

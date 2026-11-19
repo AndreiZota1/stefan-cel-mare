@@ -70,13 +70,14 @@ var G = globalThis.G || (globalThis.G = {});
     opt = opt || {};
     var pl = opt.players || [{ civ: opt.civ0 || 'mol', ai: !!opt.aiBoth, team: 1 }, { civ: opt.civ1 || 'oto', ai: true, team: 2 }];
     S = G.S = { v: 2, N: opt.size || (opt.mapSpec && opt.mapSpec.N) || G.N, t: 0, seed: opt.seed || ((Math.random() * 1e9) | 0), diff: opt.diff || 'normal',
-      ents: [], nextId: 1, proj: [], fx: [], over: 0, dirty: 0,
+      ents: [], nextId: 1, proj: [], fx: [], over: 0, dirty: 0, tick: 0,
       tm: { fog: 0, ai: 0.3, win: 1, alert: -99, popMsg: -99, trig: 0, tl: 0 },
       players: [], ai: {}, exp: null, ter: null, base: null, decor: [],
       map: { type: (opt.map && opt.map.type) || 'rau', season: (opt.map && opt.map.season) || (opt.mapSpec && opt.mapSpec.season) || 'vara' },
       opt: { victory: opt.victory || 'cucerire', peace: (opt.peace || 0) * 60, popMax: opt.popMax || G.MAXPOP, startAge: opt.startAge || 0,
              reveal: opt.reveal || 'normal', res: opt.res || 'std', maxAge: opt.maxAge, noBuild: opt.noBuild || null, noUnits: opt.noUnits || null, nomad: !!opt.nomad, daynight: !!opt.daynight },
       mkt: { f: 100, w: 100, s: 100 }, wonder: null, losMul: 1, night: 0, fog: 0, vars: {}, scen: opt.scen || null, winTeam: 0 };
+    S.rs = (S.seed ^ 0x5bd1e995) | 0;
     pl.forEach(function (p, i) { S.players.push(mkPlayer(i, Object.assign({ res: S.opt.res }, p))); });
     setTeams();
     var D = G.DIFF[S.diff] || G.DIFF.normal;
@@ -99,7 +100,7 @@ var G = globalThis.G || (globalThis.G = {});
         var b = bases[p] || corners[p];
         // nomazii: fără cetate, cu țărani și lemnul și piatra ei; o așază unde vor
         if (opt.nomad) {
-          for (var nv = 0; nv < 4; nv++) { var np = nearestPassable(b[0] + Math.cos(nv * 1.6) * 2.5, b[1] + Math.sin(nv * 1.6) * 2.5) || [b[0], b[1]]; G.addUnit('vil', p, np[0], np[1]); }
+          for (var nv = 0; nv < 4; nv++) { var np = nearestPassable(b[0] + G.dcos(nv * 1.6) * 2.5, b[1] + G.dsin(nv * 1.6) * 2.5) || [b[0], b[1]]; G.addUnit('vil', p, np[0], np[1]); }
           var nh = nearestPassable(b[0], b[1] + 1) || [b[0], b[1]]; G.addUnit('hero', p, nh[0], nh[1]);
           S.players[p].res.w += G.BLDS.cetate.cost.w; S.players[p].res.s += G.BLDS.cetate.cost.s || 0;
           continue;
@@ -186,7 +187,7 @@ var G = globalThis.G || (globalThis.G = {});
 
   G.addUnit = function (t, o, x, y) {
     var st = ustT(o, t);
-    var u = addEnt({ k: 'u', t: t, o: o, x: x, y: y, hp: st.hp, mhp: st.hp, task: null, path: null, pi: 0, carry: null, cd: Math.random(), face: 1, an: Math.random() * 6, mv: 0, wk: 0, sw: 0 });
+    var u = addEnt({ k: 'u', t: t, o: o, x: x, y: y, hp: st.hp, mhp: st.hp, task: null, path: null, pi: 0, carry: null, cd: G.rand(), face: 1, an: G.rand() * 6, mv: 0, wk: 0, sw: 0 });
     if (t === 'vil' && (u.id * 7919) % 5 < 2) u.fem = 1;
     if (G.UNITS[t].hero) C.hero[o] = u.id;
     return u;
@@ -201,7 +202,7 @@ var G = globalThis.G || (globalThis.G = {});
   };
   G.addRes = function (t, tx, ty) {
     var R = G.RESD[t], e = addEnt({ k: 'r', t: t, tx: tx, ty: ty, x: tx + 0.5, y: ty + 0.5, amt: R.amt, v: (G.hash2(tx, ty, 9) * 4) | 0 });
-    if (R.hunt) { e.hp = e.mhp = R.hp; e.hx = e.x; e.hy = e.y; e.cd = 0; e.sw = 0; e.mv = 0; e.an = Math.random() * 6; e.dir8 = (Math.random() * 8) | 0; }
+    if (R.hunt) { e.hp = e.mhp = R.hp; e.hx = e.x; e.hy = e.y; e.cd = 0; e.sw = 0; e.mv = 0; e.an = G.rand() * 6; e.dir8 = (G.rand() * 8) | 0; }
     return e;
   };
   // pune n oameni de tipul t lângă (x, y) (pentru misiuni și ajutoare)
@@ -213,7 +214,7 @@ var G = globalThis.G || (globalThis.G = {});
         var tx = Math.floor(x) + dx, ty = Math.floor(y) + dy;
         if (tx < 1 || ty < 1 || tx >= N - 1 || ty >= N - 1 || !pass[ty * N + tx]) continue;
         if ((k++ & 1) && ring > 0 && n > 6) continue;
-        out.push(G.addUnit(t, o, tx + 0.5 + (Math.random() - 0.5) * 0.3, ty + 0.5 + (Math.random() - 0.5) * 0.3));
+        out.push(G.addUnit(t, o, tx + 0.5 + (G.rand() - 0.5) * 0.3, ty + 0.5 + (G.rand() - 0.5) * 0.3));
       }
     }
     return out;
@@ -226,8 +227,8 @@ var G = globalThis.G || (globalThis.G = {});
       for (var y = b.ty - ring; y < b.ty + b.n + ring; y++) for (var x = b.tx - ring; x < b.tx + b.n + ring; x++) {
         if (x > b.tx - ring && x < b.tx + b.n + ring - 1 && y > b.ty - ring && y < b.ty + b.n + ring - 1) continue;
         if (x < 0 || y < 0 || x >= N || y >= N || !pass[y * N + x]) continue;
-        var d = (x + 0.5 - tx) * (x + 0.5 - tx) + (y + 0.5 - ty) * (y + 0.5 - ty) + Math.random() * 0.8;
-        if (d < bd) { bd = d; best = [x + 0.5 + (Math.random() - 0.5) * 0.3, y + 0.5 + (Math.random() - 0.5) * 0.3]; }
+        var d = (x + 0.5 - tx) * (x + 0.5 - tx) + (y + 0.5 - ty) * (y + 0.5 - ty) + G.rand() * 0.8;
+        if (d < bd) { bd = d; best = [x + 0.5 + (G.rand() - 0.5) * 0.3, y + 0.5 + (G.rand() - 0.5) * 0.3]; }
       }
     }
     return best || [b.x, b.ty + b.n + 0.5];
@@ -261,9 +262,9 @@ var G = globalThis.G || (globalThis.G = {});
   G.distTo = function (u, e) {
     var R = rectOf(e); if (R) return distRect(u.x, u.y, R);
     var r = e.k === 'u' ? G.UNITS[e.t].r : 0.25;
-    return Math.max(0, Math.hypot(e.x - u.x, e.y - u.y) - r);
+    return Math.max(0, G.hyp(e.x - u.x, e.y - u.y) - r);
   };
-  G.dist = function (a, b) { return Math.hypot(a.x - b.x, a.y - b.y); };
+  G.dist = function (a, b) { return G.hyp(a.x - b.x, a.y - b.y); };
   function goalFor(e, reach) {
     var R = rectOf(e);
     if (R) {
@@ -482,7 +483,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (u.pi >= u.path.length) { u.path = null; return true; }
     return false;
   }
-  function dir8(dx, dy) { var i = Math.round((Math.atan2(dy, dx) - Math.PI / 4) / (Math.PI / 4)); return ((i % 8) + 8) % 8; }
+  function dir8(dx, dy) { var i = Math.round((G.datan2(dy, dx) - Math.PI / 4) / (Math.PI / 4)); return ((i % 8) + 8) % 8; }
   function faceTo(u, dx, dy) { if (dx * dx + dy * dy < 1e-6) return; u.face = (dx - dy) >= 0 ? 1 : -1; u.dir8 = dir8(dx, dy); }
   G.faceTo = faceTo;
   function setTask(u, T) {
@@ -572,7 +573,7 @@ var G = globalThis.G || (globalThis.G = {});
   function doPatrol(u, T, dt) {
     u.scan = (u.scan || 0) - dt;
     if (u.scan <= 0) { u.scan = 0.5; var st = ust(u); if (st.atk) { var e = findEnemy(u, st.los * S.losMul); if (e) { setTask(u, { k: 'atk', id: e.id, auto: 1, then: T }); return; } } }
-    if (Math.hypot(u.x - T.x, u.y - T.y) < 0.8) { T.leg = 1 - T.leg; T.x = T.leg ? T.bx : T.ax; T.y = T.leg ? T.by : T.ay; u.path = null; u.gk = null; }
+    if (G.hyp(u.x - T.x, u.y - T.y) < 0.8) { T.leg = 1 - T.leg; T.x = T.leg ? T.bx : T.ax; T.y = T.leg ? T.by : T.ay; u.path = null; u.gk = null; }
     // sarcina de mers se face din nou la fiecare pas: fără legături circulare, salvarea rămâne posibilă
     var mv = { k: 'move', x: T.x, y: T.y, then: T };
     doMove(u, mv, dt);
@@ -585,7 +586,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (u.t === 'vil' || d.cls === 'car') return;
     u.scan = (u.scan || 0) - dt;
     if (u.scan > 0) return;
-    u.scan = 0.5 + Math.random() * 0.2;
+    u.scan = 0.5 + G.rand() * 0.2;
     var st = ust(u);
     if (d.heal) {
       var w = findWounded(u, st.los); if (w) { setTask(u, { k: 'heal', id: w.id, auto: 1 }); return; }
@@ -613,7 +614,7 @@ var G = globalThis.G || (globalThis.G = {});
     }
     var reach = st.rng > 0 ? st.rng : (e.k === 'u' ? st.r + G.UNITS[e.t].r + 0.3 : 0.75);
     if (T.hold && G.distTo(u, e) > reach + 0.25) { finish(u, T); return; }
-    if (T.def && T.ox !== undefined && Math.hypot(u.x - T.ox, u.y - T.oy) > 7) { setTask(u, { k: 'move', x: T.ox, y: T.oy }); return; }
+    if (T.def && T.ox !== undefined && G.hyp(u.x - T.ox, u.y - T.oy) > 7) { setTask(u, { k: 'move', x: T.ox, y: T.oy }); return; }
     var r = approach(u, e, reach, dt);
     if (r === 'fail') { (u.ign || (u.ign = {}))[e.id] = S.t + 25; finish(u, T); return; }
     if (!r) return;
@@ -772,7 +773,7 @@ var G = globalThis.G || (globalThis.G = {});
     }
     if (!spots.length) { if (s.o === 0) G.msg('Corabia nu e lângă mal.', 'warn'); return; }
     var out = [];
-    ids.forEach(function (id, i) { var u = getE(id); if (!u) return; var p = spots[i % spots.length]; u.gin = 0; u.x = p[0] + (Math.random() - 0.5) * 0.3; u.y = p[1] + (Math.random() - 0.5) * 0.3; u.task = null; u.path = null; out.push(u); });
+    ids.forEach(function (id, i) { var u = getE(id); if (!u) return; var p = spots[i % spots.length]; u.gin = 0; u.x = p[0] + (G.rand() - 0.5) * 0.3; u.y = p[1] + (G.rand() - 0.5) * 0.3; u.task = null; u.path = null; out.push(u); });
     s.gar = []; S.dirty = 1;
     if (lx !== undefined && out.length && C.pass[Math.floor(ly) * N + Math.floor(lx)]) G.cmdMove(out, lx, ly);
   }
@@ -799,11 +800,11 @@ var G = globalThis.G || (globalThis.G = {});
   }
   G.animalHit = animalHit;
   function stepAnimal(e, dx, dy, spd, dt) {
-    var l = Math.hypot(dx, dy), N = S.N; if (l < 1e-6) return;
+    var l = G.hyp(dx, dy), N = S.N; if (l < 1e-6) return;
     dx /= l; dy /= l;
     var here = C.pass[Math.floor(e.y) * N + Math.floor(e.x)];
     for (var k = 0; k < 5; k++) {
-      var a = [0, 0.9, -0.9, 1.8, -1.8][k], cx = dx * Math.cos(a) - dy * Math.sin(a), cy = dx * Math.sin(a) + dy * Math.cos(a);
+      var a = [0, 0.9, -0.9, 1.8, -1.8][k], cx = dx * G.dcos(a) - dy * G.dsin(a), cy = dx * G.dsin(a) + dy * G.dcos(a);
       var nx = e.x + cx * spd * dt, ny = e.y + cy * spd * dt, ix = Math.floor(nx), iy = Math.floor(ny);
       // poate ieși de pe un loc blocat și se poate mișca în interiorul aceluiași pătrățel
       if (ix < 1 || iy < 1 || ix >= N - 1 || iy >= N - 1 || !(C.pass[iy * N + ix] || !here || (ix === Math.floor(e.x) && iy === Math.floor(e.y)))) continue;
@@ -821,7 +822,7 @@ var G = globalThis.G || (globalThis.G = {});
       if (e.dead || !R.hunt || e.hp <= 0) continue;
       if (e.cd > 0) e.cd -= dt; if (e.sw > 0) e.sw -= dt; if (e.mv > 0) e.mv -= dt;
       var t = e.tgt ? getE(e.tgt) : null;
-      if (t && (t.k !== 'u' || t.gin || Math.hypot(e.x - e.hx, e.y - e.hy) > 10)) { e.tgt = 0; t = null; }
+      if (t && (t.k !== 'u' || t.gin || G.hyp(e.x - e.hx, e.y - e.hy) > 10)) { e.tgt = 0; t = null; }
       if (!t && R.wild && (e.look = (e.look || 0) - dt) <= 0) {
         e.look = 0.5;
         var bd = 12.25, best = null;
@@ -833,9 +834,9 @@ var G = globalThis.G || (globalThis.G = {});
         if (d > 0.65) stepAnimal(e, t.x - e.x, t.y - e.y, R.spd, dt);
         else { faceTo(e, t.x - e.x, t.y - e.y); if (e.cd <= 0) { e.cd = 1.5; e.sw = 0.4; damage(t, Math.max(1, R.atk - ust(t).ma), e); G.sfx('hit', e.x, e.y); } }
       } else if (e.flee && e.flee > S.t) stepAnimal(e, e.x - e.fx, e.y - e.fy, R.spd, dt);
-      else if (Math.hypot(e.x - e.hx, e.y - e.hy) > 4) stepAnimal(e, e.hx - e.x, e.hy - e.y, R.spd * 0.5, dt);
-      else if ((e.wt = (e.wt || 0) - dt) <= 0) { e.wt = 3 + Math.random() * 5; e.wa = Math.random() * 6.28; e.wl = Math.random() < 0.5 ? 1.2 : 0; }
-      else if (e.wl > 0) { e.wl -= dt; stepAnimal(e, Math.cos(e.wa), Math.sin(e.wa), R.spd * 0.3, dt); }
+      else if (G.hyp(e.x - e.hx, e.y - e.hy) > 4) stepAnimal(e, e.hx - e.x, e.hy - e.y, R.spd * 0.5, dt);
+      else if ((e.wt = (e.wt || 0) - dt) <= 0) { e.wt = 3 + G.rand() * 5; e.wa = G.rand() * 6.28; e.wl = G.rand() < 0.5 ? 1.2 : 0; }
+      else if (e.wl > 0) { e.wl -= dt; stepAnimal(e, G.dcos(e.wa), G.dsin(e.wa), R.spd * 0.3, dt); }
     }
   }
 
@@ -1100,7 +1101,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (!T.ch) { T.ch = 0.001; G.sfx('convert', u.x, u.y, S.players[u.o].civ); }
     T.ch += dt;
     // după 4 secunde, șanse tot mai mari; după 10 secunde, sigur
-    if (T.ch >= 4 && (Math.random() < dt * 0.3 || T.ch >= 10)) {
+    if (T.ch >= 4 && (G.rand() < dt * 0.3 || T.ch >= 10)) {
       var from = e.o;
       e.o = u.o; e.task = null; e.path = null; e.carry = null; e.conv = S.t;
       if (C.hero[from] === e.id) C.hero[from] = 0;
@@ -1246,7 +1247,7 @@ var G = globalThis.G || (globalThis.G = {});
     // un pas mic într-o parte, ca să iasă din înghesuială
     var N = S.N, pass = pgrid(u);
     for (var k = 0; k < 6; k++) {
-      var a = Math.random() * 6.283, nx = u.x + Math.cos(a) * 0.4, ny = u.y + Math.sin(a) * 0.4;
+      var a = G.rand() * 6.283, nx = u.x + G.dcos(a) * 0.4, ny = u.y + G.dsin(a) * 0.4;
       if (nx > 0 && ny > 0 && nx < N && ny < N && pass[Math.floor(ny) * N + Math.floor(nx)]) { u.x = nx; u.y = ny; break; }
     }
     if (u.stk >= 4) {
@@ -1273,7 +1274,7 @@ var G = globalThis.G || (globalThis.G = {});
         var am = a.mv > 0 && a.path, bm = b.mv > 0 && b.path;
         if (am && bm) return;
         var d = Math.sqrt(d2);
-        if (d < 1e-4) { dx = Math.random() - 0.5; dy = Math.random() - 0.5; d = Math.sqrt(dx * dx + dy * dy) || 1; }
+        if (d < 1e-4) { dx = G.rand() - 0.5; dy = G.rand() - 0.5; d = Math.sqrt(dx * dx + dy * dy) || 1; }
         var over = (rr - d) * k, nx = dx / d, ny = dy / d;
         var wa = a.wk > 0 ? 0.04 : am ? 0.12 : 1, wb = b.wk > 0 ? 0.04 : bm ? 0.12 : 1, s = wa + wb;
         if (a.wk > 0 && b.wk > 0) return;
@@ -1318,7 +1319,7 @@ var G = globalThis.G || (globalThis.G = {});
           var h0 = b.t === 'cetate' ? 1.6 : b.t === 'fortareata' ? 2.2 : 1.9;
           for (var s = 0; s < shots; s++) {
             var tg = cand[s % Math.min(cand.length, 3)][1];
-            S.proj.push({ k: cannon ? 'ball' : 'arrow', sx: b.x + (Math.random() - 0.5) * b.n * 0.4, sy: b.y + (Math.random() - 0.5) * b.n * 0.4, tx: tg.x, ty: tg.y, id: tg.id, sid: b.id, o: b.o,
+            S.proj.push({ k: cannon ? 'ball' : 'arrow', sx: b.x + (G.rand() - 0.5) * b.n * 0.4, sy: b.y + (G.rand() - 0.5) * b.n * 0.4, tx: tg.x, ty: tg.y, id: tg.id, sid: b.id, o: b.o,
               p: -s * 0.06, h0: h0, dur: Math.max(0.2, G.dist(b, tg) / (cannon ? 8 : 9)), atk: bs.atk, bonus: cannon ? { bld: 25, sie: 10 } : null });
           }
           G.sfx(cannon ? 'cannon' : 'arrow', b.x, b.y);
@@ -1421,7 +1422,7 @@ var G = globalThis.G || (globalThis.G = {});
     var en = C.en[p.o], r = p.splash;
     forUnitsNear(p.tx, p.ty, r + 0.5, function (u) {
       if (u.dead || u.gin || !en || !en[u.o]) return;
-      var d = Math.hypot(u.x - p.tx, u.y - p.ty);
+      var d = G.hyp(u.x - p.tx, u.y - p.ty);
       if (d > r) return;
       applyHit(src, u, d < r * 0.5 ? p.atk : p.atk * 0.6, p.bonus, true);
     });
@@ -1545,7 +1546,7 @@ var G = globalThis.G || (globalThis.G = {});
     }
     if (vic === 'deal') {
       var K = S.koth || (S.koth = { x: S.N / 2, y: S.N / 2, team: 0, o: -1, t0: 0 }), teams = {}, owner = -1;
-      forUnitsNear(K.x, K.y, 5, function (u) { if (u.dead || u.gin || !S.players[u.o].alive || Math.hypot(u.x - K.x, u.y - K.y) > 5) return; var tm = S.players[u.o].team; teams[tm] = (teams[tm] || 0) + 1; if (owner < 0) owner = u.o; });
+      forUnitsNear(K.x, K.y, 5, function (u) { if (u.dead || u.gin || !S.players[u.o].alive || G.hyp(u.x - K.x, u.y - K.y) > 5) return; var tm = S.players[u.o].team; teams[tm] = (teams[tm] || 0) + 1; if (owner < 0) owner = u.o; });
       var tlist = Object.keys(teams);
       if (tlist.length === 1 && +tlist[0] !== K.team) { K.team = +tlist[0]; K.o = owner; K.t0 = S.t; K.last = 0; G.msg((G.ally(0, owner) ? (owner === 0 ? 'Ai luat' : 'Aliații au luat') : G.ppl(owner, true) + ' au luat') + ' monumentul din mijloc!', G.ally(0, owner) ? 'good' : 'alert', { x: K.x, y: K.y }); G.sfx('horn2'); }
       if (K.team) {
@@ -1568,7 +1569,9 @@ var G = globalThis.G || (globalThis.G = {});
   G.finishGame = finishGame;
   G.update = function (dt) {
     if (!S || S.over) return;
-    S.t += dt;
+    S.t += dt; S.tick = (S.tick || 0) + 1;
+    // pozițiile de dinainte de pas: desenul trece lin de la ele la cele noi (vezi R.lerp)
+    for (var q = 0; q < C.units.length; q++) { var uq = C.units[q]; uq.px = uq.x; uq.py = uq.y; }
     if (S.opt.daynight) { var dc = (S.t % 720) / 720, dn = dc < 0.62 ? 0 : dc < 0.7 ? (dc - 0.62) / 0.08 : dc < 0.92 ? 1 : 1 - (dc - 0.92) / 0.08; S.night = dn * 0.85; S.losMul = 1 - 0.3 * dn; }
     C.budget = 10 + S.players.length * 2;
     refreshLists();
@@ -1810,7 +1813,7 @@ var G = globalThis.G || (globalThis.G = {});
   G.cmdPower = function (o) {
     var err = G.powerError(o); if (err) return err;
     var P = S.players[o], h = heroOf(o), id = G.powerOf(o), pw = G.POWERS[id], r = pw.r, until = S.t + pw.dur, n = 0;
-    function near(fn) { forUnitsNear(h.x, h.y, r, function (u) { if (!u.dead && !u.gin && Math.hypot(u.x - h.x, u.y - h.y) <= r) fn(u); }); }
+    function near(fn) { forUnitsNear(h.x, h.y, r, function (u) { if (!u.dead && !u.gin && G.hyp(u.x - h.x, u.y - h.y) <= r) fn(u); }); }
     if (id === 'bucium') near(function (u) { if (u.o === o && u.t !== 'vil') { u.buf = { a: 1.3, s: 1.3, until: until }; n++; } });
     else if (id === 'teroare') near(function (u) { if (G.enemy(o, u.o)) { u.deb = { a: 0.6, until: until }; n++; } });
     else if (id === 'cruciada') near(function (u) { if (G.ally(o, u.o) && G.UNITS[u.t].cls !== 'sie') { var m = ustT(u.o, u.t).hp; u.hp = Math.min(m, u.hp + m * 0.5); n++; } });
@@ -2032,6 +2035,21 @@ var G = globalThis.G || (globalThis.G = {});
   G.cmdRally = function (b, x, y, id) { b.rally = { x: x, y: y, id: id || 0 }; };
 
   // ---------- salvare ----------
+  // amprenta stării, pentru jocul online: două calculatoare cu aceeași amprentă au exact același joc
+  // (numerele cu virgulă intră bit cu bit; ceața, efectele și mesajele nu intră, sunt doar pentru ecran)
+  G.stateHash = function () {
+    var f = new Float64Array(1), w = new Uint32Array(f.buffer), h = 0x811c9dc5;
+    function num(x) { f[0] = x || 0; h = Math.imul(h ^ w[0], 16777619); h = Math.imul(h ^ w[1], 16777619); }
+    function str(s) { s = s ? String(s) : ''; for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); }
+    num(S.tick); num(S.rs); num(S.nextId); num(S.over);
+    S.players.forEach(function (P) { num(P.res.f); num(P.res.w); num(P.res.g); num(P.res.s); num(P.age); num(P.alive ? 1 : 0); });
+    for (var i = 0; i < S.ents.length; i++) {
+      var e = S.ents[i]; if (e.dead) continue;
+      num(e.id); str(e.t); num(e.o); num(e.x); num(e.y); num(e.hp); num(e.amt); str(e.task && e.task.k); num(e.carry && e.carry.n); num(e.gin);
+    }
+    for (var j = 0; j < S.proj.length; j++) { var p = S.proj[j]; num(p.p); num(p.tx); num(p.ty); }
+    return (h >>> 0).toString(16);
+  };
   G.serialize = function () {
     var o = {};
     for (var k in S) o[k] = S[k];
@@ -2043,6 +2061,8 @@ var G = globalThis.G || (globalThis.G = {});
     if (o.v !== 2) throw new Error('Salvare dintr-o versiune veche.');
     o.ter = Uint8Array.from(o.ter); o.exp = Uint8Array.from(o.exp); if (o.hgt) o.hgt = Float32Array.from(o.hgt);
     S = G.S = o;
+    if (S.rs === undefined) S.rs = (S.seed ^ 0x5bd1e995) | 0;
+    if (S.tick === undefined) S.tick = Math.round(S.t * 20);
     G.rebuild();
     refreshLists();
     G.updFog();

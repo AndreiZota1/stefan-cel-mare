@@ -111,7 +111,7 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
       }
       var beaten = [0, 1, 2, 3].filter(function (i) { return waveDone(S, T, 'r' + i); }).length;
       if (beaten !== v.beaten) { v.beaten = beaten; T.obj('o3', 'Respinge călăreții turci (' + beaten + '/4 raiduri).', { sec: 1 }); if (beaten === 4) T.done('o3'); }
-      var fort = G.C.blds.find(function (b) { return b.o === 0 && b.t === 'fortareata' && b.built && Math.hypot(b.x - PLOT[0], b.y - PLOT[1]) < 7; });
+      var fort = G.C.blds.find(function (b) { return b.o === 0 && b.t === 'fortareata' && b.built && G.hyp(b.x - PLOT[0], b.y - PLOT[1]) < 7; });
       if (fort && !T.isDone('o1')) { T.done('o1'); T.say('vlad', 'Poenari stă în picioare. Acum turnurile!', 'say3'); }
       var tw = fort ? G.C.blds.filter(function (b) { return b.o === 0 && b.t === 'turn' && b.built && G.dist(b, fort) < 12; }).length : 0;
       if (tw !== v.tw) { v.tw = tw; T.obj('o2', 'Ridică două turnuri lângă fortăreață (' + Math.min(2, tw) + '/2).'); if (tw >= 2) T.done('o2'); }
@@ -126,7 +126,7 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
     for (var i = 0; i < VL3_TRAIL.length - 1; i++) {
       var a = VL3_TRAIL[i], b = VL3_TRAIL[i + 1], dx = b[0] - a[0], dy = b[1] - a[1];
       var t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / (dx * dx + dy * dy)));
-      best = Math.min(best, Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy));
+      best = Math.min(best, G.hyp(x - a[0] - t * dx, y - a[1] - t * dy));
     }
     return best;
   }

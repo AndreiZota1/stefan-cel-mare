@@ -130,10 +130,10 @@ var G = globalThis.G || (globalThis.G = {});
   function placeNear(t, cx, cy, rmin, rmax, loose) {
     var n = G.BLDS[t].n;
     for (var r = rmin; r <= rmax; r += 1) {
-      var steps = Math.max(8, Math.round(r * 6)), a0 = Math.random() * Math.PI * 2;
+      var steps = Math.max(8, Math.round(r * 6)), a0 = G.rand() * Math.PI * 2;
       for (var s = 0; s < steps; s++) {
         var a = a0 + s / steps * Math.PI * 2;
-        var tx = Math.round(cx + Math.cos(a) * r - n / 2), ty = Math.round(cy + Math.sin(a) * r - n / 2);
+        var tx = Math.round(cx + G.dcos(a) * r - n / 2), ty = Math.round(cy + G.dsin(a) * r - n / 2);
         if (!G.canPlace(pid, t, tx, ty)) continue;
         if (!loose && !margin(tx, ty, n)) continue;
         if (!loose && t !== 'cetate' && tc && G.distRect(tx + n / 2, ty + n / 2, G.rectOf(tc)) < n / 2 + 1.5) continue;
@@ -149,7 +149,7 @@ var G = globalThis.G || (globalThis.G = {});
       if ((T && T.k === 'bld') || v.bell) return;
       var r = T ? resOf(T) : null;
       var pen = !T ? 0 : (r === 'w' ? 4 : r === 'f' ? 6 : 30);
-      var d = Math.hypot(v.x - x, v.y - y) + pen;
+      var d = G.hyp(v.x - x, v.y - y) + pen;
       if (d < bd) { bd = d; best = v; }
     });
     return best;
@@ -366,7 +366,7 @@ var G = globalThis.G || (globalThis.G = {});
     // opts: [[tip, pondere]] — alege la întâmplare, după pondere, dintre cele posibile
     var tot = 0, i;
     for (i = 0; i < opts.length; i++) tot += opts[i][1];
-    var r = Math.random() * tot;
+    var r = G.rand() * tot;
     for (i = 0; i < opts.length; i++) { r -= opts[i][1]; if (r <= 0) return opts[i][0]; }
     return opts.length ? opts[opts.length - 1][0] : null;
   }
@@ -526,7 +526,7 @@ var G = globalThis.G || (globalThis.G = {});
     wave.forEach(function (u) { hp += u.hp; mhp += u.mhp; cx += u.x; cy += u.y; }); cx /= wave.length; cy /= wave.length;
     if (!A.wHp || A.wId !== w) { A.wId = w; A.wHp = mhp; A.wT = S.t; return; }
     if (S.t - A.wT < 15 || hp > A.wHp * 0.35) return;
-    var foes = 0; C.units.forEach(function (e) { if (!e.dead && !e.gin && G.enemy(pid, e.o) && G.isMil(e) && Math.hypot(e.x - cx, e.y - cy) < 9) foes++; });
+    var foes = 0; C.units.forEach(function (e) { if (!e.dead && !e.gin && G.enemy(pid, e.o) && G.isMil(e) && G.hyp(e.x - cx, e.y - cy) < 9) foes++; });
     if (foes < wave.length) return;
     wave.forEach(function (u) { u.wave = 0; });
     G.cmdMove(wave, my.home.x, my.home.y);

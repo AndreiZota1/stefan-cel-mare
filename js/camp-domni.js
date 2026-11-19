@@ -211,7 +211,7 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
         T.say('mircea', 'Aici, pe malul Dunării, ridicăm cetatea noastră. Grăbiți-vă, turcii nu vor sta mult.', 'say4');
       }
       if (v.o2 && !T.isDone('o2')) {
-        var c = G.C.blds.find(function (b) { return b.o === 0 && b.t === 'cetate' && b.built && Math.hypot(b.x - PLOT[0], b.y - PLOT[1]) < 9; });
+        var c = G.C.blds.find(function (b) { return b.o === 0 && b.t === 'cetate' && b.built && G.hyp(b.x - PLOT[0], b.y - PLOT[1]) < 9; });
         if (c) {
           T.done('o2'); T.unmark('plot'); v.t3 = S.t + 300;
           T.obj('o3', 'Apără Dristra până se retrag turcii (5:00).');
@@ -223,7 +223,7 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
         if (i < 3 && S.t >= v.t3 - 290 + i * 95) { v.r = i + 1; T.wave(1, [['kni', 4 + i * 2], ['ien', 4 + i * 2], ['mil', 6], ['can', i]], [86, 94], PLOT, 'r' + i); }
         var mm = Math.floor(left / 60), ss = Math.floor(left % 60);
         if (Math.ceil(left) !== v.lastLeft) { v.lastLeft = Math.ceil(left); T.obj('o3', 'Apără Dristra până se retrag turcii (' + mm + ':' + (ss < 10 ? '0' : '') + ss + ').'); }
-        var mine = G.C.blds.some(function (b) { return b.o === 0 && b.t === 'cetate' && !b.dead && Math.hypot(b.x - PLOT[0], b.y - PLOT[1]) < 9; });
+        var mine = G.C.blds.some(function (b) { return b.o === 0 && b.t === 'cetate' && !b.dead && G.hyp(b.x - PLOT[0], b.y - PLOT[1]) < 9; });
         if (!mine && !v.lost) { v.lost = 1; T.lose('Turcii au luat înapoi Dristra.'); }
         if (left <= 0 && !v.won) { v.won = 1; T.done('o3'); T.say('mircea', 'Se retrag. Dristra și Dobrogea sunt ale Țării Românești.', 'say6'); T.win(); }
       }

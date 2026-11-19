@@ -53,11 +53,11 @@ G.hash2 = function (x, y, s) {
     C.clearObjs = function (fn) { C.objs = C.objs.filter(function (o) { if (fn(o)) { C.blk[o.y * N + o.x] = 0; return false; } return true; }); };
     C.disc = function (cx, cy, r, fn) {
       for (var y = Math.floor(cy - r - 1); y <= Math.ceil(cy + r + 1); y++) for (var x = Math.floor(cx - r - 1); x <= Math.ceil(cx + r + 1); x++)
-        if (C.ok(x, y) && Math.hypot(x + 0.5 - cx, y + 0.5 - cy) <= r) fn(x, y);
+        if (C.ok(x, y) && G.hyp(x + 0.5 - cx, y + 0.5 - cy) <= r) fn(x, y);
     };
     C.line = function (pts, w, fn) {
       for (var i = 0; i < pts.length - 1; i++) {
-        var a = pts[i], b = pts[i + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(L * 2));
+        var a = pts[i], b = pts[i + 1], L = G.hyp(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(L * 2));
         for (var k = 0; k <= n; k++) C.disc(a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n, w / 2, fn);
       }
     };
@@ -124,8 +124,8 @@ G.hash2 = function (x, y, s) {
     var f1 = 0.06 + C.R() * 0.04, f2 = 0.15 + C.R() * 0.08, a1 = amp, a2 = amp * 0.35;
     for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) {
       var px = x + 0.5 - cx - 0.5, py = y + 0.5 - cy - 0.5, s = px * dir[0] + py * dir[1], d = px * nx + py * ny;
-      var m = a1 * Math.sin(s * f1 + (ph || 0)) + a2 * Math.sin(s * f2);
-      var ww = w * (0.85 + 0.3 * Math.abs(Math.sin(s * 0.11)));
+      var m = a1 * G.dsin(s * f1 + (ph || 0)) + a2 * G.dsin(s * f2);
+      var ww = w * (0.85 + 0.3 * Math.abs(G.dsin(s * 0.11)));
       var off = Math.abs(d - m);
       if (off < ww) {
         var t = WA;
@@ -141,14 +141,14 @@ G.hash2 = function (x, y, s) {
     // vaduri la intervale
     var tot = 0;
     for (var i = 0; i < pts.length - 1; i++) {
-      var a = pts[i], b = pts[i + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      var a = pts[i], b = pts[i + 1], L = G.hyp(b[0] - a[0], b[1] - a[1]);
       for (var k = 0; k < L; k += 1) { tot += 1; if (tot % fordEvery === Math.floor(fordEvery / 2)) C.disc(a[0] + (b[0] - a[0]) * k / L, a[1] + (b[1] - a[1]) * k / L, w / 2 + 1.2, function (x, y) { if (C.get(x, y) === WA) { C.set(x, y, FO); n++; } }); }
     }
     return n;
   }
   function meander(C, a, b, amp, seg) {
-    var pts = [], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy), nx = -dy / L, ny = dx / L, ph = C.R() * 6.28;
-    for (var i = 0; i <= seg; i++) { var t = i / seg, o = Math.sin(t * Math.PI * 2.2 + ph) * amp * Math.sin(t * Math.PI); pts.push([a[0] + dx * t + nx * o, a[1] + dy * t + ny * o]); }
+    var pts = [], dx = b[0] - a[0], dy = b[1] - a[1], L = G.hyp(dx, dy), nx = -dy / L, ny = dx / L, ph = C.R() * 6.28;
+    for (var i = 0; i <= seg; i++) { var t = i / seg, o = G.dsin(t * Math.PI * 2.2 + ph) * amp * G.dsin(t * Math.PI); pts.push([a[0] + dx * t + nx * o, a[1] + dy * t + ny * o]); }
     return pts;
   }
 
@@ -160,7 +160,7 @@ G.hash2 = function (x, y, s) {
     else if (nP === 4) pos = [[M - m, M - m], [m, M - m], [m, m], [M - m, m]];
     else {
       var c = M / 2, r = N * 0.36;
-      pos = [0, 1, 2].map(function (i) { var a = Math.PI / 4 + i * Math.PI * 2 / 3; return [Math.round(c + Math.cos(a) * r), Math.round(c + Math.sin(a) * r)]; });
+      pos = [0, 1, 2].map(function (i) { var a = Math.PI / 4 + i * Math.PI * 2 / 3; return [Math.round(c + G.dcos(a) * r), Math.round(c + G.dsin(a) * r)]; });
     }
     // coechipierii stau alături: ordonăm jucătorii după echipă
     var order = players.map(function (p, i) { return i; }).sort(function (a, b) { return (players[a].team || 99 + a) - (players[b].team || 99 + b) || a - b; });
@@ -171,14 +171,14 @@ G.hash2 = function (x, y, s) {
 
   // ---------- resursele unei baze (aceleași pentru toți) ----------
   function baseRes(C, b, kind) {
-    var N = C.N, cx = (N - 1) / 2, cy = (N - 1) / 2, toC = Math.atan2(cy - b[1], cx - b[0]);
-    function near(x, y) { return Math.hypot(x + 0.5 - b[0], y + 0.5 - b[1]) < 6.5; }
-    function at(ang, dist) { return [b[0] + Math.cos(toC + ang) * dist, b[1] + Math.sin(toC + ang) * dist]; }
+    var N = C.N, cx = (N - 1) / 2, cy = (N - 1) / 2, toC = G.datan2(cy - b[1], cx - b[0]);
+    function near(x, y) { return G.hyp(x + 0.5 - b[0], y + 0.5 - b[1]) < 6.5; }
+    function at(ang, dist) { return [b[0] + G.dcos(toC + ang) * dist, b[1] + G.dsin(toC + ang) * dist]; }
     // loc curat pentru zăcământ: fără copaci, fără apă sau stâncă
     function spot(t, ang, dist, n, r) {
       var p = at(ang, dist);
       C.disc(p[0], p[1], r, function (x, y) { if (near(x, y)) return; var tt = C.get(x, y); if (tt === WA || tt === RO || tt === MA || tt === FO || tt === BR) C.set(x, y, GR); });
-      C.clearObjs(function (o) { return o.t === 'tree' && Math.hypot(o.x + 0.5 - p[0], o.y + 0.5 - p[1]) <= r + 0.6; });
+      C.clearObjs(function (o) { return o.t === 'tree' && G.hyp(o.x + 0.5 - p[0], o.y + 0.5 - p[1]) <= r + 0.6; });
       C.cluster(t, p[0], p[1], n, near);
     }
     // totul în fața și în lateralul bazei (în spate e colțul hărții)
@@ -198,7 +198,7 @@ G.hash2 = function (x, y, s) {
     var want = { gold: 11, stone: 9, sheep: 8, berry: 5 };
     Object.keys(want).forEach(function (t) {
       for (var tries = 0; tries < 12; tries++) {
-        var have = C.objs.filter(function (o) { return o.t === t && Math.hypot(o.x + 0.5 - b[0], o.y + 0.5 - b[1]) < 18; }).length;
+        var have = C.objs.filter(function (o) { return o.t === t && G.hyp(o.x + 0.5 - b[0], o.y + 0.5 - b[1]) < 18; }).length;
         if (have >= want[t]) return;
         spot(t, (C.R() - 0.5) * 2.6, 9 + C.R() * 7, Math.min(7, want[t] - have), 2.2);
       }
@@ -208,7 +208,7 @@ G.hash2 = function (x, y, s) {
     if (kind !== 'codri') {
       for (var k = 0; k < 3; k++) {
         p = at(k === 1 ? Math.PI : (k === 0 ? 1.95 : -1.95), k === 1 ? 10.5 : 11.5);
-        C.disc(p[0], p[1], kind === 'stepa' ? 2.6 : 3.4, function (x, y) { if (!near(x, y) && C.R() < 0.82 && Math.hypot(x + 0.5 - b[0], y + 0.5 - b[1]) > 8) C.put('tree', x, y); });
+        C.disc(p[0], p[1], kind === 'stepa' ? 2.6 : 3.4, function (x, y) { if (!near(x, y) && C.R() < 0.82 && G.hyp(x + 0.5 - b[0], y + 0.5 - b[1]) > 8) C.put('tree', x, y); });
       }
     }
     // vânatul, mai departe
@@ -297,7 +297,7 @@ G.hash2 = function (x, y, s) {
       bases.forEach(function (b) { paths.push(meander(C, b, [cx, cy], 3, 10)); });
       for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) if (fbm(x * 0.09, y * 0.09, C.seed + 3) > 0.42 && R() < 0.8) C.put('tree', x, y);
       // poieni
-      for (var k = 0; k < 6; k++) { var a = R() * 6.28, rr = R() * N * 0.3; C.clearObjs((function (qx, qy, r) { return function (o) { return Math.hypot(o.x - qx, o.y - qy) < r; }; })(cx + Math.cos(a) * rr, cy + Math.sin(a) * rr, 3 + R() * 3)); }
+      for (var k = 0; k < 6; k++) { var a = R() * 6.28, rr = R() * N * 0.3; C.clearObjs((function (qx, qy, r) { return function (o) { return G.hyp(o.x - qx, o.y - qy) < r; }; })(cx + G.dcos(a) * rr, cy + G.dsin(a) * rr, 3 + R() * 3)); }
       stream(C, meander(C, [0, R() * N], [N, R() * N], 4, 16), 1.4, 9);
       paths.forEach(function (p) { C.line(p, 2.2, function (x, y) { if (C.get(x, y) !== WA && C.get(x, y) !== FO) C.set(x, y, DI); }); C.clearObjs(function (o) { return C.get(o.x, o.y) === DI; }); });
     } else if (type === 'stepa') {
@@ -322,7 +322,7 @@ G.hash2 = function (x, y, s) {
       var nR = 3 + (N > 90 ? 1 : 0);
       for (var r2 = 0; r2 < nR; r2++) {
         var ang = R() * Math.PI, ox = cx + (R() - 0.5) * N * 0.5, oy = cy + (R() - 0.5) * N * 0.5;
-        var a0 = [ox - Math.cos(ang) * N * 0.45, oy - Math.sin(ang) * N * 0.45], a1 = [ox + Math.cos(ang) * N * 0.45, oy + Math.sin(ang) * N * 0.45];
+        var a0 = [ox - G.dcos(ang) * N * 0.45, oy - G.dsin(ang) * N * 0.45], a1 = [ox + G.dcos(ang) * N * 0.45, oy + G.dsin(ang) * N * 0.45];
         var rp = meander(C, a0, a1, 5, 18), gaps = [0.3 + R() * 0.1, 0.65 + R() * 0.1];
         for (var s2 = 0; s2 < rp.length - 1; s2++) {
           var tt = s2 / (rp.length - 1);
@@ -343,7 +343,7 @@ G.hash2 = function (x, y, s) {
       for (var y5 = 0; y5 < N; y5++) for (var x5 = 0; x5 < N; x5++) {
         var wob = (fbm(x5 * 0.06, y5 * 0.06, C.seed + 51) - 0.5) * N * 0.06, dw;
         if (type === 'mare') dw = Math.min(x5, y5, M - x5, M - y5) - (N * 0.1 + wob);
-        else dw = Math.hypot(x5 - cx, y5 - cy) - (N * 0.2 + wob);
+        else dw = G.hyp(x5 - cx, y5 - cy) - (N * 0.2 + wob);
         if (dw < 0) C.set(x5, y5, WA); else if (dw < 1.6) C.set(x5, y5, SA);
       }
       for (var k6 = 0; k6 < N * N * 0.0055; k6++) { var tx6 = R() * N, ty6 = R() * N; if (C.get(tx6 | 0, ty6 | 0) === GR) C.disc(tx6, ty6, 2.2 + R() * 2.8, function (x, y) { if (C.get(x, y) === GR && R() < 0.72) C.put('tree', x, y); }); }
@@ -353,7 +353,7 @@ G.hash2 = function (x, y, s) {
         var fx6 = (R() * N) | 0, fy6 = (R() * N) | 0;
         if (C.get(fx6, fy6) !== WA || C.blk[fy6 * N + fx6] || (sym && !canonical(N, sym, fx6, fy6))) continue;
         var deep = true; for (var dy6 = -2; dy6 <= 2 && deep; dy6++) for (var dx6 = -2; dx6 <= 2; dx6++) if (C.get(fx6 + dx6, fy6 + dy6) !== WA) { deep = false; break; }
-        if (!deep || C.objs.some(function (o) { return o.t === 'fishd' && Math.hypot(o.x - fx6, o.y - fy6) < 6; })) continue;
+        if (!deep || C.objs.some(function (o) { return o.t === 'fishd' && G.hyp(o.x - fx6, o.y - fy6) < 6; })) continue;
         C.blk[fy6 * N + fx6] = 2; C.objs.push({ t: 'fishd', x: fx6, y: fy6 });
         if (C.get(fx6 + 1, fy6) === WA && !C.blk[fy6 * N + fx6 + 1]) { C.blk[fy6 * N + fx6 + 1] = 2; C.objs.push({ t: 'fishd', x: fx6 + 1, y: fy6 }); }
         placedF++;
@@ -363,7 +363,7 @@ G.hash2 = function (x, y, s) {
     bases.forEach(function (b) {
       var cr = type === 'codri' ? 9.5 : 7.5;
       C.disc(b[0], b[1], cr, function (x, y) { var t = C.get(x, y); if (t !== GR && t !== DI) C.set(x, y, GR); });
-      C.clearObjs(function (o) { return Math.hypot(o.x + 0.5 - b[0], o.y + 0.5 - b[1]) < cr; });
+      C.clearObjs(function (o) { return G.hyp(o.x + 0.5 - b[0], o.y + 0.5 - b[1]) < cr; });
       C.disc(b[0], b[1], 3.2, function (x, y) { if (fbm(x * 0.5, y * 0.5, C.seed + 77) > 0.4) C.set(x, y, DI); });
     });
     // 3. resursele bazelor și cele din mijloc (doar în zona canonică, apoi oglindite)
@@ -373,7 +373,7 @@ G.hash2 = function (x, y, s) {
     canon.forEach(function (b) { baseRes(C, b, type); });
     var extra = type === 'munti' ? 5 : type === 'stepa' ? 4 : 3;
     for (var e = 0; e < extra * Math.max(1, N / 72); e++) {
-      var ex = R() * N, ey = R() * N, far = bases.every(function (b) { return Math.hypot(ex - b[0], ey - b[1]) > 18; });
+      var ex = R() * N, ey = R() * N, far = bases.every(function (b) { return G.hyp(ex - b[0], ey - b[1]) > 18; });
       if (!far || (sym && !canonical(N, sym, ex | 0, ey | 0))) continue;
       C.cluster(['gold', 'stone', 'sheep', 'berry', 'gold'][e % 5], ex, ey, 4 + ((R() * 3) | 0));
     }
@@ -383,7 +383,7 @@ G.hash2 = function (x, y, s) {
       for (var pn = 0, pt = 0; pn < Math.ceil(pk[2] * Math.max(1, N / 96) / (sym || 1)) && pt++ < 300;) {
         var hx = (R() * (N - 10) + 5) | 0, hy = (R() * (N - 10) + 5) | 0;
         if (!C.free(hx, hy) || (sym && !canonical(N, sym, hx, hy))) continue;
-        if (bases.some(function (b) { return Math.hypot(hx - b[0], hy - b[1]) < (pk[0] === 'wolf' ? 24 : 19); })) continue;
+        if (bases.some(function (b) { return G.hyp(hx - b[0], hy - b[1]) < (pk[0] === 'wolf' ? 24 : 19); })) continue;
         C.cluster(pk[0], hx, hy, pk[1]); pn++;
       }
     });
@@ -393,8 +393,8 @@ G.hash2 = function (x, y, s) {
       if (C.get(fx, fy) !== WA || C.blk[fy * N + fx] || (sym && !canonical(N, sym, fx, fy))) continue;
       var land = 0; for (var q = 0; q < 8; q++) { var tt2 = C.get(fx + [1, -1, 0, 0, 1, 1, -1, -1][q], fy + [0, 0, 1, -1, 1, -1, 1, -1][q]); if (tt2 === GR || tt2 === DI || tt2 === SA) land++; }
       if (land < 2 || R() > 0.2) continue;
-      if (fishAt.some(function (f) { return Math.hypot(f[0] - fx, f[1] - fy) < 7; })) continue;
-      if (bases.some(function (b) { return Math.hypot(fx - b[0], fy - b[1]) < 9; })) continue;
+      if (fishAt.some(function (f) { return G.hyp(f[0] - fx, f[1] - fy) < 7; })) continue;
+      if (bases.some(function (b) { return G.hyp(fx - b[0], fy - b[1]) < 9; })) continue;
       fishAt.push([fx, fy]); C.blk[fy * N + fx] = 2; C.objs.push({ t: 'fish', x: fx, y: fy });
     }
     // moaștele: 5 la doi jucători, +2 pentru fiecare jucător în plus
@@ -402,7 +402,7 @@ G.hash2 = function (x, y, s) {
     while (placed < (sym ? Math.ceil(relics / sym) : relics) && tries++ < 400) {
       var rx = (R() * (N - 8) + 4) | 0, ry = (R() * (N - 8) + 4) | 0;
       if (!C.free(rx, ry) || (sym && !canonical(N, sym, rx, ry))) continue;
-      if (bases.some(function (b) { return Math.hypot(rx - b[0], ry - b[1]) < 18; })) continue;
+      if (bases.some(function (b) { return G.hyp(rx - b[0], ry - b[1]) < 18; })) continue;
       if (C.put('relic', rx, ry)) placed++;
     }
     if (sym) symmetrize(C, sym);
@@ -415,7 +415,7 @@ G.hash2 = function (x, y, s) {
     var seen2 = reach(C, [Math.floor(bases[0][0]), Math.floor(bases[0][1])]);
     C.objs.forEach(function (o) {
       if (o.t === 'tree' || o.t === 'sheep' || o.t === 'deer' || o.t === 'boar' || o.t === 'wolf' || o.t === 'fish' || o.t === 'fishd' || o.t === 'relic') return;
-      if (!bases.some(function (b) { return Math.hypot(o.x - b[0], o.y - b[1]) < 22; })) return;
+      if (!bases.some(function (b) { return G.hyp(o.x - b[0], o.y - b[1]) < 22; })) return;
       var ok = false;
       for (var dy3 = -1; dy3 <= 1; dy3++) for (var dx3 = -1; dx3 <= 1; dx3++) { var X = o.x + dx3, Y = o.y + dy3; if (C.ok(X, Y) && seen2[Y * N + X]) ok = true; }
       if (!ok) carve(C, [Math.floor(bases[0][0]), Math.floor(bases[0][1])], [o.x, o.y]);
@@ -470,7 +470,7 @@ G.hash2 = function (x, y, s) {
         var depth = dr / nRo, pk = 0.8 + fbm(vx * 0.16, vy * 0.16, seed + 31) * 0.8;
         h += (nRo / cnt) * Math.min(5.4, 1.0 + depth * 1.1) * pk * (type === 'munti' ? 1.2 : 0.95);
       }
-      bases.forEach(function (b, bi) { var d = Math.hypot(vx - b[0], vy - b[1]); if (d < 11) { var w = smh(6.5, 11, d); h = plat[bi] + (h - plat[bi]) * w; } });
+      bases.forEach(function (b, bi) { var d = G.hyp(vx - b[0], vy - b[1]); if (d < 11) { var w = smh(6.5, 11, d); h = plat[bi] + (h - plat[bi]) * w; } });
       h *= smh(0, 4, Math.min(vx, vy, N - vx, N - vy));
       H[j] = 0.08 + h;
     }
@@ -554,12 +554,12 @@ G.hash2 = function (x, y, s) {
       if (k === 'forest' || k === 'forestc') {
         var dens = (k === 'forest' ? op[2] : op[4]) || 0.6;
         for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) {
-          var inside = k === 'forest' ? inPoly(x + 0.5, y + 0.5, op[1]) : Math.hypot(x + 0.5 - op[1], y + 0.5 - op[2]) <= op[3];
+          var inside = k === 'forest' ? inPoly(x + 0.5, y + 0.5, op[1]) : G.hyp(x + 0.5 - op[1], y + 0.5 - op[2]) <= op[3];
           if (inside && C.get(x, y) === g0 && R() < dens * (0.75 + fbm(x * 0.3, y * 0.3, C.seed + 9) * 0.5)) C.put('tree', x, y);
         }
       }
     });
-    ops.forEach(function (op) { if (op[0] === 'clear') C.clearObjs(function (o) { return Math.hypot(o.x + 0.5 - op[1], o.y + 0.5 - op[2]) <= op[3]; }); });
+    ops.forEach(function (op) { if (op[0] === 'clear') C.clearObjs(function (o) { return G.hyp(o.x + 0.5 - op[1], o.y + 0.5 - op[2]) <= op[3]; }); });
     ops.forEach(function (op) {
       if (op[0] === 'res') C.cluster(op[1], op[2], op[3], op[4] || 1);
       else if (op[0] === 'decor') C.decor.push({ k: op[1], x: op[2], y: op[3] });

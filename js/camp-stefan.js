@@ -444,15 +444,15 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
         if (u.task && u.task.k !== 'move') return;
         u.wp = u.wp || 1;
         var w = ROUTE[u.wp];
-        if (Math.hypot(u.x - w[0], u.y - w[1]) < 3 && u.wp < ROUTE.length - 1) u.wp++;
+        if (G.hyp(u.x - w[0], u.y - w[1]) < 3 && u.wp < ROUTE.length - 1) u.wp++;
         if (!u.task || u.lastWp !== u.wp) { u.lastWp = u.wp; w = ROUTE[u.wp]; T.moveTo([u], w[0] + (u.id % 3 - 1) * 0.8, w[1]); }
       });
       if (v.esc !== v.escS) { v.escS = v.esc; T.obj('o2', 'Nu lăsa să scape mai mult de ' + escMax(S) + ' poloni spre nord (scăpați: ' + (v.esc || 0) + ').'); if (v.esc > escMax(S)) T.lose('Prea mulți poloni au scăpat din pădure.'); }
       // capcanele: copacii cad peste dușmani
       armed.forEach(function (b) {
-        var hit = G.C.units.some(function (u) { return u.o === 1 && Math.hypot(u.x - b.x, u.y - b.y) < 3.4; });
+        var hit = G.C.units.some(function (u) { return u.o === 1 && G.hyp(u.x - b.x, u.y - b.y) < 3.4; });
         if (!hit) return;
-        G.C.units.forEach(function (u) { if (u.o === 1 && Math.hypot(u.x - b.x, u.y - b.y) < 3.8) G.damage(u, G.UNITS[u.t].hero ? 30 : 45, null); });
+        G.C.units.forEach(function (u) { if (u.o === 1 && G.hyp(u.x - b.x, u.y - b.y) < 3.8) G.damage(u, G.UNITS[u.t].hero ? 30 : 45, null); });
         T.boom(b.x, b.y, 1.8); G.sfx('collapse', b.x, b.y);
         S.decor.push({ k: 'log0', x: b.x - 0.6, y: b.y + 0.4 }, { k: 'log1', x: b.x + 0.5, y: b.y - 0.3 });
         v.used = (v.used || 0) + 1; T.vanish([b]);

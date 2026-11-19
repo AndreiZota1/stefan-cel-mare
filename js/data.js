@@ -444,3 +444,40 @@ G.HELP = [
   ['⚓', 'Portul se pune pe apă. Ca să urce oamenii pe corabia de transport, alege-i și atinge corabia; apoi alege corabia și atinge malul.'],
   ['🏰', 'Câștigi când toți dușmanii sunt învinși: fără cetăți, fortărețe și țărani.']
 ];
+
+// ---------- calcule identice pe orice dispozitiv (pentru jocul online) ----------
+// Online, jocul merge ca AoE2: fiecare calculator rulează aceeași simulare din aceleași comenzi.
+// Math.sin, Math.cos, Math.atan2 și Math.hypot pot ieși diferit în ultima zecimală de la un browser la altul,
+// iar diferența crește până desparte jocurile. Simularea folosește variantele de mai jos: doar adunări,
+// înmulțiri, împărțiri și radical, care dau exact același rezultat peste tot.
+G.hyp = function (a, b) { return Math.sqrt(a * a + b * b); };
+(function () {
+  var PIO2_1 = 1.5707963267341256, PIO2_1T = 6.077100506506192e-11;
+  function kSin(x) { var z = x * x; return x + x * z * (-1.66666666666666324348e-01 + z * (8.33333333332248946124e-03 + z * (-1.98412698298579493134e-04 + z * (2.75573137070700676789e-06 + z * (-2.50507602534068634195e-08 + z * 1.58969099521155010221e-10))))); }
+  function kCos(x) { var z = x * x; return 1 - 0.5 * z + z * z * (4.16666666666666019037e-02 + z * (-1.38888888888741095749e-03 + z * (2.48015872894767294178e-05 + z * (-2.75573143513906633035e-07 + z * (2.08757232129817482790e-09 + z * -1.13596475577881948265e-11))))); }
+  // x = n·π/2 + r, cu |r| ≤ π/4
+  function red(x) { var n = Math.round(x * 0.6366197723675814); return [n & 3, (x - n * PIO2_1) - n * PIO2_1T]; }
+  G.dsin = function (x) { var q = red(x), r = q[1]; return q[0] === 0 ? kSin(r) : q[0] === 1 ? kCos(r) : q[0] === 2 ? -kSin(r) : -kCos(r); };
+  G.dcos = function (x) { var q = red(x), r = q[1]; return q[0] === 0 ? kCos(r) : q[0] === 1 ? -kSin(r) : q[0] === 2 ? -kCos(r) : kSin(r); };
+  // atan pentru t ≥ 0: 1/t peste 1, apoi π/4 + atan((t−1)/(t+1)), apoi unghiul înjumătățit și seria
+  function datan(t) {
+    var inv = t > 1; if (inv) t = 1 / t;
+    var add = 0; if (t > 0.41421356237309503) { t = (t - 1) / (t + 1); add = 0.7853981633974483; }
+    var h = t / (1 + Math.sqrt(1 + t * t)), z = h * h, s = 0;
+    for (var k = 25; k >= 1; k -= 2) s = 1 / k - z * s;
+    var r = add + 2 * h * s;
+    return inv ? 1.5707963267948966 - r : r;
+  }
+  G.datan2 = function (y, x) {
+    if (x === 0 && y === 0) return 0;
+    var a = x === 0 ? 1.5707963267948966 : datan(Math.abs(y) / Math.abs(x));
+    if (x < 0) a = 3.141592653589793 - a;
+    return y < 0 ? -a : a;
+  };
+})();
+// numerele „la întâmplare” ale simulării: aceeași serie pe toate calculatoarele, pornită din seed și păstrată în salvare
+G.rand = function () {
+  var S = G.S, t = (S.rs = (S.rs + 0x6D2B79F5) | 0);
+  t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};

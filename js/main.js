@@ -148,16 +148,18 @@ var G = globalThis.G || (globalThis.G = {});
   }
 
   var last = performance.now();
+  // simularea merge în pași ficși de 0,05 s, la fel pe orice calculator (jocul online cere asta);
+  // între doi pași, oamenii și proiectilele se desenează la mijlocul drumului, ca mișcarea să rămână lină
+  var STEP = 0.05, acc = 0;
   function frame(now) {
     var dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     // filmul de început ține tot ecranul
     if (G.Cine && G.Cine.active) { G.Cine.tick(dt); requestAnimationFrame(frame); return; }
     if (G.S && G.running && !G.paused) {
-      var sim = dt * G.speed;
-      while (sim > 1e-6) { var st = Math.min(0.05, sim); G.update(st); sim -= st; }
-      endCheck();
-    }
+      acc = Math.min(acc + dt * G.speed, STEP * 6);
+      while (acc >= STEP && G.running) { G.update(STEP); acc -= STEP; endCheck(); }
+    } else acc = 0;
     if (G.demo && G.S && !G.running) {
       var simd = dt * 1.5;
       while (simd > 1e-6) { var st2 = Math.min(0.05, simd); G.update(st2); simd -= st2; }
@@ -165,7 +167,9 @@ var G = globalThis.G || (globalThis.G = {});
       G.R.frame(dt);
     } else if (G.S && (G.running || G.S.over)) {
       G.Input.tick(dt);
+      G.R.lerp(G.running && !G.paused ? acc / STEP : 0);
       G.R.frame(G.paused ? 0 : dt);
+      G.R.unlerp();
       G.UI.tick(dt);
     }
     requestAnimationFrame(frame);
