@@ -66,3 +66,12 @@ Ce a contat:
   - poveștile campaniilor, verificate istoric;
   - trecerea vizuală prin joc.
 - [x] Reparat un bug care ajunsese publicat: clădirile terminate se desenau cu schelă (un `else` lipit de alt `if`). Lecția: testele automate nu văd grafica, deci trecerea vizuală e obligatorie după orice schimbare în `drawBld`.
+
+## A patra rundă (19.11, dimineața): grafica realistă
+
+Cerută de Andrei după prima încercare de relief („arată ca naiba”): relief adevărat, iarbă, copaci, resurse, oi, apă.
+
+- [x] Terenul 3D pe placa video (`js/terrain-gl.js`, WebGL2): munți colțuroși pe stânci, dealuri, albii sub apă; texturi foto CC0 amestecate după tip, pantă și înălțime; umbrele munților și ocluzia văilor; apă cu adâncime, valuri, sclipiri, spumă și gheață; ceața războiului pe relief. Rezerva: terenul vechi.
+- [x] Viteza: bucăți pictate o dată; apa și ceața într-un singur cadru WebGL (~3 ms pe placa Intel, față de 49 ms la început).
+- [x] Natura nouă (`tools/baker/nature2.js`): copaci EZ-Tree (stejar, frasin, molid, pin), goi și nins iarna; mine din stânci scanate (aur cu vine, piatră), câte 3 variante; mure, oi, tufe, stuf, flori, bușteni, cioturi, bolovani în 3D.
+- [x] Testele: simulare, blocaje, cele 16 misiuni, meniul, mouse-ul și telefonul, salvarea.
