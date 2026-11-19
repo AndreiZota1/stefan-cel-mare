@@ -9,6 +9,7 @@ L.forEach(c => { win[c] = 0; games[c] = 0; });
 let n = 0;
 for (const map of maps) for (let i = 0; i < L.length; i++) for (let j = i + 1; j < L.length; j++) {
   const civs = (n % 2) ? [L[j], L[i]] : [L[i], L[j]], seed = 1000 + n * 37; n++;
+  if (process.env.CIV && !civs.includes(process.env.CIV)) continue;
   try {
     G.newGame({ seed, diff: 'normal', map: { type: map, season: 'vara' }, players: civs.map((c, k) => ({ civ: c, ai: true, team: k + 1 })) });
     const dt = 1 / 20; let steps = 0;

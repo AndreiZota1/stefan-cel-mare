@@ -698,6 +698,8 @@ var G = globalThis.G || (globalThis.G = {});
           if (G.enemy(0, pid) && G.ally(0, tgt.o)) {
             G.msg('Iscoadele aduc vești: oastea ' + G.ppl(pid).replace(/ii$/, 'ilor') + ' vine spre ' + (tgt.o === 0 ? 'tine' : 'aliații tăi') + '!', 'alert', { x: free[0].x, y: free[0].y });
             G.sfx('horn');
+            // uneori își strigă și atacul, ca în AoE2
+            if (Math.random() < 0.3 && G.UI && G.UI.taunt) setTimeout(function () { G.UI.taunt(Math.random() < 0.5 ? 8 : 11, pid); }, 2500);
           }
         }
         A.next = S.t + D.every;

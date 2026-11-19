@@ -292,7 +292,15 @@ var G = globalThis.G || (globalThis.G = {});
     c.act(); lastSig = '';
   };
   // fereastra de mesaje: coduri secrete, strigăte pe numere (ca în AoE2), mesaje
-  var TAUNTS = ['Da.', 'Nu.', 'Hrană, vă rog!', 'Lemne, vă rog!', 'Aur, vă rog!', 'Piatră, vă rog!', 'Aaah!', 'Toată lumea la atac!', 'Ești gata?', 'Mai stai puțin!', 'Ha, ha, ha!', 'Pentru Moldova!'];
+  var TAUNTS = ['Da.', 'Nu.', 'Hrană, vă rog!', 'Lemne, vă rog!', 'Aur, vă rog!', 'Niște piatră, vă rog!', 'Aaah!', 'Toată lumea la atac!', 'Ești gata?', 'Mai stai puțin!', 'Ha, ha, ha!', 'Pentru Moldova!'];
+  // strigătul n: textul pe ecran și vocea (js/strigate.js, încărcat la prima folosire)
+  UI.taunt = function (n, who) {
+    var tt = n === 12 ? 'Pentru țară, înainte!' : TAUNTS[n - 1];
+    G.msg((who !== undefined ? G.ppl(who, true) + ': ' : '') + n + ' — ' + tt, who !== undefined ? 'alert' : 'info');
+    var play = function () { if (!G.STRIGATE || !G.Audio || !G.Audio.on) return; var au = new Audio(G.STRIGATE[n - 1].a); au.volume = 0.9; au.play().catch(function () {}); };
+    if (G.STRIGATE) play();
+    else { var sc = document.createElement('script'); sc.src = 'js/strigate.js'; sc.onload = play; document.head.appendChild(sc); }
+  };
   UI.openChat = function () {
     var ch = document.getElementById('chat'); if (!ch || !G.S) return;
     ch.style.display = 'block'; ch.value = ''; ch.focus();
@@ -306,7 +314,7 @@ var G = globalThis.G || (globalThis.G = {});
         if (!t) return;
         if (G.cheat(0, t)) return;
         var n = +t;
-        if (n >= 1 && n <= TAUNTS.length && /^\d+$/.test(t)) { var tt = n === 12 ? 'Pentru ' + (G.CIVS[G.S.players[0].civ].name) + '!' : TAUNTS[n - 1]; G.msg(n + ' — ' + tt, 'info'); G.sfx('horn2'); if (G.voice) G.voice(null, n === 8 || n === 12 ? 'atk' : 'ack'); return; }
+        if (n >= 1 && n <= TAUNTS.length && /^\d+$/.test(t)) { UI.taunt(n); return; }
         G.msg('Tu: ' + t, 'info');
       });
     }
