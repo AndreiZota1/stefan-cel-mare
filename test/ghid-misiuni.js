@@ -31,9 +31,22 @@ function H(c) {
     // asaltul: întâi țintele cu etichetele date, apoi orice dușman (clădiri, apoi oameni);
     // dacă ținta e închisă între ziduri, întâi bucata de zid (sau poarta) cea mai apropiată de ea, ca un om
     assault: (tags, units) => {
-      for (const tag of tags) { const t = h.alive(tag); if (t.length) return h.attack(h.breach(t, units)); }
-      const fb = h.foeBlds(); if (fb.length) return h.attack(h.breach(fb, units));
+      for (const tag of tags) { const t = h.alive(tag); if (t.length) return h.siege(h.breach(t, units), units); }
+      const fb = h.foeBlds(); if (fb.length) return h.siege(h.breach(fb, units), units);
       return h.attack(h.foes(), units);
+    },
+    // la ziduri, ca un om: mașinile de asediu și arcașii lovesc zidul, pedestrașii și călăreții îi păzesc
+    // (atacă pe oricine iese la ei) și nu se aruncă în zid; la clădiri fără ziduri, atacă toți
+    siege: (targets, units) => {
+      const us = units || h.army(); if (!targets.length) return false;
+      if (!targets.every(t => t.k === 'b' && G.BLDS[t.t].wall)) return h.attack(targets, us);
+      const cls = u => G.UNITS[u.t].cls, ranged = us.filter(u => cls(u) === 'sie' || cls(u) === 'arc' || cls(u) === 'gun'), guard = us.filter(u => !ranged.includes(u));
+      h.attack(targets, ranged.length ? ranged : us);
+      if (ranged.length) {
+        const c = ranged[0], near = h.foes().filter(e => G.hyp(e.x - c.x, e.y - c.y) < 10);
+        if (near.length) h.attack(near, guard); else guard.forEach(u => { if (!u.task) G.cmdMove([u], c.x + (u.id % 5 - 2), c.y + (u.id % 3 - 1), false); });
+      }
+      return true;
     },
     // ce se poate lovi din locul unde e oastea: ținta, sau zidul care o închide
     breach: (targets, units) => {
