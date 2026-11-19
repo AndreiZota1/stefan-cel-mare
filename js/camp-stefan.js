@@ -376,6 +376,8 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
   var ROUTE = [[50, 95], [54, 82], [48, 66], [52, 48], [46, 30], [47, 14], [46, 1]];
   // locurile copacilor tăiați: pe marginea drumului, la două pătrățele de mijlocul lui
   var TRAPS = [[56, 82], [46, 67], [52, 55], [52, 41], [44, 30], [49, 20]];
+  // câți poloni pot scăpa: 12 la Normal; pe Greu și Foarte greu oastea lor e mai mare, deci și pragul crește la fel
+  function escMax(S) { return Math.round(12 * ({ greu: 1.25, foarte: 1.5 }[S.diff] || 1)); }
   M.st6 = {
     id: 'st6', title: 'Pădurea care cade', short: 'Cosmin', year: '1497', place: 'Codrii Cosminului', lon: 25.85, lat: 48.25,
     view: { lon: 24.2, lat: 48.6, z: 1.8 },
@@ -415,7 +417,7 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
     },
     start: function (S, T) {
       T.obj('o1', 'Taie copacii de lângă drum: trimite țăranii la cele 6 steaguri galbene (0/6).');
-      T.obj('o2', 'Nu lăsa să scape mai mult de 12 poloni spre nord (scăpați: 0).');
+      T.obj('o2', 'Nu lăsa să scape mai mult de ' + escMax(S) + ' poloni spre nord (scăpați: 0).');
       T.obj('o3', 'Înfrânge oastea regelui Ioan Albert.');
       T.say('stefan', 'Regele se întoarce acasă pe drumul ăsta. Nu va ajunge.', 'say1', 1);
       T.say('taran', 'Doamne, tăiem copacii pe jumătate. La un semn, cad toți deodată.', 'say2');
@@ -443,7 +445,7 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
         if (Math.hypot(u.x - w[0], u.y - w[1]) < 3 && u.wp < ROUTE.length - 1) u.wp++;
         if (!u.task || u.lastWp !== u.wp) { u.lastWp = u.wp; w = ROUTE[u.wp]; T.moveTo([u], w[0] + (u.id % 3 - 1) * 0.8, w[1]); }
       });
-      if (v.esc !== v.escS) { v.escS = v.esc; T.obj('o2', 'Nu lăsa să scape mai mult de 12 poloni spre nord (scăpați: ' + (v.esc || 0) + ').'); if (v.esc > 12) T.lose('Prea mulți poloni au scăpat din pădure.'); }
+      if (v.esc !== v.escS) { v.escS = v.esc; T.obj('o2', 'Nu lăsa să scape mai mult de ' + escMax(S) + ' poloni spre nord (scăpați: ' + (v.esc || 0) + ').'); if (v.esc > escMax(S)) T.lose('Prea mulți poloni au scăpat din pădure.'); }
       // capcanele: copacii cad peste dușmani
       armed.forEach(function (b) {
         var hit = G.C.units.some(function (u) { return u.o === 1 && Math.hypot(u.x - b.x, u.y - b.y) < 3.4; });
@@ -454,7 +456,7 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
         v.used = (v.used || 0) + 1; T.vanish([b]);
         if (!v.firstTrap) { v.firstTrap = 1; T.say('stefan', 'Acum! Copacii, peste ei!', 'say4'); }
       });
-      if (v.spawned && !T.alive('pol') && !v.won) { v.won = 1; T.done('o3'); if ((v.esc || 0) <= 12) T.done('o2'); T.say('stefan', 'Pădurea și-a făcut datoria. Moldova e liberă.', 'say5'); T.win(); }
+      if (v.spawned && !T.alive('pol') && !v.won) { v.won = 1; T.done('o3'); if ((v.esc || 0) <= escMax(S)) T.done('o2'); T.say('stefan', 'Pădurea și-a făcut datoria. Moldova e liberă.', 'say5'); T.win(); }
     },
     triggers: []
   };
