@@ -603,7 +603,7 @@ var G = globalThis.G || (globalThis.G = {});
         if (G.enemy(pid, u.o)) foes++;
         else if (u.o === pid) { friends++; if (u.hp < u.mhp * 0.6) hurt++; }
       });
-      var pw = G.CIVS[civ].power;
+      var pw = G.powerOf ? G.powerOf(pid) : G.CIVS[civ].power;
       if ((pw === 'cruciada' ? hurt >= 4 : pw === 'garda' ? foes >= 3 : foes >= 4 && friends >= 3)) G.cmdPower(pid);
     }
   }

@@ -454,7 +454,7 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
       'La Grunwald, Ordinul Teuton a suferit cea mai grea înfrângere din istoria lui. Marele maestru Ulrich von Jungingen a căzut pe câmpul de luptă.',
       'Polonia și Lituania devin cea mai mare putere din estul Europei. Peste ani, aceeași Polonie va trece prin Codrii Cosminului.'
     ],
-    players: [{ civ: 'pol', team: 1 }, { civ: 'ung', team: 2, ppl: 'cavalerii teutoni', heroName: 'Ulrich von Jungingen', aiMode: 'static', techs: ['up_mil2', 'up_mil3', 'up_kni2', 'forja', 'sab1', 'zale1'] },
+    players: [{ civ: 'pol', team: 1, heroName: 'Vladislav Jagiello' }, { civ: 'ung', team: 2, ppl: 'cavalerii teutoni', heroName: 'Ulrich von Jungingen', aiMode: 'static', techs: ['up_mil2', 'up_mil3', 'up_kni2', 'forja', 'sab1', 'zale1'] },
       { civ: 'tat', team: 1, ppl: 'lituanienii', heroName: 'Vitold', aiMode: 'static', col: 2 }],
     map: { N: 96, season: 'vara', seed: 1410, ground: 'grass', ops: [
       ['forest', [[0, 0], [30, 0], [20, 20], [0, 24]], 0.6], ['forest', [[66, 0], [96, 0], [96, 20], [74, 18]], 0.55],

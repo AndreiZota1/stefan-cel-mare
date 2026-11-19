@@ -428,7 +428,7 @@ var G = globalThis.G || (globalThis.G = {});
       if (fighters.length) out.push({ id: 'amove', icon: '🗡️', label: 'Atac din mers', enabled: true, tip: 'Apoi alege locul: merg acolo și atacă tot ce întâlnesc pe drum.', act: function () { UI.amove = true; G.msg('Alege locul unde pornesc la atac.', 'info'); lastSig = ''; } });
       var hero = units.filter(function (u) { return G.UNITS[u.t].hero; })[0];
       if (hero) {
-        var pw = G.POWERS[G.CIVS[civ].power], perr = G.powerError(0);
+        var pw = G.POWERS[G.powerOf(0)], perr = G.powerError(0);
         out.push({ id: 'power', icon: pw.icon, label: pw.name, enabled: !perr, err: perr, tip: pw.desc, cls: 'age', act: function () { var e2 = G.cmdPower(0); if (e2) { G.msg(e2, 'warn'); G.sfx('err'); } } });
       }
       var fighters = units.filter(function (u) { return u.t !== 'vil' && G.UNITS[u.t].atk > 0; });
@@ -551,7 +551,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (e.k === 'u') {
       var st = G.ust(e);
       html += '<div class="st">' + (st.atk ? '⚔️ ' + Math.round(st.atk + G.auraBonus(e)) : (st.heal ? '✚ vindecă' : '')) + (st.rng ? ' &nbsp;🏹 ' + String(Math.round(st.rng * 10) / 10).replace('.', ',') : '') + ' &nbsp;🛡️ ' + st.ma + '/' + st.pa + '</div>';
-      if (G.UNITS[e.t].hero && e.o === 0) { var pw = G.POWERS[G.CIVS[S.players[0].civ].power], left = Math.ceil(S.players[0].pcd - S.t); html += '<div class="st">' + pw.icon + ' ' + esc(pw.name) + ': ' + (left > 0 ? 'peste ' + left + ' s' : '<b>gata!</b>') + '</div>'; }
+      if (G.UNITS[e.t].hero && e.o === 0) { var pw = G.POWERS[G.powerOf(0)], left = Math.ceil(S.players[0].pcd - S.t); html += '<div class="st">' + pw.icon + ' ' + esc(pw.name) + ': ' + (left > 0 ? 'peste ' + left + ' s' : '<b>gata!</b>') + '</div>'; }
       if (e.o === 0) html += '<div class="st">' + esc(unitStatus(e)) + (e.carry && e.carry.n >= 1 ? ' · ' + G.RES_ICON[e.carry.r] + ' ' + fmt(e.carry.n) + '/' + st.cap : '') + '</div>';
       if (G.UNITS[e.t].desc) html += '<div class="st dim">' + esc(G.UNITS[e.t].desc) + '</div>';
       return html;

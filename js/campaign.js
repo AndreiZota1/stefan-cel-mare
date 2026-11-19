@@ -35,7 +35,9 @@ G.NAR = G.NAR || {};
       [[23.8, 48.2], [22.4, 48.1], [21.4, 48.12], [20.2, 47.2], [20.15, 46.25], [20.3, 45.15]],
       [[26.1, 45.3], [25.5, 44.6], [26.0, 44.2]],
       [[33.2, 50.5], [32.4, 49.6], [32.0, 48.6], [33.4, 48.0], [34.5, 47.5], [33.9, 46.8], [32.6, 46.6]],
-      [[30.6, 51.4], [30.52, 50.45], [31.5, 49.5], [32.4, 49.0], [33.4, 48.0]]
+      [[30.6, 51.4], [30.52, 50.45], [31.5, 49.5], [32.4, 49.0], [33.4, 48.0]],
+      [[38.8, 52.6], [39.3, 51.3], [40.0, 50.5], [41.2, 49.6], [42.6, 48.9], [41.8, 48.0], [40.4, 47.6], [39.4, 47.2]],
+      [[45.5, 52.4], [46.2, 51.5], [46.5, 50.3], [45.6, 49.3], [44.6, 48.7], [45.4, 48.1], [46.3, 47.3], [47.6, 46.4], [48.2, 45.9]]
     ],
     mountains: [
       [[19.5, 49.3], [21.0, 49.4], [22.5, 49.0], [23.8, 48.6], [24.6, 48.1], [25.1, 47.6], [25.5, 47.0], [25.9, 46.5], [26.3, 46.0], [26.1, 45.6], [25.5, 45.45], [24.6, 45.4], [23.6, 45.4], [22.7, 45.3], [22.2, 45.0]],
@@ -51,10 +53,11 @@ G.NAR = G.NAR || {};
       hunedoara: ['Hunedoara', 22.9, 45.75], sibiu: ['Sibiu', 24.15, 45.8], brasov: ['Brașov', 25.6, 45.65], constantinopol: ['Constantinopol', 28.98, 41.01],
       edirne: ['Adrianopol', 26.56, 41.68], varna: ['Varna', 27.92, 43.21], cracovia: ['Cracovia', 19.94, 50.06], liov: ['Liov', 24.03, 49.84], kiev: ['Kiev', 30.52, 50.45],
       bahcisarai: ['Bahcisarai', 33.86, 44.75], caffa: ['Caffa', 35.38, 45.03], nicopole: ['Nicopole', 24.9, 43.7], sofia: ['Sofia', 23.32, 42.7], nis: ['Niș', 21.9, 43.32],
-      vidin: ['Vidin', 22.88, 43.99], giurgiu: ['Giurgiu', 25.97, 43.9], braila: ['Brăila', 27.96, 45.27], grunwald: ['Grunwald', 20.1, 53.48], sarai: ['Sarai', 45.8, 47.3]
+      vidin: ['Vidin', 22.88, 43.99], giurgiu: ['Giurgiu', 25.97, 43.9], braila: ['Brăila', 27.96, 45.27], grunwald: ['Grunwald', 20.1, 53.48], sarai: ['Sarai', 45.8, 47.3],
+      dristra: ['Dristra', 27.26, 44.11], alba: ['Alba Iulia', 23.58, 46.07], marienburg: ['Marienburg', 19.03, 54.04], astrahan: ['Astrahan', 48.03, 46.35]
     },
     regions: [['MOLDOVA', 27.4, 47.5, 1], ['ȚARA ROMÂNEASCĂ', 25.0, 44.55, 1], ['TRANSILVANIA', 24.2, 46.5, 0.85], ['REGATUL UNGARIEI', 20.2, 47.0, 1], ['REGATUL POLONIEI', 22.6, 50.9, 1],
-      ['IMPERIUL OTOMAN', 25.0, 41.9, 1], ['HANATUL CRIMEII', 33.6, 46.9, 0.9], ['MAREA NEAGRĂ', 31.6, 43.4, 1.1], ['SERBIA', 20.8, 43.5, 0.8], ['BUGEAC', 29.3, 46.3, 0.7]]
+      ['IMPERIUL OTOMAN', 25.0, 41.9, 1], ['HANATUL CRIMEII', 33.6, 46.9, 0.9], ['MAREA NEAGRĂ', 31.6, 43.4, 1.1], ['SERBIA', 20.8, 43.5, 0.8], ['BUGEAC', 29.3, 46.3, 0.7], ['HOARDA MARE', 44.0, 49.6, 0.9]]
   };
   Camp.GEO = GEO;
 
@@ -192,7 +195,7 @@ G.NAR = G.NAR || {};
     var c = G.CAMPAIGNS[curC];
     var html = '<div class="ctabs">' + G.CAMPAIGNS.map(function (x, i) {
       var done = x.scen.filter(function (id) { return prog.done[id]; }).length;
-      return '<button class="' + (i === curC ? 'on' : '') + '" data-c="' + i + '"><img src="' + G.R.icon('u', 'hero', x.civ) + '" alt=""><b>' + esc(x.name) + '</b><small>' + done + '/' + x.scen.length + '</small></button>';
+      return '<button class="' + (i === curC ? 'on' : '') + '" data-c="' + i + '"><img src="' + G.R.icon('u', 'hero', x.heroVis || x.civ) + '" alt=""><b>' + esc(x.name) + '</b><small>' + done + '/' + x.scen.length + '</small></button>';
     }).join('') + '</div>';
     html += '<div class="cbody"><canvas id="campMap"></canvas><div class="clist"><h3>' + esc(c.name) + '</h3><div class="csub">' + esc(c.sub) + '</div>' + c.scen.map(function (id, i) {
       var m = G.MISSIONS[id], ok = unlocked(c, i), d = prog.done[id];

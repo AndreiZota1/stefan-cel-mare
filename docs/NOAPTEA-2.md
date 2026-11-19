@@ -75,3 +75,13 @@ Cerută de Andrei după prima încercare de relief („arată ca naiba”): reli
 - [x] Viteza: bucăți pictate o dată; apa și ceața într-un singur cadru WebGL (~3 ms pe placa Intel, față de 49 ms la început).
 - [x] Natura nouă (`tools/baker/nature2.js`): copaci EZ-Tree (stejar, frasin, molid, pin), goi și nins iarna; mine din stânci scanate (aur cu vine, piatră), câte 3 variante; mure, oi, tufe, stuf, flori, bușteni, cioturi, bolovani în 3D.
 - [x] Testele: simulare, blocaje, cele 16 misiuni, meniul, mouse-ul și telefonul, salvarea.
+
+## A cincea rundă (19.11): iarba 3D și campaniile noi
+
+Cerute de Andrei: iarba să nu mai pară desenată de un copil; misiuni și pentru ceilalți eroi; Mihai Viteazul și Mircea cel Bătrân.
+
+- [x] Iarba din fire 3D, pictată în bucățile de teren (smocuri luminate de soare, umbră la rădăcină; pe stepă uscată și înaltă; iarna, pai prin zăpadă).
+- [x] Mircea cel Bătrân (`js/camp-domni.js`): Rovine 1395, Nicopole 1396 (retragerea peste Dunăre), Dristra 1404. Puterea lui: Rovinele.
+- [x] Mihai Viteazul: Călugăreni 1595 (podul, tunurile lui Sinan), Giurgiu 1595, Șelimbăr 1599 și Alba Iulia, Unirea 1600 (Suceava, Hotin). Puterea lui: Toporul de la Călugăreni.
+- [x] Misiuni noi (`js/camp-noi.js`): Vlad (Iarna pe Dunăre, 1462), Mehmed (Smederevo, 1459), Jagiello (Marienburg, 1410), Mengli Giray (Sarai, 1502).
+- [x] Eroii cu chipul lor (Mihai cu cuca și pana, Mircea cu coroana), narațiunea și replicile cu voce, testele (27 de misiuni câștigabile).

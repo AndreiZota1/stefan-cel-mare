@@ -1,7 +1,7 @@
 // Fiecare misiune trebuie să se poată câștiga: îndeplinim obiectivele pe scurtătură și verificăm victoria.
 const fs = require('fs'), vm = require('vm'), path = require('path');
 global.localStorage = { getItem: () => null, setItem: () => {} };
-for (const f of ['data', 'map', 'path', 'sim', 'ai', 'trig', 'camp-stefan', 'camp-alte']) vm.runInThisContext(fs.readFileSync(path.join(__dirname, '..', 'js', f + '.js'), 'utf8'), { filename: f + '.js' });
+for (const f of ['data', 'map', 'path', 'sim', 'ai', 'trig', 'camp-stefan', 'camp-alte', 'camp-domni', 'camp-noi']) vm.runInThisContext(fs.readFileSync(path.join(__dirname, '..', 'js', f + '.js'), 'utf8'), { filename: f + '.js' });
 const G = globalThis.G, T = G.Trig;
 G.startGame = o => G.newGame(o);
 const kill = tag => T.byTag(tag).forEach(e => G.kill(e, { o: 0 }));
@@ -23,7 +23,18 @@ const CHEAT = {
   me1: () => { kill('vlaherne'); killHero(1); },
   me2: () => kill('tabara'),
   pl1: () => { killHero(1); kill('tabara'); },
-  ta1: () => { kill('sat'); step(2); kill('kiev'); }
+  ta1: () => { kill('sat'); step(2); kill('kiev'); },
+  mi1: () => { G.S.t = 700; step(2); ['w0', 'w1', 'w2', 'w3', 'marko'].forEach(kill); step(1); },
+  mi2: () => { G.S.t = 265; step(2); T.spawn(0, [['lcv', 22]], 72, 4); const h = G.heroOf(0); h.x = 72; h.y = 5; },
+  mi3: () => { kill('dristra'); step(1); T.bld(0, 'cetate', 60, 68, true); step(1); G.S.scen.vars.t3 = G.S.t + 1; step(1); },
+  mh1: () => { G.S.t = 470; step(2); ['w0', 'w1', 'w2'].forEach(kill); step(1); kill('tunuri'); },
+  mh2: () => { kill('targoviste'); step(1); kill('giurgiu'); },
+  mh3: () => { kill('oastea'); killHero(1); G.S.t = 40; step(1); const h = G.heroOf(0); h.x = 16; h.y = 16; },
+  mh4: () => { kill('suceava'); kill('hotin'); },
+  vl4: () => { G.S.t = 50; step(1); kill('hamza'); step(1); kill('cetati'); },
+  me3: () => { kill('turnuri'); kill('smederevo'); },
+  pl2: () => { kill('oras'); step(1); G.S.scen.vars.t2 = G.S.t + 1; step(1); },
+  ta2: () => { kill('hoarda'); kill('iurte'); kill('cort'); }
 };
 let bad = 0;
 for (const id of Object.keys(CHEAT)) {

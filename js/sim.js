@@ -57,7 +57,7 @@ var G = globalThis.G || (globalThis.G = {});
   function mkPlayer(id, o) {
     var r = START_RES[o.res] || START_RES.std;
     return { id: id, civ: o.civ || 'mol', ai: !!o.ai, team: o.team === undefined ? id + 1 : o.team, col: o.col === undefined ? id : o.col,
-      name: o.name || '', heroName: o.heroName || '', ppl: o.ppl || '', aiMode: o.aiMode || 'full',
+      name: o.name || '', heroName: o.heroName || '', heroVis: o.heroVis || '', power: o.power || '', ppl: o.ppl || '', aiMode: o.aiMode || 'full',
       res: { f: r.f, w: r.w, g: r.g, s: r.s }, age: 0, techs: {}, line: {}, pop: 0, cap: 0, gm: 1, alive: true, pcd: 0, bell: false,
       st: { trained: 0, killed: 0, lost: 0, razed: 0, techs: 0, trade: 0, gath: { f: 0, w: 0, g: 0, s: 0 }, ageT: [0, 0, 0, 0, 0], tl: [] } };
   }
@@ -464,6 +464,7 @@ var G = globalThis.G || (globalThis.G = {});
   function spdOf(u) {
     var s = ust(u).spd;
     if (u.buf && u.buf.until > S.t && u.buf.s) s *= u.buf.s;
+    if (u.deb && u.deb.until > S.t && u.deb.s) s *= u.deb.s;
     if (G.SLOW_T) { var tt = S.ter[Math.floor(u.y) * S.N + Math.floor(u.x)]; if (G.SLOW_T[tt]) s *= G.SLOW_T[tt]; }
     return s;
   }
@@ -1798,6 +1799,8 @@ var G = globalThis.G || (globalThis.G = {});
     return '';
   };
   // puterea eroului
+  // puterea eroului: a civilizației sau, în campanii, a eroului (Mircea: rovine, Mihai: sarja)
+  G.powerOf = function (o) { var P = S.players[o]; return (P.power && G.POWERS[P.power]) ? P.power : G.CIVS[P.civ].power; };
   G.powerError = function (o) {
     var P = S.players[o], h = heroOf(o);
     if (!h) return 'Eroul nu e pe câmp.';
@@ -1806,13 +1809,15 @@ var G = globalThis.G || (globalThis.G = {});
   };
   G.cmdPower = function (o) {
     var err = G.powerError(o); if (err) return err;
-    var P = S.players[o], h = heroOf(o), pw = G.POWERS[G.CIVS[P.civ].power], id = G.CIVS[P.civ].power, r = pw.r, until = S.t + pw.dur, n = 0;
+    var P = S.players[o], h = heroOf(o), id = G.powerOf(o), pw = G.POWERS[id], r = pw.r, until = S.t + pw.dur, n = 0;
     function near(fn) { forUnitsNear(h.x, h.y, r, function (u) { if (!u.dead && !u.gin && Math.hypot(u.x - h.x, u.y - h.y) <= r) fn(u); }); }
     if (id === 'bucium') near(function (u) { if (u.o === o && u.t !== 'vil') { u.buf = { a: 1.3, s: 1.3, until: until }; n++; } });
     else if (id === 'teroare') near(function (u) { if (G.enemy(o, u.o)) { u.deb = { a: 0.6, until: until }; n++; } });
     else if (id === 'cruciada') near(function (u) { if (G.ally(o, u.o) && G.UNITS[u.t].cls !== 'sie') { var m = ustT(u.o, u.t).hp; u.hp = Math.min(m, u.hp + m * 0.5); n++; } });
     else if (id === 'garda') { G.placeUnits(o, curType(o, 'cpl'), 2, h.x + 1, h.y + 1).forEach(function (u) { u.task = null; }); n = 2; }
     else if (id === 'baterie') near(function (u) { if (u.o === o && G.UNITS[u.t].cls === 'sie') { u.buf = { a: 1.5, until: until }; n++; } });
+    else if (id === 'rovine') near(function (u) { if (G.enemy(o, u.o)) { u.deb = { a: 0.8, s: 0.55, until: until }; n++; } });
+    else if (id === 'sarja') near(function (u) { if (u.o === o && u.t !== 'vil') { u.buf = { a: 1.6, s: 1.3, until: until }; n++; } });
     else if (id === 'navala') near(function (u) { if (u.o === o && (G.UNITS[u.t].cls === 'cav' || G.UNITS[u.t].cls === 'har')) { u.buf = { a: 1, add: 2, s: 1.5, until: until }; n++; } });
     P.pcd = S.t + pw.cd;
     S.fx.push({ k: 'aura', x: h.x, y: h.y, t: S.t, r: r || 2, p: id });

@@ -38,6 +38,21 @@ VOICE = {
     'ienicer': ('fable', RO + 'Ești un ofițer de ieniceri: aspru, strigi o alarmă.'),
     'vitold': ('ash', RO + 'Ești marele duce Vitold al Lituaniei: viclean, încrezător.'),
     'bei': ('verse', RO + 'Ești un bei tătar: mândru.'),
+    'mircea': ('verse', RO + 'Ești Mircea cel Bătrân, domnul Țării Românești: voce gravă, așezată, de om înțelept și încercat în războaie, sigur pe el.'),
+    'mihai': ('echo', RO + 'Ești Mihai Viteazul: aprig, vijelios, hotărât, un domn care se aruncă primul în luptă și își îmbărbătează oastea.'),
+    'baiazid': ('fable', RO + 'Ești sultanul Baiazid Fulgerul: trufaș, poruncitor, cu un ușor accent turcesc.'),
+    'marko': ('ash', RO + 'Ești Marko, un crai sârb, vasal fără voie al sultanului: grav, trist, demn.'),
+    'nevers': ('verse', RO + 'Ești un tânăr cavaler francez, Ioan de Nevers: trufaș, înfocat, cu un ușor accent franțuzesc.'),
+    'sigismund': ('verse', RO + 'Ești regele Sigismund al Ungariei: îngrijorat, neputincios în fața cavalerilor lui.'),
+    'sinan': ('fable', RO + 'Ești marele vizir Sinan Pașa: bătrân, aspru, mânios, cu un ușor accent turcesc.'),
+    'buzescu': ('alloy', RO + 'Ești Radu Buzescu, căpitan al lui Mihai Viteazul: voinic, devotat, limpede.'),
+    'sigismund_b': ('verse', RO + 'Ești principele Sigismund Báthory al Transilvaniei: nobil, hotărât, cu un ușor accent maghiar.'),
+    'razvan': ('ash', RO + 'Ești Ștefan Răzvan, domnul Moldovei: aprig, prietenos, ostășesc.'),
+    'andrei': ('verse', RO + 'Ești cardinalul Andrei Báthory: mândru, disprețuitor, cu un ușor accent maghiar.'),
+    'secui': ('alloy', RO + 'Ești căpitanul secuilor: aspru, bucuros de luptă, cu un ușor accent maghiar.'),
+    'ieremia': ('fable', RO + 'Ești Ieremia Movilă, domnul Moldovei: viclean, încrezător în ajutorul polonezilor.'),
+    'plauen': ('verse', RO + 'Ești Heinrich von Plauen, apărătorul Marienburgului: mândru, încăpățânat, cu un ușor accent german.'),
+    'ahmed': ('fable', RO + 'Ești Șeih Ahmed, hanul Hoardei Mari: disperat, strigi a retragere, cu un ușor accent tătar.'),
 }
 
 

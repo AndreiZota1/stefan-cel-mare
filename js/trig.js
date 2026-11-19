@@ -34,7 +34,22 @@ G.MISSIONS = G.MISSIONS || {};
     orban: { name: 'Meșterul Orban', icon: ['u', 'vil', 'ung'] },
     ienicer: { name: 'Agă de ieniceri', icon: ['u', 'ien', 'oto'] },
     vitold: { name: 'Vitold', icon: ['u', 'kni', 'pol'] },
-    bei: { name: 'Beiul', icon: ['u', 'nog', 'tat'] }
+    bei: { name: 'Beiul', icon: ['u', 'nog', 'tat'] },
+    mircea: { name: 'Mircea cel Bătrân', icon: ['u', 'hero', 'mircea'] },
+    mihai: { name: 'Mihai Viteazul', icon: ['u', 'hero', 'mihai'] },
+    baiazid: { name: 'Baiazid Fulgerul', icon: ['u', 'hero', 'oto'] },
+    marko: { name: 'Craiul Marko', icon: ['u', 'kni2', 'val'] },
+    nevers: { name: 'Ioan de Nevers', icon: ['u', 'kni3', 'pol'] },
+    sigismund: { name: 'Sigismund de Luxemburg', icon: ['u', 'kni3', 'ung'] },
+    sinan: { name: 'Sinan Pașa', icon: ['u', 'hero', 'oto'] },
+    buzescu: { name: 'Radu Buzescu', icon: ['u', 'kni2', 'val'] },
+    sigismund_b: { name: 'Sigismund Báthory', icon: ['u', 'kni2', 'ung'] },
+    razvan: { name: 'Ștefan Răzvan', icon: ['u', 'kni', 'mol'] },
+    andrei: { name: 'Andrei Báthory', icon: ['u', 'hero', 'ung'] },
+    secui: { name: 'Căpitanul secuilor', icon: ['u', 'lcv2', 'ung'] },
+    ieremia: { name: 'Ieremia Movilă', icon: ['u', 'kni2', 'mol'] },
+    plauen: { name: 'Heinrich von Plauen', icon: ['u', 'kni3', 'ung'] },
+    ahmed: { name: 'Șeih Ahmed', icon: ['u', 'hero', 'tat'] }
   };
   T.WHO = WHO;
 

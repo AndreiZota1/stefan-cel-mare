@@ -55,7 +55,10 @@ G.POWERS = {
   cruciada: { name: 'Cruciada de la Belgrad', icon: '✝️', cd: 100, r: 8, dur: 0, desc: 'Vindecă oastea din jur cu jumătate din viață.' },
   garda:    { name: 'Garda regală', icon: '👑', cd: 240, r: 0, dur: 0, desc: 'Cheamă 2 cavaleri polonezi lângă rege.' },
   baterie:  { name: 'Bateria', icon: '💥', cd: 90, r: 9, dur: 20, desc: 'Mașinile de asediu din jur lovesc cu 50% mai tare, 20 de secunde.' },
-  navala:   { name: 'Năvala', icon: '🐎', cd: 90, r: 10, dur: 15, desc: 'Călăreții din jur: +50% viteză și +2 atac, 15 secunde.' }
+  navala:   { name: 'Năvala', icon: '🐎', cd: 90, r: 10, dur: 15, desc: 'Călăreții din jur: +50% viteză și +2 atac, 15 secunde.' },
+  // puterile eroilor din campanii (Mircea cel Bătrân, Mihai Viteazul), care luptă cu oastea Țării Românești
+  rovine:   { name: 'Rovinele', icon: '🌾', cd: 90, r: 8, dur: 15, desc: 'Dușmanii din jur se împotmolesc ca în mlaștinile de la Rovine: merg cu 45% mai încet și lovesc cu 20% mai slab, 15 secunde.' },
+  sarja:    { name: 'Toporul de la Călugăreni', icon: '🪓', cd: 90, r: 8, dur: 12, desc: 'Mihai se aruncă primul în luptă: oastea din jur lovește cu 60% mai tare și merge cu 30% mai repede, 12 secunde.' }
 };
 
 // first = secunda primului atac; every = pauza dintre atacuri; wave0/waveAdd = mărimea valurilor

@@ -198,7 +198,11 @@ var G = globalThis.G || (globalThis.G = {});
 
   var bakedB = {};
   // stilurile: civilizația dă doar stilul imaginilor; culoarea vine de la jucător
-  function styleOf(civ) { return (G.CIVS[civ] || G.CIVS.mol).style; }
+  // eroii cu chipul lor (u/hero_mihai, u/hero_mircea): în rest, contează civilizația lor
+  var HEROVIS = { mihai: 'val', mircea: 'val' };
+  function baseCiv(c) { return HEROVIS[c] || c; }
+  R.baseCiv = baseCiv;
+  function styleOf(civ) { return (G.CIVS[baseCiv(civ)] || G.CIVS.mol).style; }
   function artCiv(civ) { var st = styleOf(civ); return st === 'oto' || st === 'tat' ? 'oto' : 'mol'; }
   function pcol(o) { var P = G.S && G.S.players[o]; return G.PCOL[P ? P.col : 0] || G.PCOL[0]; }
   R.pcol = pcol; R.styleOf = styleOf; R.artCiv = artCiv;
@@ -761,7 +765,7 @@ var G = globalThis.G || (globalThis.G = {});
       if (!exp[Math.floor(f.y) * N + Math.floor(f.x)]) return;
       if (f.k === 'corpse') {
         ctx.globalAlpha = Math.max(0, Math.min(1, (16 - age) / 4));
-        var csh = sheetFor(f.ut, S.players[f.o].civ, f.fem);
+        var csh = sheetFor(f.ut, heroCiv(S.players[f.o], f.ut), f.fem);
         if (csh && csh.B.actions.die) { var dA = csh.B.actions.die; bakedFrame(ctx, csh, 'die', Math.min(dA.frames - 1, Math.floor(age / 0.14)), f.d8 || 0, p[0], p[1], z * USCALE / csh.B.k, pcol(f.o).color); ctx.globalAlpha = 1; return; }
         var cav = G.UNITS[f.ut].cls === 'cav';
         if (cav) ell(ctx, p[0], p[1] - 3 * z, 10 * z, 3.6 * z, '#5a3d28');
@@ -1233,8 +1237,9 @@ var G = globalThis.G || (globalThis.G = {});
     var ck = t + '|' + civ + '|' + (fem ? 1 : 0), r = ukCache[ck];
     if (r) return r;
     // fiecare civilizație are imaginile ei (u/mil3_pol); asediul e comun (u/cat2_all)
-    var d = G.UNITS[t], v;
-    if (d.hero) v = 'hero_' + civ;
+    var d = G.UNITS[t], v, hv = civ;
+    civ = baseCiv(civ);
+    if (d.hero) v = 'hero_' + (G.BAKED2 && G.BAKED2['u/hero_' + hv] ? hv : civ);
     else if (t === 'vil') v = (fem ? 'vilf' : 'vil') + '_' + civ;
     else if (t === 'car') v = G.BAKED2 && G.BAKED2['u/car_' + civ] ? 'car_' + civ : 'car_all';
     else if (d.cls === 'sie') v = (d.line ? d.line + d.tier : t) + '_all';
@@ -1251,7 +1256,9 @@ var G = globalThis.G || (globalThis.G = {});
     if (fem) { sh = sheet2(ukeys(t, civ, 0).k2); if (sh) return sh; }
     return bakedSheet(k.old);
   }
-  function unitSheet(u) { return sheetFor(u.t, G.S.players[u.o].civ, u.fem); }
+  function heroCiv(P, t) { return P.heroVis && G.UNITS[t] && G.UNITS[t].hero ? P.heroVis : P.civ; }
+  R.heroCiv = heroCiv;
+  function unitSheet(u) { return sheetFor(u.t, heroCiv(G.S.players[u.o], u.t), u.fem); }
   R.preloadBaked = function () {
     var S = G.S; if (!S) return;
     S.players.forEach(function (P) {
@@ -1448,7 +1455,11 @@ var G = globalThis.G || (globalThis.G = {});
     return (icons[t] = c.toDataURL());
   }
   R.icon = function (kind, t, civ) {
-    civ = civ || (G.S && G.S.players[0] ? G.S.players[0].civ : 'mol');
+    var P0 = G.S && G.S.players[0];
+    civ = civ || (P0 ? P0.civ : 'mol');
+    // eroul tău cu chipul lui (Mihai, Mircea), în butoane și în lista celor aleși
+    if (kind === 'u' && P0 && P0.heroVis && civ === P0.civ && G.UNITS[t] && G.UNITS[t].hero) civ = P0.heroVis;
+    if (kind !== 'u') civ = baseCiv(civ);
     if (kind === 'u') {
       var uk = ukeys(t, civ, 0), ik = 'i/' + uk.v;
       if (G.BAKED2 && G.BAKED2[ik]) return 'assets/' + ik + '.webp';

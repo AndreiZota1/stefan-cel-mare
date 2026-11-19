@@ -54,6 +54,14 @@ const HATS = {
     h.add(at(box(0.07, 0.008, 0.004, STEEL()), 0, 0.06));
     plume(h, o.plume || '#d8d0c0', 0.07, -0.01, 1.3);
   },
+  // cuca lui Mihai Viteazul: blană înaltă, pana de stârc prinsă cu o piatră scumpă (ca în gravura lui Sadeler, 1601)
+  mihaicap(h, o) {
+    const c = cyl(0.043, 0.051, 0.15, M('#3a2616', 'fur', 1), 16); at(c, -0.012, 0.075, 0, 0, 0, 0.12); h.add(c);
+    h.add(at(hsph(0.043, M('#3a2616', 'fur', 1)), -0.03, 0.15, 0, 0, 0, 0.12));
+    h.add(at(torus(0.052, 0.012, M('#5a3a20', 'fur', 1), 6, 18), 0, 0.012, 0, Math.PI / 2));
+    h.add(at(sph(0.015, GOLD()), 0.048, 0.07)); h.add(at(sph(0.009, cloth('#b0101e', 'gold', 0.25, { metal: 0.4 })), 0.058, 0.07));
+    plume(h, '#f6f4ee', 0.15, 0.03, 1.5); plume(h, '#ece8de', 0.12, 0.005, 1.25);
+  },
   kucsma(h, o) {
     const c = cyl(0.044, 0.05, 0.12, M(o.hatCol || '#2a1c14', 'fur', 1), 14); at(c, -0.01, 0.06, 0, 0, 0, 0.15); h.add(c);
     h.add(at(cyl(0.004, 0.002, 0.13, M('#f4f0e6', 'velvet'), 5), -0.02, 0.15, 0.02, 0, 0, 0.25)); h.add(at(sph(0.01, GOLD()), 0.04, 0.06));
@@ -425,7 +433,7 @@ export function siege(vis, civ) {
 }
 
 // ---------- ținutele celor 6 civilizații ----------
-const SK = { mol: '#e2b48c', val: '#dcaa82', ung: '#e6bc96', pol: '#ecc4a0', oto: '#c8956a', tat: '#c79a70' };
+const SK = { mol: '#e2b48c', val: '#dcaa82', ung: '#e6bc96', pol: '#ecc4a0', oto: '#c8956a', tat: '#c79a70', mihai: '#dcaa82', mircea: '#dcaa82' };
 // trepte de armură comune: 1 căptușit, 2 zale, 3 zale + plăci, 4 plăci, 5 plăci cu aur
 function armorOf(tier) {
   if (tier <= 1) return {};
@@ -469,6 +477,10 @@ export function outfit(vis, civ) {
     ung: { skin: s, shirt: 'T', shirtK: 'velvet', cuirass: STEEL(), pauldrons: STEEL(), gauntlet: STEEL(), armor: MAIL(), sleeve: '#5a5e64', skirt: 'T', pants: '#3a3a44', boots: '#2a2a2e', hat: 'iancu', mustache: '#5a3a1e', longMus: true, len: 'tunic', cloak: '#1e2a1e', weapon: 'mace', mounted: true, coat: '#efece4', saddle: 'T', barding: team('velvet'), chanfron: true, bridle: true },
     pol: { skin: s, shirt: 'T', shirtK: 'velvet', cuirass: cloth('#d8dde4', 'gold', 0.25, { metal: 0.95, env: 1.4 }), pauldrons: STEEL(), gauntlet: STEEL(), armor: MAIL(), sleeve: '#5a5e64', skirt: 'T', pants: '#5a5e64', boots: '#2a2a2e', hat: 'crown', arches: true, hair: '#8a5a2a', longHair: true, len: 'tunic', cloak: '#c8c0b0', weapon: 'sword', mounted: true, coat: '#6a4a2a', saddle: 'T', barding: team('velvet'), bridle: true },
     oto: { skin: s, shirt: '#2f7d4a', shirtK: 'velvet', skirt: '#2f7d4a', sleeve: '#2f7d4a', pants: '#e0d6c0', boots: '#7a2a20', belt: '#d9ab3c', hat: 'pasha', beard: '#1e140c', mustache: '#1e140c', len: 'robe', cloak: '#c8352a', weapon: 'kilij', mounted: true, coat: '#f2eee6', mane: '#c8c0b0', saddle: 'T', cape: 'T', bridle: true },
+    // Mihai Viteazul: caftan roșu cu blană, platoșă sub el, toporul de la Călugăreni, cal murg
+    mihai: { skin: s, shirt: '#7a1016', shirtK: 'velvet', armor: cloth('#8a8e96', 'scales', 0.4, { metal: 0.7 }), sleeve: '#7a1016', skirt: '#7a1016', pants: '#2a1a14', boots: '#d8b048', highBoots: true, belt: '#d9ab3c', hat: 'mihaicap', beard: '#3a2414', longBeard: true, mustache: '#3a2414', longMus: true, len: 'long', cloak: '#5a0c10', collar: '#5a3a20', weapon: 'baltag', mounted: true, coat: '#3a2414', mane: '#1a1210', saddle: 'T', cape: 'T', bridle: true },
+    // Mircea cel Bătrân: coroană, barbă lungă, haină albastră cu aur și mantie purpurie (ca în ctitoria de la Cozia), cal roib
+    mircea: { skin: s, shirt: '#1e3466', shirtK: 'velvet', armor: cloth('#c8a050', 'scales', 0.35, { metal: 0.75 }), sleeve: '#1e3466', skirt: '#1e3466', pants: '#2a1e18', boots: '#3a2416', belt: '#d9ab3c', hat: 'crown', hair: '#3a2a1e', longHair: true, beard: '#4a3a2a', longBeard: true, mustache: '#4a3a2a', len: 'long', cloak: '#4a1436', weapon: 'sword', mounted: true, coat: '#6a3a1e', mane: '#2a1810', saddle: 'T', cape: 'T', bridle: true },
     tat: { skin: s, shirt: '#7a1a2a', shirtK: 'velvet', armor: LAMELLAR('#c8a050'), skirt: '#7a1a2a', sleeve: '#7a1a2a', pants: '#3a2a1a', boots: '#1a1210', belt: '#d9ab3c', hat: 'khan', beard: '#1a1210', mustache: '#1a1210', longMus: true, len: 'long', cloak: '#3a2a1a', weapon: 'saber', bow: 'cbow', mounted: true, coat: '#c8a070', small: true, saddle: 'T', cape: 'T', bridle: true }
   }[civ];
   // ---- unitățile unice ----
