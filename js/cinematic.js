@@ -332,7 +332,7 @@ var G = globalThis.G || (globalThis.G = {});
     g.font = 'bold ' + fs + 'px Georgia, "Times New Roman", serif';
     g.shadowColor = 'rgba(200,120,30,0.65)'; g.shadowBlur = fs * 0.35;
     var gr = g.createLinearGradient(0, h * 0.4 - fs / 2, 0, h * 0.4 + fs / 2); gr.addColorStop(0, '#fff1c0'); gr.addColorStop(0.55, '#e8b44a'); gr.addColorStop(1, '#9a6420');
-    g.fillStyle = gr; g.fillText('AGE OF EMPIRES', w / 2, h * 0.42);
+    g.fillStyle = gr; g.fillText('ERA DOMNITORILOR', w / 2, h * 0.42);
     g.shadowBlur = 0;
     var f2 = Math.round(fs * 0.55); g.font = 'bold ' + f2 + 'px Georgia, serif';
     var txt = 'R O M Â N I A', tw = g.measureText(txt).width, x0 = w / 2 - tw / 2;
