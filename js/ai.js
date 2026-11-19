@@ -20,7 +20,7 @@ var G = globalThis.G || (globalThis.G = {});
     collect();
     // cere pace și se predă când a pierdut tot (ca în AoE2)
     if (!tc && !S.scen && S.t > 300 && my.vils.length <= 2 && my.army.length + my.navy.length <= 2 && !my.blds.some(function (b) { return b.t === 'cetate'; })) {
-      G.msg(G.ppl(pid, true) + ' cer pace și se predau.', G.enemy(0, pid) ? 'good' : 'alert'); G.defeat(pid); return;
+      G.msg(G.ppl(pid, true) + ' cer pace și se predau.', G.enemy(G.me, pid) ? 'good' : 'alert'); G.defeat(pid); return;
     }
     // nomazii: întâi cetatea, unde stau țăranii
     if (!tc && S.opt.nomad && my.vils.length && !my.blds.some(function (b) { return b.t === 'cetate'; })) {
@@ -531,7 +531,7 @@ var G = globalThis.G || (globalThis.G = {});
     wave.forEach(function (u) { u.wave = 0; });
     G.cmdMove(wave, my.home.x, my.home.y);
     A.next = Math.max(A.next, S.t + D.every * 0.6); A.wHp = 0;
-    if (G.enemy(0, pid)) G.msg('Oastea ' + G.ppl(pid).replace(/ii$/, 'ilor') + ' se retrage!', 'good', { x: cx, y: cy });
+    if (G.enemy(G.me, pid)) G.msg('Oastea ' + G.ppl(pid).replace(/ii$/, 'ilor') + ' se retrage!', 'good', { x: cx, y: cy });
   }
   // ---------- palisada: un gard de pari în jurul satului, cu porți pe fiecare latură ----------
   function palisade() {
@@ -701,8 +701,8 @@ var G = globalThis.G || (globalThis.G = {});
           if (P.age >= 2) free = free.concat(my.mons.filter(function (m) { return !m.task && !m.relic; }).slice(0, 2));
           free.forEach(function (u) { u.wave = A.wave; });
           G.cmdMove(free, tgt.x, tgt.y, true);
-          if (G.enemy(0, pid) && G.ally(0, tgt.o)) {
-            G.msg('Iscoadele aduc vești: oastea ' + G.ppl(pid).replace(/ii$/, 'ilor') + ' vine spre ' + (tgt.o === 0 ? 'tine' : 'aliații tăi') + '!', 'alert', { x: free[0].x, y: free[0].y });
+          if (G.enemy(G.me, pid) && G.ally(G.me, tgt.o)) {
+            G.msg('Iscoadele aduc vești: oastea ' + G.ppl(pid).replace(/ii$/, 'ilor') + ' vine spre ' + (tgt.o === G.me ? 'tine' : 'aliații tăi') + '!', 'alert', { x: free[0].x, y: free[0].y });
             G.sfx('horn');
             // uneori își strigă și atacul, ca în AoE2
             if (Math.random() < 0.3 && G.UI && G.UI.taunt) setTimeout(function () { G.UI.taunt(Math.random() < 0.5 ? 8 : 11, pid); }, 2500);

@@ -742,7 +742,7 @@ var G = globalThis.G || (globalThis.G = {});
       if (e.dead || e.gin || e.x < minX - 3 || e.x > maxX + 4 || e.y < minY - 3 || e.y > maxY + 4) continue;
       var ek = Math.floor(e.y) * N + Math.floor(e.x);
       if (!exp[ek]) continue;
-      if (e.k === 'u' && !vis[ek] && !G.ally(0, e.o)) continue;
+      if (e.k === 'u' && !vis[ek] && !G.ally(G.me, e.o)) continue;
       if (e.k === 'b' && G.BLDS[e.t].walk) { ground.push(e); continue; }
       list.push(e);
     }
@@ -843,7 +843,7 @@ var G = globalThis.G || (globalThis.G = {});
       var p = R.w2s(f.x, f.y);
       if (f.k === 'heal') { ctx.globalAlpha = Math.max(0, 1 - age); ctx.fillStyle = '#7dff8a'; ctx.font = 'bold ' + Math.round(13 * z) + 'px sans-serif'; ctx.fillText('+', p[0] - 4 * z, p[1] - (30 + age * 18) * z); ctx.globalAlpha = 1; return; }
       if (f.k === 'aura') { var ar = (f.r || 6) * 32 * z * Math.min(1, age * 2); ctx.globalAlpha = Math.max(0, 0.8 - age * 0.5); ctx.strokeStyle = f.p === 'teroare' ? '#ff3b30' : f.p === 'cruciada' ? '#9dffb0' : '#ffd75a'; ctx.lineWidth = 3 * z; ctx.beginPath(); ctx.ellipse(p[0], p[1], ar, ar * 0.5, 0, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1; return; }
-      if (f.k === 'coin') { if (!G.ally(0, f.o)) return; ctx.globalAlpha = Math.max(0, 1 - age / 1.4); ctx.fillStyle = '#ffd75a'; ctx.font = 'bold ' + Math.round(12 * Math.max(0.8, z)) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('+' + f.n + ' 🪙', p[0], p[1] - (34 + age * 20) * z); ctx.textAlign = 'start'; ctx.globalAlpha = 1; return; }
+      if (f.k === 'coin') { if (!G.ally(G.me, f.o)) return; ctx.globalAlpha = Math.max(0, 1 - age / 1.4); ctx.fillStyle = '#ffd75a'; ctx.font = 'bold ' + Math.round(12 * Math.max(0.8, z)) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('+' + f.n + ' 🪙', p[0], p[1] - (34 + age * 20) * z); ctx.textAlign = 'start'; ctx.globalAlpha = 1; return; }
       if (f.k === 'dust') { ctx.globalAlpha = Math.max(0, 0.6 - age * 0.4); ell(ctx, p[0], p[1], (f.n * 22 + age * 30) * z, (f.n * 11 + age * 15) * z, '#d8c8a0'); }
       else if (f.k === 'boom') { var bs2 = f.s || 1; ctx.globalAlpha = Math.max(0, 1 - age / 0.8); ell(ctx, p[0], p[1] - 6 * z, (6 + age * 20) * bs2 * z, (4 + age * 12) * bs2 * z, age < 0.25 ? '#ffb030' : '#6a625a'); }
       else { var ss = f.s || 1; ctx.globalAlpha = Math.max(0, 0.7 - age * 0.5); ell(ctx, p[0] + age * 8 * z, p[1] - (14 + age * 16) * z, (5 + age * 8) * ss * z, (4 + age * 6) * ss * z, '#c9c4ba'); if (age < 0.08) { ctx.globalAlpha = 1; ell(ctx, p[0], p[1] - 14 * z, 4 * z * ss, 3 * z * ss, '#ffe08a'); } }
@@ -873,24 +873,24 @@ var G = globalThis.G || (globalThis.G = {});
     if (pl && pl.tx !== undefined) {
       var d = G.BLDS[pl.t], cells = d.wall && pl.x0 !== undefined ? G.wallTiles(pl.x0, pl.y0, pl.tx, pl.ty) : [[pl.tx, pl.ty]];
       cells.forEach(function (c) {
-        var ok = G.canPlace(0, pl.t, c[0], c[1]);
+        var ok = G.canPlace(G.me, pl.t, c[0], c[1]);
         for (var py2 = c[1]; py2 < c[1] + d.n; py2++) for (var px2 = c[0]; px2 < c[0] + d.n; px2++) {
           var tp = R.w2s(px2, py2);
           ctx.fillStyle = ok ? 'rgba(90,230,110,0.35)' : 'rgba(240,70,60,0.4)';
           ctx.beginPath(); ctx.moveTo(tp[0], tp[1]); ctx.lineTo(tp[0] + 32 * z, tp[1] + 16 * z); ctx.lineTo(tp[0], tp[1] + 32 * z); ctx.lineTo(tp[0] - 32 * z, tp[1] + 16 * z); ctx.closePath(); ctx.fill();
         }
       });
-      var s2 = d.wall ? null : bldSprite(pl.t, S.players[0].civ, null, 0), top = R.bTop(pl.tx, pl.ty, d.n);
+      var s2 = d.wall ? null : bldSprite(pl.t, S.players[G.me].civ, null, 0), top = R.bTop(pl.tx, pl.ty, d.n);
       if (s2) { ctx.globalAlpha = ghostAlpha; ctx.drawImage(s2.c, top[0] - s2.ax * z, top[1] - s2.ay * z, s2.w * z, s2.h * z); ctx.globalAlpha = 1; }
     }
     // punctul de adunare
     if (G.UI) {
       var one = G.UI.selOne();
-      if (one && one.k === 'b' && one.o === 0 && one.rally) {
+      if (one && one.k === 'b' && one.o === G.me && one.rally) {
         var a1 = R.w2s(one.x, one.y), a2 = R.w2s(one.rally.x, one.rally.y);
         ctx.setLineDash([4, 4]); ln(ctx, a1[0], a1[1], a2[0], a2[1], 'rgba(255,255,255,0.6)', 1.2); ctx.setLineDash([]);
         ln(ctx, a2[0], a2[1], a2[0], a2[1] - 18 * z, '#4a3a2a', 1.5);
-        ctx.fillStyle = pcol(0).color; ctx.beginPath(); ctx.moveTo(a2[0], a2[1] - 18 * z); ctx.lineTo(a2[0] + 10 * z, a2[1] - 15 * z); ctx.lineTo(a2[0], a2[1] - 11 * z); ctx.fill();
+        ctx.fillStyle = pcol(G.me).color; ctx.beginPath(); ctx.moveTo(a2[0], a2[1] - 18 * z); ctx.lineTo(a2[0] + 10 * z, a2[1] - 15 * z); ctx.lineTo(a2[0], a2[1] - 11 * z); ctx.fill();
       }
     }
     // dreptunghiul de selecție
@@ -918,8 +918,8 @@ var G = globalThis.G || (globalThis.G = {});
         g.fillStyle = gr; g.beginPath(); g.arc(p[0], p[1] - 10 * z, r, 0, 6.3); g.fill();
       }
       var fl = 0.9 + Math.sin(clock * 9) * 0.05;
-      G.C.blds.forEach(function (b) { if (!b.dead && b.built && G.ally(0, b.o) && !G.BLDS[b.t].wall) light(b.x, b.y, (b.n * 34 + 70) * z * fl, 0.95); });
-      G.C.units.forEach(function (u) { if (u.o === 0 || (G.ally(0, u.o) && G.C.vis[Math.floor(u.y) * S.N + Math.floor(u.x)])) light(u.x, u.y, 46 * z, 0.75); });
+      G.C.blds.forEach(function (b) { if (!b.dead && b.built && G.ally(G.me, b.o) && !G.BLDS[b.t].wall) light(b.x, b.y, (b.n * 34 + 70) * z * fl, 0.95); });
+      G.C.units.forEach(function (u) { if (u.o === G.me || (G.ally(G.me, u.o) && G.C.vis[Math.floor(u.y) * S.N + Math.floor(u.x)])) light(u.x, u.y, 46 * z, 0.75); });
       (S.lights || []).forEach(function (l) { light(l.x, l.y, (l.r || 3) * 32 * z * fl, 0.9); });
       S.fx.forEach(function (f) { if ((f.k === 'boom' || f.k === 'fire') && S.t - f.t < 1.5) light(f.x, f.y, 90 * z, 0.8); });
       G.C.blds.forEach(function (b) { if (!b.dead && b.built && b.hp < (b.mhp || 1) * 0.55 && G.C.vis[Math.floor(b.y) * S.N + Math.floor(b.x)]) light(b.x, b.y, 110 * z * fl, 0.9); });
@@ -1152,7 +1152,7 @@ var G = globalThis.G || (globalThis.G = {});
     var S = G.S, z = cam.z, civ = S.players[b.o].civ, s = bldSprite(b.t, civ, b), top = R.bTop(b.tx, b.ty, b.n), n = b.n;
     if (!s) { drawWallBlock(b); if (selected || (b.hit && S.t - b.hit < 3)) hpBar(b, top[0], top[1] - 6 * z, 24); return; }
     if (selected) {
-      ctx.strokeStyle = b.o === 0 ? '#ffffff' : G.ally(0, b.o) ? '#9cf59c' : '#ff6a5a'; ctx.lineWidth = 1.6;
+      ctx.strokeStyle = b.o === G.me ? '#ffffff' : G.ally(G.me, b.o) ? '#9cf59c' : '#ff6a5a'; ctx.lineWidth = 1.6;
       ctx.beginPath(); ctx.moveTo(top[0], top[1] - 2); ctx.lineTo(top[0] + n * 32 * z + 3, top[1] + n * 16 * z); ctx.lineTo(top[0], top[1] + n * 32 * z + 2); ctx.lineTo(top[0] - n * 32 * z - 3, top[1] + n * 16 * z); ctx.closePath(); ctx.stroke();
     }
     var dx = top[0] - s.ax * z, dy = top[1] - s.ay * z, dw = s.w * z, dh = s.h * z;
@@ -1218,7 +1218,7 @@ var G = globalThis.G || (globalThis.G = {});
       ctx.fillStyle = 'rgba(20,14,8,0.75)'; ctx.fillRect(top[0] - bw / 2, byy, bw, 15);
       ctx.fillStyle = b.relics ? '#ffe28a' : '#ffffff'; ctx.fillText(lb, top[0], byy + 11.5); ctx.textAlign = 'start';
     }
-    if (selected && b.q && b.q.length && b.o === 0) {
+    if (selected && b.q && b.q.length && b.o === G.me) {
       var it = b.q[0], pr = 1 - Math.max(0, it.left) / it.tot, by = top[1] - (s.ay - 6) * z * 0.85 + 6;
       ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(top[0] - 21, by - 1, 42, 4.5); ctx.fillStyle = '#7fb6ff'; ctx.fillRect(top[0] - 20, by, 40 * pr, 2.5);
     }
@@ -1377,17 +1377,17 @@ var G = globalThis.G || (globalThis.G = {});
     var S = G.S, z = cam.z, p = R.w2s(u.x, u.y), d = G.UNITS[u.t], civ = S.players[u.o].civ;
     if (p[0] < -40 || p[0] > W + 40 || p[1] < -10 || p[1] > H + 50) return;
     if (selected) {
-      ctx.strokeStyle = u.o === 0 ? '#ffffff' : G.ally(0, u.o) ? '#9cf59c' : '#ff6a5a'; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = u.o === G.me ? '#ffffff' : G.ally(G.me, u.o) ? '#9cf59c' : '#ff6a5a'; ctx.lineWidth = 1.5;
       var rx = (d.cls === 'cav' || d.cls === 'har' ? 12 : d.cls === 'sie' ? 14 : 8) * z;
       ctx.beginPath(); ctx.ellipse(p[0], p[1], rx, rx * 0.5, 0, 0, 6.3); ctx.stroke();
     }
     else if (G.UI && G.UI.hover === u.id) {
-      ctx.strokeStyle = u.o === 0 ? 'rgba(255,255,255,0.5)' : 'rgba(255,110,90,0.6)'; ctx.lineWidth = 1.2;
+      ctx.strokeStyle = u.o === G.me ? 'rgba(255,255,255,0.5)' : 'rgba(255,110,90,0.6)'; ctx.lineWidth = 1.2;
       var hr = (d.cls === 'cav' ? 12 : d.cls === 'sie' ? 14 : 8) * z;
       ctx.beginPath(); ctx.ellipse(p[0], p[1], hr, hr * 0.5, 0, 0, 6.3); ctx.stroke();
     }
     // ordinele puse la coadă (Shift): o linie punctată prin punctele următoare
-    if (selected && u.o === 0 && u.oq && u.oq.length) {
+    if (selected && u.o === G.me && u.oq && u.oq.length) {
       ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1.2; ctx.setLineDash([3, 4]); ctx.beginPath(); ctx.moveTo(p[0], p[1]);
       [u.task].concat(u.oq).forEach(function (T) { if (!T) return; var tx = T.x, ty = T.y; if (tx === undefined && T.id) { var te = G.getE(T.id); if (te) { tx = te.x; ty = te.y; } } if (tx === undefined) return; var q = R.w2s(tx, ty); ctx.lineTo(q[0], q[1]); ell(ctx, q[0], q[1], 2.5, 1.5, 'rgba(255,255,255,0.8)'); ctx.moveTo(q[0], q[1]); });
       ctx.stroke(); ctx.setLineDash([]); ctx.restore();
@@ -1431,7 +1431,7 @@ var G = globalThis.G || (globalThis.G = {});
       if (e.dead || e.gin || Math.abs(e.x - w[0]) > 6 || Math.abs(e.y - w[1]) > 6) continue;
       var k = Math.floor(e.y) * N + Math.floor(e.x);
       if (!S.exp[k]) continue;
-      if (e.k === 'u' && !C.vis[k] && !G.ally(0, e.o)) continue;
+      if (e.k === 'u' && !C.vis[k] && !G.ally(G.me, e.o)) continue;
       var p = R.w2s(e.x, e.y), score = -1e9;
       if (e.k === 'u') {
         var d = G.UNITS[e.t], hy = p[1] - (d.cls === 'cav' ? 17 : 12) * z, dd = Math.hypot(sx - p[0], sy - hy);
@@ -1508,7 +1508,7 @@ var G = globalThis.G || (globalThis.G = {});
     }
     C.units.forEach(function (u) {
       var k = Math.floor(u.y) * N + Math.floor(u.x);
-      if (!vis[k] && !G.ally(0, u.o)) return;
+      if (!vis[k] && !G.ally(G.me, u.o)) return;
       var col = TEAM[u.o], j = k * 4;
       d[j] = Math.min(255, col[0] + 40); d[j + 1] = Math.min(255, col[1] + 40); d[j + 2] = Math.min(255, col[2] + 40);
     });
@@ -1555,7 +1555,7 @@ var G = globalThis.G || (globalThis.G = {});
     return (icons[t] = c.toDataURL());
   }
   R.icon = function (kind, t, civ) {
-    var P0 = G.S && G.S.players[0];
+    var P0 = G.S && G.S.players[G.me];
     civ = civ || (P0 ? P0.civ : 'mol');
     // eroul tău cu chipul lui (Mihai, Mircea), în butoane și în lista celor aleși
     if (kind === 'u' && P0 && P0.heroVis && civ === P0.civ && G.UNITS[t] && G.UNITS[t].hero) civ = P0.heroVis;

@@ -22,7 +22,7 @@ var G = globalThis.G || (globalThis.G = {});
   }
 
   function afterLoad(camSaved) {
-    var tc = G.C.blds.find(function (b) { return b.o === 0 && b.t === 'cetate'; });
+    var tc = G.C.blds.find(function (b) { return b.o === G.me && b.t === 'cetate'; });
     if (camSaved) { G.cam.x = camSaved.x; G.cam.y = camSaved.y; G.cam.z = camSaved.z; }
     else if (tc) { G.cam.z = document.body.classList.contains('desk') ? 1.25 : 1.15; G.R.resize(); G.R.center(tc.x + 0.8, tc.y + 0.8); }
     G.UI.reset();
@@ -73,14 +73,14 @@ var G = globalThis.G || (globalThis.G = {});
     if (G.Audio.on) G.Audio.unlock();
     goFull();
     if (o.aiBoth === undefined) o.aiBoth = !!G.spectate;
-    if (o.aiBoth && o.players) o.players[0].ai = true;
+    if (o.aiBoth && o.players) o.players[G.me].ai = true;
     G.newGame(o);
     afterLoad(null);
     if (G.Voci && G.Voci.load) G.S.players.forEach(function (P) { G.Voci.load(P.civ); });
-    if (G.Music && G.Music.setCiv) { G.Music.setCiv(G.S.players[0].civ); if (G.Music.setAge) G.Music.setAge(G.S.players[0].age); }
-    if (G.Coloana) G.Coloana.set('joc', G.S.players[0].civ);
+    if (G.Music && G.Music.setCiv) { G.Music.setCiv(G.S.players[G.me].civ); if (G.Music.setAge) G.Music.setAge(G.S.players[G.me].age); }
+    if (G.Coloana) G.Coloana.set('joc', G.S.players[G.me].civ);
     if (!o.scen) {
-      var S = G.S, me = S.players[0], foes = S.players.filter(function (P) { return G.enemy(0, P.id); }), fr = S.players.filter(function (P) { return P.id && G.ally(0, P.id); });
+      var S = G.S, me = S.players[G.me], foes = S.players.filter(function (P) { return G.enemy(G.me, P.id); }), fr = S.players.filter(function (P) { return P.id && G.ally(G.me, P.id); });
       G.msg('Ești ' + G.CIVS[me.civ].name + '. Te înfrunți cu: ' + foes.map(function (P) { return G.CIVS[P.civ].name; }).join(', ') + (fr.length ? '. Aliați: ' + fr.map(function (P) { return G.CIVS[P.civ].name; }).join(', ') : '') + '.', 'good');
       if (S.opt.peace) G.msg('Pace ' + Math.round(S.opt.peace / 60) + ' minute: nimeni nu te atacă până atunci.', 'info');
       G.msg('Alege un țăran, apoi o oaie sau o tufă de mure.', 'info');
@@ -96,8 +96,8 @@ var G = globalThis.G || (globalThis.G = {});
     try { G.deserialize(str); } catch (e) { alert('Salvarea nu s-a putut citi.'); return; }
     afterLoad(meta && meta.cam);
     if (G.Voci && G.Voci.load) G.S.players.forEach(function (P) { G.Voci.load(P.civ); });
-    if (G.Music && G.Music.setCiv) { G.Music.setCiv(G.S.players[0].civ); if (G.Music.setAge) G.Music.setAge(G.S.players[0].age); }
-    if (G.Coloana) G.Coloana.set('joc', G.S.players[0].civ);
+    if (G.Music && G.Music.setCiv) { G.Music.setCiv(G.S.players[G.me].civ); if (G.Music.setAge) G.Music.setAge(G.S.players[G.me].age); }
+    if (G.Coloana) G.Coloana.set('joc', G.S.players[G.me].civ);
     if (G.S.scen && G.Camp && G.Camp.loadNar) G.Camp.loadNar(G.S.scen.id, function () {});
     G.msg('Continuăm de unde ai rămas.', 'info');
   };
@@ -105,7 +105,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (!G.S || G.S.over || G.spectate) return;
     try {
       localStorage.setItem(SAVE, G.serialize());
-      localStorage.setItem(SAVE + '_meta', JSON.stringify({ t: G.S.t, diff: G.S.diff, civ: G.S.players[0].civ, scen: G.S.scen ? G.S.scen.title || G.S.scen.id : '', when: Date.now(), cam: { x: G.cam.x, y: G.cam.y, z: G.cam.z } }));
+      localStorage.setItem(SAVE + '_meta', JSON.stringify({ t: G.S.t, diff: G.S.diff, civ: G.S.players[G.me].civ, scen: G.S.scen ? G.S.scen.title || G.S.scen.id : '', when: Date.now(), cam: { x: G.cam.x, y: G.cam.y, z: G.cam.z } }));
     } catch (e) {}
   };
   G.pause = function () { if (!G.running) return; G.paused = true; G.saveGame(); show('menu', true); };
@@ -135,7 +135,7 @@ var G = globalThis.G || (globalThis.G = {});
   function endCheck() {
     var S = G.S;
     if (!S.over || $('end').classList.contains('on')) return;
-    var win = S.over === 1;
+    var win = G.iWon();
     if (G.Coloana) G.Coloana.set(win ? 'victorie' : 'infrangere');
     G.running = false;
     document.body.classList.remove('playing');

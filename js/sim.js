@@ -74,7 +74,7 @@ var G = globalThis.G || (globalThis.G = {});
       tm: { fog: 0, ai: 0.3, win: 1, alert: -99, popMsg: -99, trig: 0, tl: 0 },
       players: [], ai: {}, exp: null, ter: null, base: null, decor: [],
       map: { type: (opt.map && opt.map.type) || 'rau', season: (opt.map && opt.map.season) || (opt.mapSpec && opt.mapSpec.season) || 'vara' },
-      opt: { victory: opt.victory || 'cucerire', peace: (opt.peace || 0) * 60, popMax: opt.popMax || G.MAXPOP, startAge: opt.startAge || 0,
+      opt: { online: !!opt.online, victory: opt.victory || 'cucerire', peace: (opt.peace || 0) * 60, popMax: opt.popMax || G.MAXPOP, startAge: opt.startAge || 0,
              reveal: opt.reveal || 'normal', res: opt.res || 'std', maxAge: opt.maxAge, noBuild: opt.noBuild || null, noUnits: opt.noUnits || null, nomad: !!opt.nomad, daynight: !!opt.daynight },
       mkt: { f: 100, w: 100, s: 100 }, wonder: null, losMul: 1, night: 0, fog: 0, vars: {}, scen: opt.scen || null, winTeam: 0 };
     S.rs = (S.seed ^ 0x5bd1e995) | 0;
@@ -90,8 +90,10 @@ var G = globalThis.G || (globalThis.G = {});
     });
     var gm = opt.mapSpec ? G.genMapSpec(S, opt.mapSpec) : G.genMap(S);
     if (!S.decor) S.decor = [];
-    S.exp = new Uint8Array(S.N * S.N);
-    if (S.opt.reveal !== 'normal') S.exp.fill(1);
+    // S.exp: ce vede jucătorul de la acest calculator (doar pentru ecran). S.exb: ce a explorat fiecare jucător om,
+    // câte un bit (bitul p = jucătorul p); intră în reguli (unde construiești, unde caută țăranii), deci e la fel peste tot
+    S.exp = new Uint8Array(S.N * S.N); S.exb = new Uint8Array(S.N * S.N);
+    if (S.opt.reveal !== 'normal') { S.exp.fill(1); S.exb.fill(255); }
     G.rebuild();
     (gm.objs || []).forEach(function (o) { if (G.RESD[o.t] && o.x >= 0 && o.y >= 0 && o.x < S.N && o.y < S.N) G.addRes(o.t, o.x, o.y); });
     if (!opt.noBases) {
@@ -650,7 +652,7 @@ var G = globalThis.G || (globalThis.G = {});
   }
   function damage(e, dmg, src) {
     e.hp -= dmg; e.hit = S.t;
-    if (e.o === 0 && src && src.o !== undefined && G.enemy(src.o, 0)) alertAttack(e);
+    if (e.o === G.me && src && src.o !== undefined && G.enemy(src.o, G.me)) alertAttack(e);
     if (e.hp <= 0) { G.kill(e, src); return; }
     // oștenii mușcați de un lup sau de un mistreț se întorc spre el; țăranii se apără și ei, cu cei din jur
     if (e.k === 'u' && src && src.k === 'r' && !src.dead && G.isMil(e) && (!e.task || e.task.k === 'amove')) { setTask(e, { k: 'atk', id: src.id, auto: 1, then: e.task }); return; }
@@ -692,8 +694,8 @@ var G = globalThis.G || (globalThis.G = {});
       if (G.UNITS[e.t].hero && C.hero[e.o] === e.id) {
         C.hero[e.o] = 0;
         var hn = G.ename(e);
-        if (e.o === 0) G.msg(hn + ' a căzut!' + (S.opt.victory === 'regicid' || S.scen ? '' : ' Îl poți readuce din Cetatea de Scaun.'), 'alert', pos);
-        else G.msg(hn + ' a căzut!', G.enemy(0, e.o) ? 'good' : 'alert', pos);
+        if (e.o === G.me) G.msg(hn + ' a căzut!' + (S.opt.victory === 'regicid' || S.scen ? '' : ' Îl poți readuce din Cetatea de Scaun.'), 'alert', pos);
+        else G.msg(hn + ' a căzut!', G.enemy(G.me, e.o) ? 'good' : 'alert', pos);
       }
       G.sfx('death', e.x, e.y);
     } else if (e.k === 'b') {
@@ -701,18 +703,18 @@ var G = globalThis.G || (globalThis.G = {});
       if (!d.wall) S.fx.push({ k: 'rubble', x: e.x, y: e.y, n: e.n, t: S.t, bt: e.t, o: e.o });
       if (by && by.o !== undefined && G.enemy(by.o, e.o)) {
         var BP = S.players[by.o]; BP.st.razed++;
-        if (BP.techs.jaful && e.built) { for (var k in d.cost) BP.res[k] += Math.round(d.cost[k] * 0.25); if (by.o === 0) G.msg('Jaful: ai luat un sfert din prețul clădirii.', 'good', pos); }
+        if (BP.techs.jaful && e.built) { for (var k in d.cost) BP.res[k] += Math.round(d.cost[k] * 0.25); if (by.o === G.me) G.msg('Jaful: ai luat un sfert din prețul clădirii.', 'good', pos); }
       }
       if (!d.wall) {
-        if (e.o === 0 && by) G.msg('Au dărâmat: ' + G.ename(e) + '.', 'alert', pos);
-        else if (by && by.o === 0) G.msg('Ai dărâmat: ' + G.ename(e) + '!', 'good', pos);
+        if (e.o === G.me && by) G.msg('Au dărâmat: ' + G.ename(e) + '.', 'alert', pos);
+        else if (by && by.o === G.me) G.msg('Ai dărâmat: ' + G.ename(e) + '!', 'good', pos);
       }
       G.sfx(d.wall ? 'thud' : 'collapse', e.x, e.y);
       e.q.forEach(function (it) { refund(S.players[e.o], it.cost || (it.u ? G.costOf(e.o, it.u) : G.TECHS[it.tech].cost)); });
       e.q = [];
       ejectAll(e);
       if (e.relics) { for (var r = 0; r < e.relics; r++) { var sp = freeSpot(e, null); G.addRes('relic', Math.floor(sp[0]), Math.floor(sp[1])); } e.relics = 0; }
-      if (S.wonder && S.wonder.id === e.id) { S.wonder = null; G.msg(G.nm(d, S.players[e.o].civ) + ' a căzut! Numărătoarea s-a oprit.', e.o === 0 ? 'alert' : 'good', pos); }
+      if (S.wonder && S.wonder.id === e.id) { S.wonder = null; G.msg(G.nm(d, S.players[e.o].civ) + ' a căzut! Numărătoarea s-a oprit.', e.o === G.me ? 'alert' : 'good', pos); }
     } else if (e.k === 'r' && e.t === 'tree') {
       S.fx.push({ k: 'stump', x: e.x, y: e.y, t: S.t });
     }
@@ -741,7 +743,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (!land.length) return;
     var cx = 0, cy = 0, N = S.N; land.forEach(function (u) { cx += u.x; cy += u.y; }); cx /= land.length; cy /= land.length;
     var w = shoreWater(cx, cy);
-    if (!w) { if (ship.o === 0) G.msg('Duceți oamenii mai aproape de apă.', 'warn'); return; }
+    if (!w) { if (ship.o === G.me) G.msg('Duceți oamenii mai aproape de apă.', 'warn'); return; }
     var wx = Math.floor(w[0]), wy = Math.floor(w[1]), L = null;
     [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(function (d) { if (!L && C.pass[(wy + d[1]) * N + wx + d[0]]) L = [wx + d[0] + 0.5, wy + d[1] + 0.5]; });
     if (!L) return;
@@ -752,7 +754,7 @@ var G = globalThis.G || (globalThis.G = {});
     var s = getE(T.id);
     if (!s || !G.UNITS[s.t].carry) { u.task = null; return; }
     if (shipLoad(s) >= G.UNITS[s.t].carry) { u.why = 'corabia e plină'; u.task = null; return; }
-    if (G.dist(u, s) <= 2.3) { (s.gar || (s.gar = [])).push(u.id); u.gin = s.id; u.task = null; u.path = null; u.carry = null; S.dirty = 1; if (u.o === 0) G.sfx('ack'); return; }
+    if (G.dist(u, s) <= 2.3) { (s.gar || (s.gar = [])).push(u.id); u.gin = s.id; u.task = null; u.path = null; u.carry = null; S.dirty = 1; if (u.o === G.me) G.sfx('ack'); return; }
     var r = approach(u, { k: 'p', id: -7, x: T.mx, y: T.my }, 0.45, dt);
     if (r === 'fail') { u.why = 'nu ajunge la mal'; u.task = null; return; }
     // corabia a plecat în altă parte: o chemăm înapoi la locul de îmbarcare
@@ -760,7 +762,7 @@ var G = globalThis.G || (globalThis.G = {});
   }
   G.cmdUnload = function (ship, x, y) {
     if (!shipLoad(ship)) return;
-    var w = shoreWater(x, y); if (!w) { if (ship.o === 0) G.msg('Acolo nu e mal unde să tragă corabia.', 'warn'); return; }
+    var w = shoreWater(x, y); if (!w) { if (ship.o === G.me) G.msg('Acolo nu e mal unde să tragă corabia.', 'warn'); return; }
     setTask(ship, { k: 'move', x: w[0], y: w[1], then: { k: 'unl', lx: x, ly: y } });
   };
   function unloadShip(s, lx, ly) {
@@ -771,7 +773,7 @@ var G = globalThis.G || (globalThis.G = {});
       if (tx < 0 || ty < 0 || tx >= N || ty >= N || !C.pass[ty * N + tx]) continue;
       spots.push([tx + 0.5, ty + 0.5]);
     }
-    if (!spots.length) { if (s.o === 0) G.msg('Corabia nu e lângă mal.', 'warn'); return; }
+    if (!spots.length) { if (s.o === G.me) G.msg('Corabia nu e lângă mal.', 'warn'); return; }
     var out = [];
     ids.forEach(function (id, i) { var u = getE(id); if (!u) return; var p = spots[i % spots.length]; u.gin = 0; u.x = p[0] + (G.rand() - 0.5) * 0.3; u.y = p[1] + (G.rand() - 0.5) * 0.3; u.task = null; u.path = null; out.push(u); });
     s.gar = []; S.dirty = 1;
@@ -827,7 +829,7 @@ var G = globalThis.G || (globalThis.G = {});
         e.look = 0.5;
         var bd = 12.25, best = null;
         forUnitsNear(e.x, e.y, 3.5, function (u) { if (u.dead || u.gin || G.UNITS[u.t].cls === 'sie' || G.UNITS[u.t].naval) return; var d = (u.x - e.x) * (u.x - e.x) + (u.y - e.y) * (u.y - e.y); if (d < bd) { bd = d; best = u; } });
-        if (best) { e.tgt = best.id; t = best; if (G.ally(0, best.o)) wildAlert(best); }
+        if (best) { e.tgt = best.id; t = best; if (G.ally(G.me, best.o)) wildAlert(best); }
       }
       if (t) {
         var d = G.dist(e, t);
@@ -861,7 +863,7 @@ var G = globalThis.G || (globalThis.G = {});
       var d = (e.x - x) * (e.x - x) + (e.y - y) * (e.y - y);
       if (d >= bd) continue;
       if (useLim !== false && (C.gcount[e.id] || 0) >= lim) continue;
-      if (o === 0 && !S.players[0].ai && !S.exp[e.ty * N + e.tx]) continue;
+      if (!S.players[o].ai && !(S.exb[e.ty * N + e.tx] & (1 << o))) continue;
       if (!accessible(e, naval)) continue;
       bd = d; best = e;
     }
@@ -1011,7 +1013,7 @@ var G = globalThis.G || (globalThis.G = {});
     var P = S.players[b.o], cost = G.BLDS.ogor.cost;
     if (P.reseed > 0) { P.reseed--; b.food = farmMax(b.o); S.fx.push({ k: 'heal', x: b.x, y: b.y, t: S.t }); return; }
     if (P.autoReseed !== false && G.canAfford(P, cost)) { G.pay(P, cost); b.food = farmMax(b.o); S.fx.push({ k: 'heal', x: b.x, y: b.y, t: S.t }); return; }
-    if (b.o === 0) G.msg('Un ogor s-a terminat și n-ai lemne să-l reînnoiești (' + cost.w + ' lemne).', 'warn', { x: b.x, y: b.y });
+    if (b.o === G.me) G.msg('Un ogor s-a terminat și n-ai lemne să-l reînnoiești (' + cost.w + ' lemne).', 'warn', { x: b.x, y: b.y });
     vanish(b);
   }
   // reînnoirea plătită dinainte, la moară
@@ -1027,10 +1029,10 @@ var G = globalThis.G || (globalThis.G = {});
     if (d.gate) occupy(b, true);
     if (d.wonder) {
       S.wonder = { o: b.o, id: b.id, t0: S.t };
-      G.msg(b.o === 0 ? 'Minunea ta e gata! Ține-o în picioare 5 minute.' : G.ppl(b.o, true) + ' au terminat ' + G.nm(d, S.players[b.o].civ) + '!',
-        b.o === 0 ? 'good' : 'alert', { x: b.x, y: b.y });
+      G.msg(b.o === G.me ? 'Minunea ta e gata! Ține-o în picioare 5 minute.' : G.ppl(b.o, true) + ' au terminat ' + G.nm(d, S.players[b.o].civ) + '!',
+        b.o === G.me ? 'good' : 'alert', { x: b.x, y: b.y });
       G.sfx('age');
-    } else if (b.o === 0 && !d.wall) { G.msg(G.ename(b) + ' e gata.', 'info'); G.sfx('built'); }
+    } else if (b.o === G.me && !d.wall) { G.msg(G.ename(b) + ' e gata.', 'info'); G.sfx('built'); }
     S.fx.push({ k: 'dust', x: b.x, y: b.y, n: b.n, t: S.t });
   }
   function findUnfinished(o, x, y, rad) {
@@ -1107,8 +1109,8 @@ var G = globalThis.G || (globalThis.G = {});
       if (C.hero[from] === e.id) C.hero[from] = 0;
       S.fx.push({ k: 'aura', x: e.x, y: e.y, t: S.t });
       S.players[u.o].st.conv = (S.players[u.o].st.conv || 0) + 1;
-      if (u.o === 0) G.msg('Călugărul a adus de partea ta: ' + G.ename(e) + '!', 'good', { x: e.x, y: e.y });
-      else if (from === 0) G.msg('Un călugăr dușman ți-a luat un om: ' + G.ename(e) + '!', 'alert', { x: e.x, y: e.y });
+      if (u.o === G.me) G.msg('Călugărul a adus de partea ta: ' + G.ename(e) + '!', 'good', { x: e.x, y: e.y });
+      else if (from === G.me) G.msg('Un călugăr dușman ți-a luat un om: ' + G.ename(e) + '!', 'alert', { x: e.x, y: e.y });
       u.rech = S.t + 20; S.dirty = 1;
       finish(u, T);
     }
@@ -1121,13 +1123,13 @@ var G = globalThis.G || (globalThis.G = {});
     if (r === 'fail') { u.task = null; return; }
     if (!r) return;
     u.relic = 1; G.kill(e, null); G.sfx('relic', u.x, u.y);
-    if (u.o === 0) G.msg('Ai luat moaștele! Du-le la mănăstire: îți vor aduce aur.', 'good', { x: u.x, y: u.y });
+    if (u.o === G.me) G.msg('Ai luat moaștele! Du-le la mănăstire: îți vor aduce aur.', 'good', { x: u.x, y: u.y });
     goStore(u);
   }
   function goStore(u) {
     var m = nearestOwn(u.o, 'manastire', u.x, u.y, true);
     if (m) setTask(u, { k: 'gar', id: m.id });
-    else { u.task = null; if (u.o === 0) G.msg('Ai nevoie de o mănăstire ca să păstrezi moaștele.', 'warn'); }
+    else { u.task = null; if (u.o === G.me) G.msg('Ai nevoie de o mănăstire ca să păstrezi moaștele.', 'warn'); }
   }
 
   // ---------- adăpostire ----------
@@ -1147,7 +1149,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (!r) return;
     if (store) {
       u.relic = 0; b.relics = (b.relics || 0) + 1; u.task = null;
-      if (u.o === 0) { G.msg('Moaștele sunt în mănăstire: primești aur în fiecare clipă.', 'good', { x: b.x, y: b.y }); G.sfx('built'); }
+      if (u.o === G.me) { G.msg('Moaștele sunt în mănăstire: primești aur în fiecare clipă.', 'good', { x: b.x, y: b.y }); G.sfx('built'); }
       return;
     }
     if (!canGar(b, u)) { u.task = null; return; }
@@ -1295,7 +1297,7 @@ var G = globalThis.G || (globalThis.G = {});
         if (it.u) {
           var ut = curType(b.o, it.u);
           if (P.pop < P.cap || G.UNITS[ut].hero) { spawnUnit(b, ut); b.q.shift(); }
-          else if (b.o === 0 && S.t - S.tm.popMsg > 12) {
+          else if (b.o === G.me && S.t - S.tm.popMsg > 12) {
             S.tm.popMsg = S.t;
             G.msg(P.cap >= S.opt.popMax ? 'Ai atins limita de ' + S.opt.popMax + ' de oameni.' : 'Nu mai ai loc. Construiește case! 🏠', 'warn');
           }
@@ -1352,14 +1354,14 @@ var G = globalThis.G || (globalThis.G = {});
     if (t === 'car') {
       var to = farMarket(b.o, b, b.id);
       if (to) setTask(u, { k: 'trade', from: b.id, to: to.id });
-      else if (b.o === 0) G.msg('Carul are nevoie de încă un târg, cât mai departe de acesta.', 'warn');
+      else if (b.o === G.me) G.msg('Carul are nevoie de încă un târg, cât mai departe de acesta.', 'warn');
     } else if (b.rally) {
       var re = b.rally.id ? getE(b.rally.id) : null;
       if (re && t === 'vil' && (re.k === 'r' || (re.k === 'b' && G.BLDS[re.t].farm && re.o === b.o))) G.cmdGather([u], re);
       else if (re && t === 'vil' && re.k === 'b' && re.o === b.o && !re.built) G.cmdBuild([u], re);
       else G.cmdMove([u], b.rally.x, b.rally.y);
     }
-    if (b.o === 0) G.sfx('train');
+    if (b.o === G.me) G.sfx('train');
     return u;
   }
   function curType(o, t) {
@@ -1391,9 +1393,9 @@ var G = globalThis.G || (globalThis.G = {});
     });
     if (T.ageUp) {
       P.age = T.ageUp; P.st.ageT[P.age] = S.t;
-      if (o === 0) { G.msg('Ai intrat în ' + G.AGES[P.age] + '!', 'good'); G.sfx('age'); if (G.UI && G.UI.ageBanner) G.UI.ageBanner(P.age); if (G.Music && G.Music.setAge) G.Music.setAge(P.age); }
-      else G.msg(G.ppl(o, true) + ' au intrat în ' + G.AGES[P.age] + '.', G.enemy(0, o) ? 'warn' : 'info');
-    } else if (o === 0) { G.msg(T.name + ': gata.', 'info'); G.sfx('built'); }
+      if (o === G.me) { G.msg('Ai intrat în ' + G.AGES[P.age] + '!', 'good'); G.sfx('age'); if (G.UI && G.UI.ageBanner) G.UI.ageBanner(P.age); if (G.Music && G.Music.setAge) G.Music.setAge(P.age); }
+      else G.msg(G.ppl(o, true) + ' au intrat în ' + G.AGES[P.age] + '.', G.enemy(G.me, o) ? 'warn' : 'info');
+    } else if (o === G.me) { G.msg(T.name + ': gata.', 'info'); G.sfx('built'); }
   }
   G.finishTech = function (o, id) { finishTech(S.players[o], id); };
 
@@ -1430,13 +1432,17 @@ var G = globalThis.G || (globalThis.G = {});
 
   // ---------- ceața (pentru tine și aliații tăi) ----------
   G.updFog = function () {
-    var vis = C.vis, exp = S.exp, N = S.N;
-    if (S.opt.reveal === 'tot') { vis.fill(1); exp.fill(1); return; }
+    var vis = C.vis, exp = S.exp, exb = S.exb, N = S.N, nP = S.players.length;
+    if (S.opt.reveal === 'tot') { vis.fill(1); exp.fill(1); exb.fill(255); return; }
     vis.fill(0);
-    var lm = S.losMul || 1;
+    var lm = S.losMul || 1, hm = [];
+    // hm[o]: jucătorii oameni care văd ce vede o (el și aliații lui); doar ei au nevoie de harta explorată în reguli
+    for (var a = 0; a < nP; a++) { hm[a] = 0; for (var b = 0; b < nP; b++) if (!S.players[b].ai && G.ally(b, a)) hm[a] |= 1 << b; }
     for (var i = 0; i < S.ents.length; i++) {
       var e = S.ents[i];
-      if (e.dead || e.gin || e.k === 'r' || !G.ally(0, e.o)) continue;
+      if (e.dead || e.gin || e.k === 'r') continue;
+      var m = hm[e.o] || 0, me = G.ally(G.me, e.o);
+      if (!m && !me) continue;
       var r = e.k === 'u' ? ust(e).los * lm : (e.built ? bstT(e.o, e.t).los * Math.max(0.75, lm) + e.n / 2 : 2);
       var cx = e.x, cy = e.y, r2 = r * r;
       var x0 = Math.max(0, Math.floor(cx - r)), x1 = Math.min(N - 1, Math.floor(cx + r));
@@ -1445,18 +1451,19 @@ var G = globalThis.G || (globalThis.G = {});
         var dy = y + 0.5 - cy;
         for (var x = x0; x <= x1; x++) {
           var dx = x + 0.5 - cx;
-          if (dx * dx + dy * dy <= r2) { var k = y * N + x; vis[k] = 1; exp[k] = 1; }
+          if (dx * dx + dy * dy <= r2) { var k = y * N + x; exb[k] |= m; if (me) { vis[k] = 1; exp[k] = 1; } }
         }
       }
     }
   };
   G.visible = function (x, y) { var N = S.N; return C.vis[Math.floor(y) * N + Math.floor(x)] === 1; };
   G.explored = function (x, y) { var N = S.N; return S.exp[Math.floor(y) * N + Math.floor(x)] === 1; };
-  G.reveal = function (x, y, r) {
-    var N = S.N;
+  // dezvăluie un loc pentru jucătorul p (din misiuni: jucătorul 0, cel care joacă campania)
+  G.reveal = function (x, y, r, p) {
+    var N = S.N, bit = 1 << (p || 0), mine = (p || 0) === G.me;
     for (var ty = Math.max(0, Math.floor(y - r)); ty <= Math.min(N - 1, Math.floor(y + r)); ty++)
       for (var tx = Math.max(0, Math.floor(x - r)); tx <= Math.min(N - 1, Math.floor(x + r)); tx++)
-        if ((tx + 0.5 - x) * (tx + 0.5 - x) + (ty + 0.5 - y) * (ty + 0.5 - y) <= r * r) S.exp[ty * N + tx] = 1;
+        if ((tx + 0.5 - x) * (tx + 0.5 - x) + (ty + 0.5 - y) * (ty + 0.5 - y) <= r * r) { S.exb[ty * N + tx] |= bit; if (mine) S.exp[ty * N + tx] = 1; }
   };
 
   // ---------- bucla ----------
@@ -1507,8 +1514,8 @@ var G = globalThis.G || (globalThis.G = {});
     P.alive = false;
     S.ents.forEach(function (e) { if (!e.dead && e.o === p && e.k !== 'r') vanish(e); });
     if (p === 0) G.msg('Ai fost învins.', 'alert');
-    else G.msg(G.ppl(p, true) + ' au fost învinși!', G.enemy(0, p) ? 'good' : 'alert');
-    G.sfx(G.enemy(0, p) ? 'win1' : 'lose1');
+    else G.msg(G.ppl(p, true) + ' au fost învinși!', G.enemy(G.me, p) ? 'good' : 'alert');
+    G.sfx(G.enemy(G.me, p) ? 'win1' : 'lose1');
   }
   G.defeat = defeat;
   function checkWin() {
@@ -1539,33 +1546,45 @@ var G = globalThis.G || (globalThis.G = {});
         var left = 300 - (S.t - S.wonder.t0), mk = Math.ceil(left / 60);
         if (S.wonder.last !== mk && left > 0) {
           S.wonder.last = mk;
-          G.msg((w.o === 0 ? 'Minunea ta' : 'Minunea ' + G.ppl(w.o)) + ': mai sunt ' + mk + (mk === 1 ? ' minut.' : ' minute.'), G.ally(0, w.o) ? 'good' : 'alert', { x: w.x, y: w.y });
+          G.msg((w.o === G.me ? 'Minunea ta' : 'Minunea ' + G.ppl(w.o)) + ': mai sunt ' + mk + (mk === 1 ? ' minut.' : ' minute.'), G.ally(G.me, w.o) ? 'good' : 'alert', { x: w.x, y: w.y });
         }
-        if (left <= 0) { finishGame(G.ally(0, w.o) ? 1 : 2, S.players[w.o].team); return; }
+        if (left <= 0) { finishGame(S.opt.online ? 3 : G.ally(0, w.o) ? 1 : 2, S.players[w.o].team); return; }
       }
     }
     if (vic === 'deal') {
       var K = S.koth || (S.koth = { x: S.N / 2, y: S.N / 2, team: 0, o: -1, t0: 0 }), teams = {}, owner = -1;
       forUnitsNear(K.x, K.y, 5, function (u) { if (u.dead || u.gin || !S.players[u.o].alive || G.hyp(u.x - K.x, u.y - K.y) > 5) return; var tm = S.players[u.o].team; teams[tm] = (teams[tm] || 0) + 1; if (owner < 0) owner = u.o; });
       var tlist = Object.keys(teams);
-      if (tlist.length === 1 && +tlist[0] !== K.team) { K.team = +tlist[0]; K.o = owner; K.t0 = S.t; K.last = 0; G.msg((G.ally(0, owner) ? (owner === 0 ? 'Ai luat' : 'Aliații au luat') : G.ppl(owner, true) + ' au luat') + ' monumentul din mijloc!', G.ally(0, owner) ? 'good' : 'alert', { x: K.x, y: K.y }); G.sfx('horn2'); }
+      if (tlist.length === 1 && +tlist[0] !== K.team) { K.team = +tlist[0]; K.o = owner; K.t0 = S.t; K.last = 0; G.msg((G.ally(G.me, owner) ? (owner === 0 ? 'Ai luat' : 'Aliații au luat') : G.ppl(owner, true) + ' au luat') + ' monumentul din mijloc!', G.ally(G.me, owner) ? 'good' : 'alert', { x: K.x, y: K.y }); G.sfx('horn2'); }
       if (K.team) {
         var kl = 600 - (S.t - K.t0), km = Math.ceil(kl / 60);
-        if (K.last !== km && kl > 0 && km <= 5) { K.last = km; G.msg('Monumentul: mai sunt ' + km + (km === 1 ? ' minut' : ' minute') + ' pentru ' + (G.ally(0, K.o) ? 'tine' : G.ppl(K.o)) + '.', G.ally(0, K.o) ? 'good' : 'alert', { x: K.x, y: K.y }); }
-        if (kl <= 0) { finishGame(S.players[0].team === K.team ? 1 : 2, K.team); return; }
+        if (K.last !== km && kl > 0 && km <= 5) { K.last = km; G.msg('Monumentul: mai sunt ' + km + (km === 1 ? ' minut' : ' minute') + ' pentru ' + (G.ally(G.me, K.o) ? 'tine' : G.ppl(K.o)) + '.', G.ally(G.me, K.o) ? 'good' : 'alert', { x: K.x, y: K.y }); }
+        if (kl <= 0) { finishGame(S.opt.online ? 3 : S.players[0].team === K.team ? 1 : 2, K.team); return; }
       }
     }
     if (vic === 'scenariu') { if (!S.players[0].alive) finishGame(2, 0); return; }
+    if (S.opt.online) {
+      var tms = {}; for (p = 0; p < nP; p++) if (S.players[p].alive) tms[S.players[p].team || 'p' + p] = 1;
+      var tl = Object.keys(tms); if (tl.length <= 1) finishGame(3, tl.length ? (isNaN(+tl[0]) ? tl[0] : +tl[0]) : 0);
+      return;
+    }
     if (!S.players[0].alive) { finishGame(2, 0); return; }
     var foes = 0;
     for (p = 0; p < nP; p++) if (S.players[p].alive && G.enemy(0, p)) foes++;
     if (!foes) finishGame(1, S.players[0].team);
   }
+  // res: 1 = a câștigat jucătorul 0, 2 = a pierdut; online, 3 = s-a terminat, iar câștigă echipa team
   function finishGame(res, team) {
     if (S.over) return;
     S.over = res; S.winTeam = team;
-    G.sfx(res === 1 ? 'win' : 'lose');
+    G.sfx(G.iWon() ? 'win' : 'lose');
   }
+  // a câștigat jucătorul de la acest calculator?
+  G.iWon = function () {
+    if (!S || !S.over) return false;
+    if (S.over === 3) { var P = S.players[G.me]; return (P.team || 'p' + G.me) === S.winTeam; }
+    return S.over === 1;
+  };
   G.finishGame = finishGame;
   G.update = function (dt) {
     if (!S || S.over) return;
@@ -1746,7 +1765,7 @@ var G = globalThis.G || (globalThis.G = {});
   var CHEATS = {
     'mamaliga': function (P) { P.res.f += 1000; return '+1000 hrană'; }, 'padurea': function (P) { P.res.w += 1000; return '+1000 lemn'; },
     'galbeni': function (P) { P.res.g += 1000; return '+1000 aur'; }, 'cariera': function (P) { P.res.s += 1000; return '+1000 piatră'; },
-    'iscoade': function () { S.exp.fill(1); S.opt.reveal = 'tot'; return 'toată harta la vedere'; },
+    'iscoade': function () { S.exp.fill(1); S.exb.fill(255); S.opt.reveal = 'tot'; return 'toată harta la vedere'; },
     'repede': function (P) { P.fast = !P.fast; return P.fast ? 'construiești și pregătești pe loc' : 'timpul curge iar normal'; },
     'oastea cea mare': function (P) { var tc = C.blds.find(function (b) { return b.o === P.id && b.t === 'cetate'; }) || C.units.find(function (u) { return u.o === P.id; }); if (!tc) return ''; G.placeUnits(P.id, G.curType(P.id, 'kni'), 6, tc.x + 3, tc.y + 3); G.placeUnits(P.id, G.curType(P.id, 'arc'), 6, tc.x + 3, tc.y + 4); return 'a sosit oastea cea mare'; },
     'victorie': function (P) { S.players.forEach(function (Q) { if (G.enemy(P.id, Q.id) && Q.alive) defeat(Q.id); }); return 'victorie!'; }
@@ -1755,7 +1774,7 @@ var G = globalThis.G || (globalThis.G = {});
     var k = (text || '').toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, ''), fn = CHEATS[k];
     if (!fn) return null;
     var P = S.players[o], r = fn(P); S.cheated = 1;
-    if (o === 0 && r) { G.msg('Cod secret: ' + r + '.', 'good'); G.sfx('built'); }
+    if (o === G.me && r) { G.msg('Cod secret: ' + r + '.', 'good'); G.sfx('built'); }
     return r;
   };
   // tributul: resurse trimise altui jucător (o zecime se pierde pe drum)
@@ -1763,10 +1782,10 @@ var G = globalThis.G || (globalThis.G = {});
   G.cmdTribute = function (from, to, r, amt) {
     var P = S.players[from], Q = S.players[to];
     if (!P || !Q || !Q.alive || from === to) return false;
-    amt = Math.min(amt, Math.floor(P.res[r])); if (amt < 10) { if (from === 0) G.msg('N-ai destul de trimis.', 'warn'); return false; }
+    amt = Math.min(amt, Math.floor(P.res[r])); if (amt < 10) { if (from === G.me) G.msg('N-ai destul de trimis.', 'warn'); return false; }
     P.res[r] -= amt; Q.res[r] += Math.round(amt * 0.9);
-    if (from === 0) G.msg('Ai trimis ' + amt + ' ' + RNAME[r] + ' către ' + G.ppl(to) + '.', 'info');
-    else if (to === 0) G.msg((G.ally(0, from) ? 'Aliații ' : '') + G.ppl(from) + ' îți trimit ' + Math.round(amt * 0.9) + ' ' + RNAME[r] + '.', 'good');
+    if (from === G.me) G.msg('Ai trimis ' + amt + ' ' + RNAME[r] + ' către ' + G.ppl(to) + '.', 'info');
+    else if (to === G.me) G.msg((G.ally(G.me, from) ? 'Aliații ' : '') + G.ppl(from) + ' îți trimit ' + Math.round(amt * 0.9) + ' ' + RNAME[r] + '.', 'good');
     G.sfx('coin');
     return true;
   };
@@ -1865,7 +1884,7 @@ var G = globalThis.G || (globalThis.G = {});
         var oc = C.byId.get(C.occ[i]);
         if (!(d.gate && oc && oc.k === 'b' && oc.o === o && G.BLDS[oc.t].wall === d.wall && !G.BLDS[oc.t].gate)) return false;
       }
-      if (o === 0 && !S.players[0].ai && !S.exp[i]) return false;
+      if (!S.players[o].ai && !(S.exb[i] & (1 << o))) return false;
     }
     if (d.dock) {
       var shore = false;
@@ -2053,13 +2072,13 @@ var G = globalThis.G || (globalThis.G = {});
   G.serialize = function () {
     var o = {};
     for (var k in S) o[k] = S[k];
-    o.ter = Array.from(S.ter); o.exp = Array.from(S.exp); if (S.hgt) o.hgt = Array.from(S.hgt, function (v) { return Math.round(v * 100) / 100; });
+    o.ter = Array.from(S.ter); o.exp = Array.from(S.exp); o.exb = Array.from(S.exb); if (S.hgt) o.hgt = Array.from(S.hgt, function (v) { return Math.round(v * 100) / 100; });
     return JSON.stringify(o);
   };
   G.deserialize = function (str) {
     var o = JSON.parse(str);
     if (o.v !== 2) throw new Error('Salvare dintr-o versiune veche.');
-    o.ter = Uint8Array.from(o.ter); o.exp = Uint8Array.from(o.exp); if (o.hgt) o.hgt = Float32Array.from(o.hgt);
+    o.ter = Uint8Array.from(o.ter); o.exp = Uint8Array.from(o.exp); o.exb = Uint8Array.from(o.exb || o.exp); if (o.hgt) o.hgt = Float32Array.from(o.hgt);
     S = G.S = o;
     if (S.rs === undefined) S.rs = (S.seed ^ 0x5bd1e995) | 0;
     if (S.tick === undefined) S.tick = Math.round(S.t * 20);

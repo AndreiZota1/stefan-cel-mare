@@ -450,6 +450,9 @@ G.HELP = [
 // Math.sin, Math.cos, Math.atan2 și Math.hypot pot ieși diferit în ultima zecimală de la un browser la altul,
 // iar diferența crește până desparte jocurile. Simularea folosește variantele de mai jos: doar adunări,
 // înmulțiri, împărțiri și radical, care dau exact același rezultat peste tot.
+// jucătorul de la acest calculator: 0 când joci singur; online, locul tău la masă.
+// Doar interfața, desenul și mesajele îl folosesc; regulile jocului nu au voie (ar diferi de la un calculator la altul).
+G.me = 0;
 G.hyp = function (a, b) { return Math.sqrt(a * a + b * b); };
 (function () {
   var PIO2_1 = 1.5707963267341256, PIO2_1T = 6.077100506506192e-11;

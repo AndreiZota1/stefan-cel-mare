@@ -86,7 +86,7 @@ var G = globalThis.G || (globalThis.G = {});
 
   // ---------- arborele tehnologiilor ----------
   var treeCiv = null;
-  M.openTree = function (civ) { treeCiv = civ || treeCiv || (G.S && G.S.players[0] ? G.S.players[0].civ : cfg.civ); renderTree(); show('tree', true); };
+  M.openTree = function (civ) { treeCiv = civ || treeCiv || (G.S && G.S.players[G.me] ? G.S.players[G.me].civ : cfg.civ); renderTree(); show('tree', true); };
   function renderTree() {
     var civ = treeCiv, C = G.CIVS[civ];
     var blds = ['cetate', 'cazarma', 'poligon', 'grajd', 'atelier', 'fortareata', 'port', 'manastire', 'targ', 'fierarie', 'universitate', 'joagar', 'mina', 'moara'];
@@ -134,7 +134,7 @@ var G = globalThis.G || (globalThis.G = {});
   // întoarce medaliile noi câștigate acum
   M.award = function (S, win) {
     if (!win || S.cheated || G.spectate) return [];
-    var got = medalsGot(), now = [], P = S.players[0], give = function (id) { if (!got[id]) { got[id] = new Date().toISOString().slice(0, 10); now.push(id); } };
+    var got = medalsGot(), now = [], P = S.players[G.me], give = function (id) { if (!got[id]) { got[id] = new Date().toISOString().slice(0, 10); now.push(id); } };
     if (S.scen) {
       var sid = S.scen.id || (G.Camp && G.Camp.cur);
       if (sid === 'st6') give('camp_st');
@@ -145,8 +145,8 @@ var G = globalThis.G || (globalThis.G = {});
       if (S.t < 1200) give('iute');
       if (S.diff === 'greu' || S.diff === 'foarte') give('greu');
       if (S.diff === 'foarte') give('foarte');
-      if (S.opt.victory === 'minune' && S.wonder && S.wonder.o === 0) give('minune');
-      if (S.opt.victory === 'deal' && S.koth && S.koth.o >= 0 && G.ally(0, S.koth.o)) give('deal');
+      if (S.opt.victory === 'minune' && S.wonder && S.wonder.o === G.me) give('minune');
+      if (S.opt.victory === 'deal' && S.koth && S.koth.o >= 0 && G.ally(G.me, S.koth.o)) give('deal');
       if (S.opt.nomad) give('nomad');
       if (S.map && S.map.type === 'mare') give('mare');
       if (S.players.length === 4 && S.players.filter(function (Q) { return Q.team === P.team; }).length === 2) give('doi');
@@ -178,7 +178,7 @@ var G = globalThis.G || (globalThis.G = {});
     md.innerHTML = fresh.length ? '<div class="mdnew">🏅 Medalii noi: ' + MEDALS.filter(function (x) { return fresh.indexOf(x[0]) >= 0; }).map(function (x) { return x[1] + ' ' + esc(x[2]); }).join(' · ') + '</div>' : '';
     var P = S.players, m = Math.floor(S.t / 60);
     function row(lbl, f) { return '<tr><td>' + lbl + '</td>' + P.map(function (p) { return '<td>' + f(p) + '</td>'; }).join('') + '</tr>'; }
-    $('endStats').innerHTML = '<tr><td></td>' + P.map(function (p, i) { return '<th style="color:' + G.R.pcol(i).light + '">' + G.CIVS[p.civ].flag + ' ' + esc(i === 0 ? 'Tu' : G.CIVS[p.civ].name) + (p.alive ? '' : ' ✝') + '</th>'; }).join('') + '</tr>' +
+    $('endStats').innerHTML = '<tr><td></td>' + P.map(function (p, i) { return '<th style="color:' + G.R.pcol(i).light + '">' + G.CIVS[p.civ].flag + ' ' + esc(i === G.me ? 'Tu' : G.CIVS[p.civ].name) + (p.alive ? '' : ' ✝') + '</th>'; }).join('') + '</tr>' +
       row('Scor', function (p) { return '<b>' + G.score(p.id) + '</b>'; }) +
       row('Epoca', function (p) { return G.AGE_ROMAN[p.age]; }) +
       row('Oameni făcuți', function (p) { return p.st.trained; }) +
