@@ -693,6 +693,8 @@ var G = globalThis.G || (globalThis.G = {});
         var p = targetPlayer(), tgt = my.home ? enemyTarget(my.home, p) : null;
         if (tgt) {
           A.wave++; A.go = 0;
+          // câțiva călugări merg cu valul: vindecă pe drum și convertesc dușmanii
+          if (P.age >= 2) free = free.concat(my.mons.filter(function (m) { return !m.task && !m.relic; }).slice(0, 2));
           free.forEach(function (u) { u.wave = A.wave; });
           G.cmdMove(free, tgt.x, tgt.y, true);
           if (G.enemy(0, pid) && G.ally(0, tgt.o)) {

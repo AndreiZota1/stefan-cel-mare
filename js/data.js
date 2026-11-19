@@ -31,8 +31,8 @@ G.CIVS = {
          fx: [{ b: 'all', s: 'hp', mul: 1.15 }, { gather: 'stone', mul: 1.2 }] },
   oto: { name: 'Imperiul Otoman', ppl: 'otomanii', style: 'oto', hero: 'Soliman Pașa', uniq: 'ien', ut: ['bronz', 'garda'], power: 'baterie', music: 'hijaz',
          year: 'Mehmed al II-lea, 1451–1481', flag: '🌙',
-         bonus: ['Țăranii se fac cu 10% mai repede.', 'Ogoarele dau cu 10% mai multă hrană.', 'Aurul se strânge cu 15% mai repede.', 'Cazarma lucrează cu 25% mai repede.', 'Pușcașii și ienicerii au cu 25% mai multă viață.', 'Bombardele vin cu o epocă mai devreme și costă cu 20% mai puțin.', 'Unitatea unică: Ienicerul.'],
-         fx: [{ gather: 'gold', mul: 1.15 }, { cost: { line: ['can'] }, mul: 0.8 }, { train: ['cazarma'], mul: 1.25 }, { train: ['cetate'], mul: 1.1 }, { gather: 'farm', mul: 1.1 }, { u: { cls: ['gun'] }, s: 'hp', mul: 1.25 }] },
+         bonus: ['Țăranii se fac cu 10% mai repede.', 'Ogoarele dau cu 10% mai multă hrană.', 'Aurul se strânge cu 20% mai repede.', 'Cazarma lucrează cu 25% mai repede.', 'Pușcașii și ienicerii au cu 25% mai multă viață.', 'Bombardele vin cu o epocă mai devreme și costă cu 20% mai puțin.', 'Unitatea unică: Ienicerul.'],
+         fx: [{ gather: 'gold', mul: 1.2 }, { cost: { line: ['can'] }, mul: 0.8 }, { train: ['cazarma'], mul: 1.25 }, { train: ['cetate'], mul: 1.1 }, { gather: 'farm', mul: 1.1 }, { u: { cls: ['gun'] }, s: 'hp', mul: 1.25 }] },
   tat: { name: 'Hanatul Crimeii', ppl: 'tătarii', style: 'tat', hero: 'Mengli Giray', uniq: 'nog', ut: ['arcul', 'jaful'], power: 'navala', music: 'stepa',
          year: 'Mengli Giray, 1478–1515', flag: '🏹',
          bonus: ['Călăreții merg cu 15% mai repede.', 'Oile se strâng cu 30% mai repede.', 'Fără pușcași și fără tunuri.', 'Unitatea unică: Arcașul nogai.'],
@@ -178,9 +178,9 @@ G.UNITS = {
           desc: 'Cavaler greu, în zale și armură de plăci.' },
   cpl2: { name: 'Cavaler polonez de elită', line: 'cpl', tier: 2, civ: 'pol', cls: 'cav', hp: 145, atk: 13, rng: 0, rof: 1.9, ma: 3, pa: 4, spd: 1.3, los: 6, cost: { f: 75, g: 95 }, time: 20, age: 3, r: 0.3,
           desc: 'Floarea cavaleriei polone.' },
-  ien:  { name: 'Ienicer', line: 'ien', tier: 1, civ: 'oto', cls: 'gun', hp: 45, atk: 15, rng: 6, rof: 3.2, ma: 1, pa: 1, spd: 0.9, los: 7, cost: { f: 50, g: 55 }, time: 18, age: 2, r: 0.2, bonus: { inf: 8, cav: 3 },
+  ien:  { name: 'Ienicer', line: 'ien', tier: 1, civ: 'oto', cls: 'gun', hp: 45, atk: 15, rng: 6, rof: 3.2, ma: 1, pa: 1, spd: 0.9, los: 7, cost: { f: 45, g: 48 }, time: 18, age: 2, r: 0.2, bonus: { inf: 8, cav: 3 },
           proj: 'bullet', desc: 'Garda sultanului, cu pușcă. Trage de departe și greu.' },
-  ien2: { name: 'Ienicer de elită', line: 'ien', tier: 2, civ: 'oto', cls: 'gun', hp: 55, atk: 17, rng: 7, rof: 3.2, ma: 1, pa: 2, spd: 0.9, los: 8, cost: { f: 50, g: 55 }, time: 18, age: 3, r: 0.2, bonus: { inf: 10, cav: 4 },
+  ien2: { name: 'Ienicer de elită', line: 'ien', tier: 2, civ: 'oto', cls: 'gun', hp: 55, atk: 17, rng: 7, rof: 3.2, ma: 1, pa: 2, spd: 0.9, los: 8, cost: { f: 45, g: 48 }, time: 18, age: 3, r: 0.2, bonus: { inf: 10, cav: 4 },
           proj: 'bullet', desc: 'Veteranii de la Constantinopol.' },
   nog:  { name: 'Arcaș nogai', line: 'nog', tier: 1, civ: 'tat', cls: 'har', hp: 65, atk: 6, rng: 5, rof: 1.8, ma: 0, pa: 2, spd: 1.55, los: 7, cost: { f: 40, w: 30, g: 45 }, time: 16, age: 2, r: 0.3,
           proj: 'arrow', desc: 'Arcaș călare din stepă, iute și greu de prins.' },
@@ -420,7 +420,12 @@ G.HELP_DESK = [
   ['🔔', 'Când vin dușmanii, <b>Clopotul</b> din Cetate îi adăpostește pe țărani: cetatea trage cu mai multe săgeți. Clic dreapta cu oameni pe o cetate, turn sau fortăreață îi adăpostește.'],
   ['⭐', 'Fiecare erou are o <b>putere</b> (butonul din panou). Clădirile au <b>upgrade-uri</b>: oștenii se transformă când cercetezi treapta următoare.'],
   ['🧱', 'Zidurile se pun cu două clicuri: unde începe și unde se termină. Porțile se pun peste zid și se deschid doar pentru ai tăi.'],
-  ['🏰', 'Câștigi când toți dușmanii sunt învinși: fără cetăți, fortărețe și țărani. La victoria prin minune, ține-ți minunea în picioare 5 minute.']
+  ['📋', '<b>Shift + clic dreapta</b> pune ordinul la coadă: mergi aici, apoi acolo; construiește trei case pe rând. Oștenii au <b>Patrulează</b> (dus-întors, atacând ce întâlnesc) și <b>atitudine</b>: Agresiv, Defensiv (se întorc la locul lor) sau Pe loc.'],
+  ['🦌', '<b>Vânătoarea</b>: cerbii fug când sunt loviți, mistrețul se apără (trimite trei țărani deodată), lupii atacă oamenii singuri. Peștele de la mal îl prind țăranii; cel din larg, bărcile.'],
+  ['⚓', '<b>Portul</b> se pune pe apă, lângă mal. Bărci de pescuit, galere, corăbii incendiare (bune contra galerelor) și de transport: alegi oamenii și atingi corabia ca să urce, apoi alegi corabia și atingi malul unde coboară.'],
+  ['✨', 'Călugării vindecă și <b>convertesc</b>: clic dreapta pe un dușman și, după câteva clipe, trece de partea ta.'],
+  ['💬', '<b>Enter</b> deschide caseta de mesaje: strigăte cu numere de la 1 la 12 (11 = Ha, ha, ha!) și coduri secrete. Clic pe un jucător din lista de sus: îi trimiți resurse.'],
+  ['🏰', 'Câștigi când toți dușmanii sunt învinși: fără cetăți, fortărețe și țărani. La victoria prin minune, ține-ți minunea în picioare 5 minute; la Regele dealului, ține monumentul din mijloc 10 minute.']
 ];
 G.HELP = [
   ['👆', 'Atinge un om ca să-l alegi. Apoi atinge locul unde vrei să meargă, un copac, o mină sau un dușman.'],
@@ -431,5 +436,7 @@ G.HELP = [
   ['🏠', 'Fiecare casă îți dă 5 locuri pentru oameni. Fără case, nu mai poți face oameni.'],
   ['💤', 'Butoanele din dreapta: 💤 țăranii fără treabă, ⚔️ toată oastea, 🏰 cetatea ta.'],
   ['⚔️', 'Lăncierii bat călăreții, călăreții bat arcașii și asediul, arcașii bat pedestrașii, plăieșii bat arcașii, berbecii și trebușetele bat zidurile.'],
+  ['🦌', 'Cerbii și mistreții se vânează; mistrețul se apără, trimite mai mulți țărani. Lupii atacă oamenii singuri.'],
+  ['⚓', 'Portul se pune pe apă. Ca să urce oamenii pe corabia de transport, alege-i și atinge corabia; apoi alege corabia și atinge malul.'],
   ['🏰', 'Câștigi când toți dușmanii sunt învinși: fără cetăți, fortărețe și țărani.']
 ];
