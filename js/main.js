@@ -132,7 +132,7 @@ var G = globalThis.G || (globalThis.G = {});
     G.running = false;
     document.body.classList.remove('playing');
     try { localStorage.removeItem(SAVE); localStorage.removeItem(SAVE + '_meta'); } catch (e) {}
-    if (S.scen && G.Camp && G.Camp.onEnd) { G.Camp.onEnd(win); return; }
+    if (S.scen && G.Camp && G.Camp.onEnd) { if (G.Menu.award) G.Menu.award(S, win); G.Camp.onEnd(win); return; }
     G.Menu.endScreen(S, win);
     $('eNext').style.display = 'none'; $('eRetry').style.display = '';
     show('end', true);
@@ -176,6 +176,7 @@ var G = globalThis.G || (globalThis.G = {});
     $('bSkirmish').addEventListener('click', G.Menu.openSetup);
     $('bQuick').addEventListener('click', function () { G.Menu.startSkirmish(); });
     $('bTree').addEventListener('click', function () { G.Menu.openTree(); });
+    if ($('bMedals')) $('bMedals').addEventListener('click', function () { G.Menu.openMedals(); });
     if (G.Camp && G.Camp.open) $('bCamp').addEventListener('click', G.Camp.open); else $('bCamp').style.display = 'none';
     $('mTree').addEventListener('click', function () { G.Menu.openTree(); });
     $('eRetry').addEventListener('click', function () { show('end', false); if (G.lastStart) G.startGame(JSON.parse(JSON.stringify(G.lastStart))); });

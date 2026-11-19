@@ -120,10 +120,61 @@ var G = globalThis.G || (globalThis.G = {});
   }
 
   // ---------- ecranul de final ----------
+  // ---------- medaliile (se păstrează în browser) ----------
+  var MEDALS = [
+    ['prima', '🥇', 'Prima victorie', 'Câștigă o bătălie liberă.'], ['fara', '🛡️', 'Niciun țăran pierdut', 'Câștigă fără să pierzi vreun țăran.'],
+    ['iute', '⚡', 'Fulgerul', 'Câștigă în mai puțin de 20 de minute.'], ['greu', '⚔️', 'Oștean încercat', 'Câștigă pe Greu.'],
+    ['foarte', '👑', 'Voievod', 'Câștigă pe Foarte greu.'], ['minune', '🏛️', 'Ctitorul', 'Câștigă prin minune.'],
+    ['deal', '🗿', 'Regele dealului', 'Câștigă ținând monumentul 10 minute.'], ['nomad', '🐎', 'Nomadul', 'Câștigă pornind fără cetate.'],
+    ['mare', '⚓', 'Stăpânul mării', 'Câștigă pe Țărmul Mării Negre.'], ['wololo', '✨', 'Wololo', 'Convertește 5 dușmani într-o partidă.'],
+    ['doi', '🤝', 'Frați de arme', 'Câștigă un 2 contra 2.'], ['toate', '🌍', 'Toate neamurile', 'Câștigă cu fiecare din cele 6 civilizații.'],
+    ['camp_st', '📜', 'Ștefan cel Mare', 'Termină campania lui Ștefan.'], ['vaslui', '🔔', 'Vaslui, 1475', 'Câștigă Podul Înalt pe Foarte greu.']
+  ];
+  function medalsGot() { try { return JSON.parse(localStorage.getItem('scm_medals') || '{}'); } catch (e) { return {}; } }
+  // întoarce medaliile noi câștigate acum
+  M.award = function (S, win) {
+    if (!win || S.cheated || G.spectate) return [];
+    var got = medalsGot(), now = [], P = S.players[0], give = function (id) { if (!got[id]) { got[id] = new Date().toISOString().slice(0, 10); now.push(id); } };
+    if (S.scen) {
+      var sid = S.scen.id || (G.Camp && G.Camp.cur);
+      if (sid === 'st6') give('camp_st');
+      if (sid === 'st4' && S.diff === 'foarte') give('vaslui');
+    } else {
+      give('prima');
+      if (!P.st.lostVil) give('fara');
+      if (S.t < 1200) give('iute');
+      if (S.diff === 'greu' || S.diff === 'foarte') give('greu');
+      if (S.diff === 'foarte') give('foarte');
+      if (S.opt.victory === 'minune' && S.wonder && S.wonder.o === 0) give('minune');
+      if (S.opt.victory === 'deal' && S.koth && S.koth.o >= 0 && G.ally(0, S.koth.o)) give('deal');
+      if (S.opt.nomad) give('nomad');
+      if (S.map && S.map.type === 'mare') give('mare');
+      if (S.players.length === 4 && S.players.filter(function (Q) { return Q.team === P.team; }).length === 2) give('doi');
+      var wins = {}; try { wins = JSON.parse(localStorage.getItem('scm_wins') || '{}'); } catch (e) {}
+      wins[P.civ] = 1; try { localStorage.setItem('scm_wins', JSON.stringify(wins)); } catch (e) {}
+      if (G.CIV_LIST.every(function (c) { return wins[c]; })) give('toate');
+    }
+    if ((P.st.conv || 0) >= 5) give('wololo');
+    try { localStorage.setItem('scm_medals', JSON.stringify(got)); } catch (e) {}
+    return now;
+  };
+  M.medalsHTML = function (fresh) {
+    var got = medalsGot();
+    return '<div class="medals">' + MEDALS.map(function (m) { var has = got[m[0]], nw = fresh && fresh.indexOf(m[0]) >= 0; return '<div class="md' + (has ? ' on' : '') + (nw ? ' new' : '') + '" title="' + esc(m[3]) + '"><i>' + m[1] + '</i><b>' + esc(m[2]) + '</b><small>' + esc(has ? (nw ? 'Nouă!' : 'din ' + has) : m[3]) + '</small></div>'; }).join('') + '</div>';
+  };
+  M.openMedals = function () {
+    var got = medalsGot(), n = MEDALS.filter(function (m) { return got[m[0]]; }).length;
+    $('treeBox').innerHTML = '<h2>🏅 Medalii: ' + n + ' din ' + MEDALS.length + '</h2>' + M.medalsHTML(null) + '<div class="row2"><button class="btn" id="mdBack">Înapoi</button></div>';
+    show('tree', true);
+    $('mdBack').addEventListener('click', function () { show('tree', false); });
+  };
   M.endScreen = function (S, win, title, sub) {
     $('endT').textContent = title || (win ? 'Victorie!' : 'Înfrângere');
     $('endT').className = win ? 'win' : 'lose';
     $('endS').textContent = sub || (win ? 'Dușmanii tăi au fost învinși. Țara e liberă!' : 'Ai pierdut de data asta. Mai încerci o dată?');
+    var fresh = M.award(S, win), md = $('endMd');
+    if (!md) { md = document.createElement('div'); md.id = 'endMd'; $('endS').parentNode.insertBefore(md, $('endS').nextSibling); }
+    md.innerHTML = fresh.length ? '<div class="mdnew">🏅 Medalii noi: ' + MEDALS.filter(function (x) { return fresh.indexOf(x[0]) >= 0; }).map(function (x) { return x[1] + ' ' + esc(x[2]); }).join(' · ') + '</div>' : '';
     var P = S.players, m = Math.floor(S.t / 60);
     function row(lbl, f) { return '<tr><td>' + lbl + '</td>' + P.map(function (p) { return '<td>' + f(p) + '</td>'; }).join('') + '</tr>'; }
     $('endStats').innerHTML = '<tr><td></td>' + P.map(function (p, i) { return '<th style="color:' + G.R.pcol(i).light + '">' + G.CIVS[p.civ].flag + ' ' + esc(i === 0 ? 'Tu' : G.CIVS[p.civ].name) + (p.alive ? '' : ' ✝') + '</th>'; }).join('') + '</tr>' +

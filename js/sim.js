@@ -666,7 +666,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (e.k === 'u') {
       var P = S.players[e.o];
       if (!e.gin) S.fx.push({ k: 'corpse', x: e.x, y: e.y, t: S.t, ut: e.t, o: e.o, face: e.face, d8: e.dir8 || 0, fem: e.fem });
-      P.st.lost++;
+      P.st.lost++; if (e.t === 'vil') P.st.lostVil = (P.st.lostVil || 0) + 1;
       if (by && by.o !== undefined && G.enemy(by.o, e.o)) S.players[by.o].st.killed++;
       if (e.relic) { var rp = nearestPassable(e.x, e.y); if (rp) G.addRes('relic', Math.floor(rp[0]), Math.floor(rp[1])); e.relic = 0; }
       if (e.gin) { var gb = getE(e.gin); if (gb) gb.gar = gb.gar.filter(function (id) { return id !== e.id; }); }
@@ -1719,6 +1719,18 @@ var G = globalThis.G || (globalThis.G = {});
     var P = S.players[o], r = fn(P); S.cheated = 1;
     if (o === 0 && r) { G.msg('Cod secret: ' + r + '.', 'good'); G.sfx('built'); }
     return r;
+  };
+  // tributul: resurse trimise altui jucător (o zecime se pierde pe drum)
+  var RNAME = { f: 'hrană', w: 'lemne', g: 'aur', s: 'piatră' };
+  G.cmdTribute = function (from, to, r, amt) {
+    var P = S.players[from], Q = S.players[to];
+    if (!P || !Q || !Q.alive || from === to) return false;
+    amt = Math.min(amt, Math.floor(P.res[r])); if (amt < 10) { if (from === 0) G.msg('N-ai destul de trimis.', 'warn'); return false; }
+    P.res[r] -= amt; Q.res[r] += Math.round(amt * 0.9);
+    if (from === 0) G.msg('Ai trimis ' + amt + ' ' + RNAME[r] + ' către ' + G.ppl(to) + '.', 'info');
+    else if (to === 0) G.msg((G.ally(0, from) ? 'Aliații ' : '') + G.ppl(from) + ' îți trimit ' + Math.round(amt * 0.9) + ' ' + RNAME[r] + '.', 'good');
+    G.sfx('coin');
+    return true;
   };
   G.cmdBell = function (o) {
     var P = S.players[o];

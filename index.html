@@ -125,6 +125,14 @@
   .civc.on { border-color: #f3d27a; background: linear-gradient(#5a3e1c, #2e2010); box-shadow: 0 0 12px #f3d27a55; }
   .civinfo { display: flex; gap: 10px; align-items: center; background: #00000035; border-radius: 9px; padding: 6px 10px; font-size: 13px; color: #eadcbc; }
   .civinfo img { width: 64px; height: 64px; } .civinfo ul { margin: 4px 0 0; padding-left: 18px; }
+  #tribute { display: none; position: absolute; top: 52px; right: 12px; z-index: 45; background: rgba(20,14,8,0.94); border: 1px solid #c9a26a; border-radius: 10px; padding: 10px; color: #fff2c8; width: 250px; }
+  #tribute b { display: block; margin-bottom: 2px; } #tribute small { display: block; color: #c8b890; margin-bottom: 6px; }
+  #tribute div { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; } #tribute button { padding: 6px; border-radius: 6px; border: 1px solid #6a5030; background: #3a2a18; color: #fff2c8; cursor: pointer; } #tribute .x { margin-top: 6px; width: 100%; }
+  #plist span[data-p]:not([data-p="0"]) { cursor: pointer; }
+  .medals { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin: 10px 0; }
+  .md { background: #00000035; border-radius: 9px; padding: 8px; text-align: center; opacity: 0.45; filter: grayscale(1); }
+  .md.on { opacity: 1; filter: none; } .md.new { box-shadow: 0 0 0 2px #e9c24a; } .md i { display: block; font-style: normal; font-size: 30px; } .md b { display: block; font-size: 13px; color: #fff2c8; } .md small { color: #c8b890; font-size: 11px; }
+  .mdnew { margin: 8px 0; padding: 8px 12px; border-radius: 8px; background: #3a2a0a; color: #ffe28a; font-weight: 600; }
   #chat { display: none; position: absolute; left: 50%; bottom: 210px; transform: translateX(-50%); width: min(520px, 80vw); padding: 8px 12px; font-size: 15px; border-radius: 8px; border: 1px solid #c9a26a; background: rgba(20,14,8,0.92); color: #fff2c8; z-index: 40; outline: none; }
   .civlook { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 6px; } .civlook img { width: 44px; height: 44px; background: #00000030; border-radius: 6px; }
   .grid2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 12px; margin: 10px 0 4px; }
@@ -265,7 +273,7 @@
       <button class="btn big" id="bCamp">📜 Campanii <small>Poveștile lui Ștefan, Vlad, Iancu și Mehmed</small></button>
       <button class="btn big" id="bSkirmish">⚔️ Bătălie liberă <small>Alegi civilizația, adversarii, harta și epoca</small></button>
       <button class="btn" id="bQuick">⚡ Joc rapid <small>Cu ultimele setări</small></button>
-      <div class="row2"><button class="btn" id="bTree">🌳 Tehnologii</button><button class="btn" id="bHelp">❔ Cum se joacă</button></div>
+      <div class="row2"><button class="btn" id="bTree">🌳 Tehnologii</button><button class="btn" id="bMedals">🏅 Medalii</button><button class="btn" id="bHelp">❔ Cum se joacă</button></div>
     </div>
   </div>
 </div>

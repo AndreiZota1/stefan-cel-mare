@@ -29,6 +29,11 @@ var G = globalThis.G || (globalThis.G = {});
       if (pos) { var nb = G.cmdPlace(pid, 'cetate', pos.tx, pos.ty, my.vils.slice()); if (nb) return; }
     }
     if (tc && P.aiMode !== 'defend') { economy(); buildings(); naval(); palisade(); }
+    // aliatul bogat îi trimite omului ce-i lipsește
+    if (pid !== 0 && G.ally(0, pid) && !S.players[0].ai && S.t > (A.trib || 240)) {
+      A.trib = S.t + 120;
+      ['f', 'w', 'g', 's'].some(function (r) { if (P.res[r] > 900 && S.players[0].res[r] < 150) { G.cmdTribute(pid, 0, r, 300); return true; } return false; });
+    }
     // Regele dealului: oastea liberă merge să țină monumentul
     if (S.opt.victory === 'deal' && S.koth && S.koth.team !== P.team && S.t > (A.hill || 0)) {
       A.hill = S.t + 25;

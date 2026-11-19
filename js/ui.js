@@ -311,7 +311,16 @@ var G = globalThis.G || (globalThis.G = {});
       });
     }
   };
+  UI.tributeTo = function (q) {
+    var box = document.getElementById('tribute');
+    if (!box) { box = document.createElement('div'); box.id = 'tribute'; document.body.appendChild(box); }
+    var R = [['f', '🌾'], ['w', '🪵'], ['g', '🪙'], ['s', '🪨']];
+    box.innerHTML = '<b>Trimite către ' + esc(G.ppl(q)) + '</b><small>O zecime se pierde pe drum.</small><div>' + R.map(function (r) { return [100, 500].map(function (a) { return '<button data-r="' + r[0] + '" data-a="' + a + '">' + r[1] + ' ' + a + '</button>'; }).join(''); }).join('') + '</div><button class="x">Închide</button>';
+    box.style.display = 'block';
+    box.onclick = function (ev) { var b = ev.target.closest('button'); if (!b) return; if (b.classList.contains('x')) { box.style.display = 'none'; return; } G.cmdTribute(0, q, b.dataset.r, +b.dataset.a); };
+  };
   UI.escape = function () {
+    var tb = document.getElementById('tribute'); if (tb && tb.style.display === 'block') { tb.style.display = 'none'; return; }
     if (UI.patrol) { UI.patrol = false; lastSig = ''; return; }
     if (UI.place) { UI.cancelPlace(); return; }
     if (UI.amove) { UI.amove = false; lastSig = ''; return; }
@@ -592,11 +601,14 @@ var G = globalThis.G || (globalThis.G = {});
     if (pl) {
       var ph = S.players.map(function (Q, i) {
         if (S.scen && i > 0 && !G.enemy(0, i) && !G.ally(0, i)) return '';
-        return '<span class="' + (Q.alive ? '' : 'dead') + '" title="' + (i === 0 ? 'Tu' : (G.ally(0, i) ? 'Aliat: ' : 'Dușman: ') + G.ppl(i)) + '"><i style="background:' + G.R.pcol(i).color + '"></i>' + G.CIVS[Q.civ].flag + '<b>' + (i === 0 ? 'Tu' : (G.ally(0, i) ? '🤝 ' : '') + G.CIVS[Q.civ].name.replace(/^(Regatul|Imperiul|Hanatul) /, '')) + '</b></span>';
+        return '<span data-p="' + i + '" class="' + (Q.alive ? '' : 'dead') + '" title="' + (i === 0 ? 'Tu' : (G.ally(0, i) ? 'Aliat: ' : 'Dușman: ') + G.ppl(i)) + '"><i style="background:' + G.R.pcol(i).color + '"></i>' + G.CIVS[Q.civ].flag + '<b>' + (i === 0 ? 'Tu' : (G.ally(0, i) ? '🤝 ' : '') + G.CIVS[Q.civ].name.replace(/^(Regatul|Imperiul|Hanatul) /, '')) + '</b></span>';
       }).join('');
       if (S.wonder && S.opt.victory === 'minune') { var wl = Math.max(0, Math.ceil(300 - (S.t - S.wonder.t0))); ph += '<span class="wt">🏛 ' + Math.floor(wl / 60) + ':' + ('0' + wl % 60).slice(-2) + '</span>'; }
       if (S.opt.peace && S.t < S.opt.peace) { var pz = Math.ceil(S.opt.peace - S.t); ph += '<span class="wt">🕊 ' + Math.floor(pz / 60) + ':' + ('0' + pz % 60).slice(-2) + '</span>'; }
+      if (S.koth && S.koth.team && S.opt.victory === 'deal') { var kl2 = Math.max(0, Math.ceil(600 - (S.t - S.koth.t0))); ph += '<span class="wt">🗿 ' + Math.floor(kl2 / 60) + ':' + ('0' + kl2 % 60).slice(-2) + '</span>'; }
       if (pl._h !== ph) { pl._h = ph; pl.innerHTML = ph; }
+      // atingi un jucător: îi trimiți resurse (tribut)
+      if (!pl._tb) { pl._tb = 1; pl.addEventListener('click', function (ev) { var sp = ev.target.closest('[data-p]'); if (!sp) return; var q = +sp.dataset.p; if (q > 0 && G.S.players[q].alive) UI.tributeTo(q); }); }
     }
     var idle = idleVils().length;
     if (G.Music && G.Music.setMood) {

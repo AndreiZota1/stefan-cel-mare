@@ -11,8 +11,8 @@ Cerut de Andrei pe 19.11: punctele 2–5 din evaluare (echilibru, vânătoare ș
 - [x] 5. Ordine: lanț cu Shift, patrulare, atitudini (agresiv / defensiv / pe loc)
 - [x] 6. Coduri secrete (mămăligă etc.) și strigăte pe numere
 - [x] 7. Moduri: Regele dealului, Nomazi, zi–noapte opțional
-- [ ] 8. Diplomație: tribut către aliați
-- [ ] 9. Medalii salvate în browser
+- [x] 8. Diplomație: tribut către aliați
+- [x] 9. Medalii salvate în browser
 - [ ] 10. Turneul de echilibru (toate perechile, mai multe hărți), ajustări până la ≤ 60%
 - [ ] 11. Testele mari, publicarea, rezumatul pentru Andrei
 
