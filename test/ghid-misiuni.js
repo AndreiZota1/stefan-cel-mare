@@ -60,9 +60,10 @@ module.exports = {
   // Ștefan: oastea de 12, apoi tabăra lui Petru Aron
   // (un om strânge o oaste mare și atacă odată cu muntenii, nu câte puțini)
   st1: { tick(c) { const h = H(c); if (h.done('o1') && (h.army().length >= 20 || c.go) && h.every('a', 4)) { c.go = 1; h.assault(['tabara']); } } },
-  // Baia: nu lovi ziua; noaptea, casele târgului, apoi regele
-  st3: { aiAfter: 240, tick(c) {
+  // Baia: ziua strângi oaste (fără să lovești), noaptea casele târgului, apoi regele
+  st3: { tick(c) {
     const h = H(c); if (!h.S.night || !h.every('a', 3)) return;
+    if (!c.go && h.army().length < 32 && h.S.t < 420) return; c.go = 1;
     if (!h.attack(h.alive('casa_baia'))) { const k = h.G.heroOf(1); if (k) h.attack([k]); else h.assault(['curtea']); }
   } },
   // Podul Înalt: trei oșteni la buciumași, oastea apără valea până trec valurile, apoi tabăra lui Soliman

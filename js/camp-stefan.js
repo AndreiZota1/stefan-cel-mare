@@ -209,6 +209,13 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
         T.say('narator', 'Ungurii v-au văzut! Toată oastea lor iese din târg.', 'say3');
         T.mode(1, 'eco'); T.aiGo(1);
       } },
+      // noaptea, ungurii sunt prinși nepregătiți (dacă nu i-ai trezit ziua): la primul atac sar din somn amețiți,
+      // lovesc mai slab și se mișcă greu vreo două minute și jumătate. Fără asta, atacul de noapte nu folosea la nimic.
+      { id: 'surpriza', when: function (S, T) { return S.night && !S.scen.fired.early && G.C.units.some(function (u) { return u.o === 1 && u.hit && S.t - u.hit < 1; }); }, do: function (S, T) {
+        var until = S.t + 150;
+        G.C.units.forEach(function (u) { if (u.o === 1) u.deb = { a: 0.55, s: 0.75, until: until }; });
+        T.say('narator', 'Ungurii sar din somn, amețiți de vin și fără armuri. Lovește acum, cât sunt încurcați!', 'say7');
+      } },
       { id: 'night', at: 240, do: function (S, T) {
         T.night(1); T.done('o1');
         T.say('stefan', 'S-a lăsat noaptea. Arcașii, săgeți cu foc pe acoperișuri! Înainte!', 'say4');
