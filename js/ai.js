@@ -29,6 +29,7 @@ var G = globalThis.G || (globalThis.G = {});
       if (pos) { var nb = G.cmdPlace(pid, 'cetate', pos.tx, pos.ty, my.vils.slice()); if (nb) return; }
     }
     if (tc && P.aiMode !== 'defend') { economy(); buildings(); naval(); palisade(); }
+    else if (P.aiMode === 'defend') work();
     // aliatul bogat îi trimite omului ce-i lipsește
     if (pid !== 0 && G.ally(0, pid) && !S.players[0].ai && S.t > (A.trib || 240)) {
       A.trib = S.t + 120;
@@ -252,6 +253,21 @@ var G = globalThis.G || (globalThis.G = {});
       if (mp) { var b = build('moara', mp); if (b) return null; }
     }
     return null;
+  }
+  // modul „doar apărare”: țăranii tot muncesc, la ogoare sau la lemne, ca într-un oraș viu, dar fără clădiri și fără
+  // țărani noi; strâng de patru ori mai încet (gmul în sim.js), ca apărătorii să nu primească oaste în plus
+  function work() {
+    if (!my.idle.length) return;
+    var busy = {};
+    C.units.forEach(function (u) { if (u.o === pid && !u.dead && u.task && u.task.id) busy[u.task.id] = 1; });
+    var farms = my.blds.filter(function (b) { return b.built && G.BLDS[b.t].farm && !(b.food <= 0); });
+    var drop = my.blds.filter(function (b) { return b.built && G.BLDS[b.t].drop && G.BLDS[b.t].drop.indexOf('w') >= 0; })[0];
+    my.idle.forEach(function (v) {
+      var f = null, fd = 1e9;
+      farms.forEach(function (b) { if (busy[b.id]) return; var d = G.dist(b, v); if (d < fd) { fd = d; f = b; } });
+      if (f) { busy[f.id] = 1; G.cmdGather([v], f); return; }
+      if (drop) { var t = G.findRes(pid, 'tree', drop.x, drop.y, 14); if (t) G.cmdGather([v], t); }
+    });
   }
   function gatherRes(v, r) {
     var e = null;

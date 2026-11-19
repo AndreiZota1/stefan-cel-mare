@@ -195,6 +195,8 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
       T.wall(1, 56, 60, 76, 60, [10], 'zid'); T.wall(1, 76, 61, 76, 78, [], 'zid'); T.wall(1, 56, 78, 75, 78, [9], 'zid'); T.wall(1, 56, 61, 56, 77, [8], 'zid');
       T.bld(1, 'turn', 58, 62, true); T.bld(1, 'turn', 73, 62, true); T.bld(1, 'turn', 58, 75, true); T.bld(1, 'cazarma', 70, 72, true); T.bld(1, 'casa', 60, 72, true);
       T.spawn(1, [['vil', 6]], 66, 74);
+      // o moară și ogoare în oraș: țăranii lucrează, nu stau
+      T.near(1, 'moara', 66, 72, 6); T.near(1, 'ogor', 63, 75, 7); T.near(1, 'ogor', 69, 76, 7); T.near(1, 'ogor', 63, 70, 7); T.near(1, 'ogor', 70, 71, 7); T.near(1, 'ogor', 66, 78, 7);
       T.spawn(1, [['ien', 8], ['arc', 8], ['mil', 8], ['kni', 4]], 66, 64);
       S.players[0].res = { f: 600, w: 700, g: 400, s: 300 };
     },

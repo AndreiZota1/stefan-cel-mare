@@ -540,6 +540,8 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
       var vill = [[24, 50], [30, 40], [36, 64], [52, 56], [44, 70], [16, 40], [56, 66], [34, 48]];
       vill.forEach(function (p, i) { T.bld(1, 'casa', p[0], p[1], true, 'sat'); if (i % 2 === 0) T.bld(1, 'moara', p[0] + 3, p[1] + 1, true, 'sat'); });
       T.spawn(1, [['vil', 8]], 34, 54);
+      // ogoarele satelor din jurul Kievului (moara e deja acolo)
+      T.near(1, 'ogor', 31, 57, 8); T.near(1, 'ogor', 37, 58, 8); T.near(1, 'ogor', 36, 62, 8); T.near(1, 'ogor', 41, 66, 8); T.near(1, 'ogor', 45, 74, 8); T.near(1, 'ogor', 56, 70, 8); T.near(1, 'ogor', 50, 68, 8); T.near(1, 'ogor', 61, 64, 8);
       S.players[0].res = { f: 600, w: 300, g: 100, s: 0 };
       S.players[0].techs.jaful = 1;
     },

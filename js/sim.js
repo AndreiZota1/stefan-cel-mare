@@ -339,7 +339,8 @@ var G = globalThis.G || (globalThis.G = {});
   G.maxHp = function (e) { return e.k === 'u' ? ustT(e.o, e.t).hp : e.k === 'b' ? (e.hpMax || bstT(e.o, e.t).hp) : 0; };
   function gmul(o, kind) {
     var m = C.gm[o][kind]; if (m) return m;
-    m = S.players[o].gm;
+    // cine doar se apără strânge de patru ori mai încet (țăranii muncesc de formă, fără să-i umfle oastea)
+    m = S.players[o].gm * (S.players[o].aiMode === 'defend' ? 0.25 : 1);
     var F = fxl(o);
     for (var i = 0; i < F.length; i++) if (F[i].gather === kind) m *= F[i].mul;
     return (C.gm[o][kind] = m);

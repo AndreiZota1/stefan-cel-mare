@@ -106,6 +106,7 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
       [[42, 32], [48, 32], [54, 32], [60, 32], [64, 32]].forEach(function (p) { var b = T.bld(1, 'turn', p[0], p[1], true, 'turnuri'); b.name = 'Turnul despotului'; });
       T.bld(1, 'cazarma', 44, 20, true); T.bld(1, 'casa', 60, 22, true);
       T.spawn(1, [['vil', 5]], 50, 24);
+      T.near(1, 'moara', 50, 22, 6); T.near(1, 'ogor', 47, 25, 7); T.near(1, 'ogor', 53, 26, 7); T.near(1, 'ogor', 47, 20, 7); T.near(1, 'ogor', 53, 20, 7);
       T.spawn(1, [['mil2', 8], ['arc2', 8], ['spr2', 6], ['kni', 4]], 52, 26);
       S.players[0].res = { f: 800, w: 800, g: 600, s: 400 };
     },

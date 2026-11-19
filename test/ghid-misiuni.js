@@ -246,5 +246,6 @@ module.exports = {
   // Constantinopol: tunurile și trebușetele sparg zidul, apoi palatul Vlaherne și împăratul
   me1: { tick(c) { const h = H(c); h.campaign({ tags: ['vlaherne'], min: 30 }); const k = h.G.heroOf(1); if (k && c.camp && c.camp.ph === 'storm' && h.every('k', 4)) h.attack([k], h.army(u => h.G.UNITS[u.t].cls !== 'sie')); } },
   // Valea Albă: tunurile la palisadă, apoi tabăra lui Ștefan
-  me2: { tick(c) { H(c).campaign({ tags: ['tabara'], min: 30 }); } }
+  // (moldovenii ies la atac la minutul 7: lovești primul, cu oastea de la început)
+  me2: { tick(c) { H(c).campaign({ tags: ['tabara'], min: 30, after: 0 }); } }
 };

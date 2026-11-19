@@ -180,7 +180,15 @@ G.MISSIONS = G.MISSIONS || {};
   }
   T.wave = function (o, comp, from, to, tag) { var u = T.spawn(o, comp, from[0], from[1], tag); T.attackMove(u, to[0], to[1]); return u; };
   T.aiGo = function (o) { if (G.aiAttackNow) G.aiAttackNow(o); };
-  T.mode = function (o, mode) { S().players[o].aiMode = mode; };
+  T.mode = function (o, mode) { S().players[o].aiMode = mode; if (G.C.gm && G.C.gm[o]) G.C.gm[o] = {}; };
+  // o clădire a jucătorului o, cât mai aproape de (x, y), acolo unde încape (gata construită)
+  T.near = function (o, t, x, y, r) {
+    for (var d = 0; d <= (r || 8); d++) for (var k = 0, n = Math.max(1, d * 6); k < n; k++) {
+      var tx = Math.round(x + d * G.dcos(k / n * 6.283)), ty = Math.round(y + d * G.dsin(k / n * 6.283));
+      if (G.canPlace(o, t, tx, ty)) return T.bld(o, t, tx, ty, true);
+    }
+    return null;
+  };
   T.give = function (o, res) { var P = S().players[o]; for (var k in res) P.res[k] += res[k]; };
   T.debuff = function (o, a, secs) { var until = S().t + secs; G.C.units.forEach(function (u) { if (u.o === o) u.deb = { a: a, until: until }; }); };
   T.buff = function (o, a, s, secs) { var until = S().t + secs; G.C.units.forEach(function (u) { if (u.o === o) u.buf = { a: a, s: s, until: until }; }); };
