@@ -217,7 +217,8 @@ G.NAR = G.NAR || {};
     curM = id; phase = ph; para = 0;
     var m = G.MISSIONS[id], texts = m[ph] || [];
     var diffSel = '<label class="sdiff">Greutatea <select id="stDiff">' + Object.keys(G.DIFF).map(function (k) { return '<option value="' + k + '"' + (k === (prog.diff || 'normal') ? ' selected' : '') + '>' + G.DIFF[k].name + '</option>'; }).join('') + '</select></label>';
-    var html = '<div class="sbody"><canvas id="storyMap"></canvas><div class="stext"><div class="sy">' + esc(m.year + ' · ' + m.place) + '</div><h2>' + esc(m.title) + '</h2>' +
+    var pic = G.POZE && G.POZE[id] ? 'assets/poze/' + id + '.webp' : null;
+    var html = '<div class="sbody"><div class="svis"><canvas id="storyMap"></canvas>' + (pic ? '<div class="spic" id="storyPic"><img src="' + pic + '" alt=""></div><button class="svbtn" id="stView">🗺 Harta</button>' : '') + '</div><div class="stext"><div class="sy">' + esc(m.year + ' · ' + m.place) + '</div><h2>' + esc(m.title) + '</h2>' +
       (ph === 'lose' ? '<p class="sp on">' + esc(G.S && G.S.scen && G.S.scen.why ? G.S.scen.why : (m.loseText || 'Misiunea a eșuat.')) + '</p>' :
         texts.map(function (p, i) { return '<p class="sp" data-p="' + i + '">' + esc(p) + '</p>'; }).join('')) + '</div></div>';
     html += '<div class="row2">' + (ph === 'intro' ? '<button class="btn" id="stBack">Înapoi</button>' + diffSel + '<button class="btn go" id="stGo">⚔️ Începe misiunea</button>'
@@ -226,8 +227,24 @@ G.NAR = G.NAR || {};
     $('storyBox').innerHTML = html;
     show('camp', false); show('story', true); show('end', false);
     var sp = $('storyBox').querySelectorAll('.sp[data-p]');
+    // pictura la început; harta (cu săgețile care pornesc atunci) la ultimul paragraf al poveștii
+    var picOn = false;
+    function showPic(on) {
+      var el = $('storyPic'); if (!el) return;
+      if (on === picOn) return; picOn = on;
+      el.classList.toggle('on', on);
+      if ($('stView')) $('stView').textContent = on ? '🗺 Harta' : '🖼 Pictura';
+      if (!on) storyT0 = performance.now();
+    }
+    if ($('storyPic')) {
+      var im0 = $('storyPic').querySelector('img');
+      im0.onload = function () { if (para < Math.max(1, texts.length - 1) || ph !== 'intro') showPic(true); };
+      if (im0.complete && im0.naturalWidth) showPic(true);
+      $('stView').addEventListener('click', function () { showPic(!picOn); });
+    }
     function playPara(i) {
       para = i;
+      if (ph === 'intro' && texts.length > 1) showPic(i < texts.length - 1);
       sp.forEach(function (e, j) { e.classList.toggle('on', j === i); e.classList.toggle('past', j < i); });
       if (sp[i]) sp[i].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       stopAudio();

@@ -12,7 +12,7 @@ var G = globalThis.G || (globalThis.G = {});
     var AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     A.ac = new AC();
-    master = A.ac.createGain(); master.gain.value = 0.5; master.connect(A.ac.destination);
+    master = A.ac.createGain(); master.gain.value = 0.5; master.connect(A.ac.destination); A.master = master;
     var len = A.ac.sampleRate, buf = A.ac.createBuffer(1, len, A.ac.sampleRate), d = buf.getChannelData(0);
     for (var i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     noise = buf;
@@ -33,7 +33,7 @@ var G = globalThis.G || (globalThis.G = {});
     amb = { g: g };
     (function bird() {
       setTimeout(function () {
-        if (A.on && G.running && !G.paused && A.ac) {
+        if (A.on && (G.running || G.cine) && !G.paused && A.ac) {
           var t = A.ac.currentTime, n = 2 + ((Math.random() * 3) | 0), base = 2200 + Math.random() * 1600;
           for (var i = 0; i < n; i++) {
             var o = A.ac.createOscillator(), gg = A.ac.createGain(), t0 = t + i * (0.09 + Math.random() * 0.05);
@@ -142,7 +142,7 @@ var G = globalThis.G || (globalThis.G = {});
   var GAP = { chop: 0.12, mine: 0.12, hit: 0.07, arrow: 0.06, thud: 0.12, build: 0.15, death: 0.15, gun: 0.08, catapult: 0.15 };
   var LOCAL = { chop: 1, mine: 1, hit: 1, arrow: 1, thud: 1, build: 1, death: 1, cannon: 1, boom: 1, collapse: 1, gun: 1, catapult: 1 };
   G.sfx = function (name, x, y, civ) {
-    if (!A.on || !A.ac || !G.running || G.paused) return;
+    if (!A.on || !A.ac || (!G.running && !G.cine) || G.paused) return;
     if (LOCAL[name] && x !== undefined) {
       var p = G.R.w2s(x, y);
       if (p[0] < -40 || p[0] > G.R.W + 40 || p[1] < -40 || p[1] > G.R.H + 40) return;

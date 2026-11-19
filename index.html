@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#1a140e">
-<title>Ștefan cel Mare — Apărarea Moldovei</title>
+<title>Age of Empires România</title>
+<meta name="description" content="Age of Empires România: un joc de strategie în timp real cu Mircea cel Bătrân, Vlad Țepeș, Ștefan cel Mare, Mihai Viteazul și vecinii lor.">
 <style>
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; height: 100%; background: #0d0c0a; overflow: hidden; color: #f3ead6;
@@ -94,7 +95,8 @@
   .startbox { display: flex; gap: 22px; align-items: center; max-width: 900px; width: 100%; }
   .startleft { flex: 1.2; text-align: center; }
   .startright { flex: 1; min-width: 220px; }
-  #start h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(28px, 6vw, 46px); color: #f3d27a; text-shadow: 0 3px 0 #5a2a10, 0 0 24px #c0802080; letter-spacing: 0.5px; }
+  #start h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(28px, 6vw, 46px); color: #f3d27a; text-shadow: 0 3px 0 #5a2a10, 0 0 24px #c0802080; letter-spacing: 0.5px; line-height: 1.05; }
+  #start h1 span { display: block; font-size: 0.62em; letter-spacing: 0.42em; margin-top: 4px; color: #e9b04a; background: linear-gradient(90deg, #2b55b8 0 33.3%, #e8c34a 33.3% 66.6%, #c3302a 66.6%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; text-shadow: none; filter: drop-shadow(0 2px 0 #3a1a08); }
   #start .sub { color: #e8c8a0; font-size: 14px; margin: 2px 0 8px; letter-spacing: 2px; text-transform: uppercase; }
   #startArt { display: flex; justify-content: center; align-items: flex-end; gap: 4px; height: 96px; }
   #startArt img { width: 64px; height: 64px; }
@@ -164,6 +166,23 @@
   .ctabs button.on { border-color: #f3d27a; background: linear-gradient(#5a3e1c, #2e2010); }
   .cbody, .sbody { display: flex; gap: 12px; height: min(68vh, 640px); }
   #campMap, #storyMap { flex: 1.6; min-width: 0; height: 100%; border-radius: 8px; box-shadow: inset 0 0 30px #0008; }
+  /* povestea misiunii: pictura (cu o mișcare lentă, ca la film), apoi harta cu săgețile */
+  .svis { flex: 1.6; min-width: 0; height: 100%; position: relative; border-radius: 8px; overflow: hidden; background: #1a140e; }
+  .svis #storyMap { width: 100%; height: 100%; display: block; }
+  .spic { position: absolute; inset: 0; opacity: 0; transition: opacity 1.4s ease; pointer-events: none; overflow: hidden; }
+  .spic.on { opacity: 1; }
+  .spic img { width: 100%; height: 100%; object-fit: cover; transform-origin: 60% 40%; animation: kenburns 26s ease-out forwards; }
+  .spic::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 60px #000c; }
+  #splash { background: #000 url('assets/poze/cine_titlu.webp') center / cover no-repeat; display: none; align-items: center; justify-content: center; }
+  #splash.on { display: flex; }
+  #splash::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, #0006 0%, #000c 75%); }
+  .spl { position: relative; text-align: center; }
+  .splt { font-family: Georgia, "Times New Roman", serif; font-weight: bold; font-size: clamp(38px, 8vw, 92px); letter-spacing: 0.04em; color: #f3c862; text-shadow: 0 4px 0 #4a2208, 0 0 40px #d0802080; }
+  .spls { font-family: Georgia, serif; font-weight: bold; font-size: clamp(20px, 4vw, 48px); letter-spacing: 0.3em; margin-top: 6px; background: linear-gradient(90deg, #2f5fc8 0 33.3%, #f2c94a 33.3% 66.6%, #d23a2e 66.6%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .splp { margin-top: 40px; color: #f1e6cc; font: italic 18px Georgia, serif; animation: splp 2.2s ease-in-out infinite; }
+  @keyframes splp { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+  @keyframes kenburns { from { transform: scale(1.0) translate(0, 0); } to { transform: scale(1.14) translate(-2%, 1%); } }
+  .svbtn { position: absolute; right: 8px; bottom: 8px; z-index: 2; font-size: 12px; padding: 4px 9px; border-radius: 6px; border: 1px solid #8a6a3a; background: #2a1e12cc; color: #f3ead6; }
   .clist { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
   .clist h3 { margin: 0; color: #f3d27a; font-family: Georgia, serif; font-size: 22px; } .csub { color: #c8b48c; font-size: 13px; font-style: italic; margin-bottom: 4px; }
   .cm { display: flex; align-items: center; gap: 10px; text-align: left; background: #00000040; border: 1px solid #6a5030; border-radius: 9px; color: #f0e4c8; padding: 7px 9px; cursor: pointer; }
@@ -186,7 +205,7 @@
   body:not(.playing) #objs, body:not(.playing) #say { display: none !important; }
   #say img { width: 56px; height: 56px; border-radius: 8px; background: #00000050; } #say b { display: block; color: #f3d27a; font-family: Georgia, serif; font-size: 15px; } #say span { font-size: 15px; line-height: 1.35; }
   .msg.obj { border-color: #f3d27a; color: #ffe9a8; }
-  @media (max-width: 760px) { .cbody, .sbody { flex-direction: column; height: auto; } #campMap, #storyMap { height: 42vh; flex: none; } #objs { top: 46px; max-width: 46vw; font-size: 11px; } }
+  @media (max-width: 760px) { .cbody, .sbody { flex-direction: column; height: auto; } #campMap, #storyMap { height: 42vh; flex: none; } .svis { height: 42vh; flex: none; } #objs { top: 46px; max-width: 46vw; font-size: 11px; } }
   @media (max-width: 760px) { .civs { grid-template-columns: repeat(3, 1fr); } .grid2 { grid-template-columns: repeat(2, 1fr); } .trow { grid-template-columns: 80px repeat(5, 1fr); } }
   #endStats { margin: 10px auto; border-collapse: collapse; font-size: 14px; }
   #endStats td, #endStats th { padding: 4px 12px; border-bottom: 1px solid #ffffff18; }
@@ -267,21 +286,22 @@
   <div id="cmds"></div>
 </div>
 
+<div id="splash" class="ov" style="z-index:95;cursor:pointer"><div class="spl"><div class="splt">Age of Empires</div><div class="spls">R O M Â N I A</div><div class="splp">Apasă oriunde ca să începi</div></div></div>
 <div id="start" class="ov on">
   <div class="startbox">
     <div class="startleft">
       <div id="startArt"></div>
-      <h1>Ștefan cel Mare</h1>
+      <h1>Age of Empires<span>România</span></h1>
       <div class="sub">Șase țări · cinci epoci · o singură coroană</div>
       <div id="intro"></div>
       <div id="fact"></div>
     </div>
     <div class="startright">
       <button class="btn" id="bContinue" style="display:none">▶ Continuă jocul <small></small></button>
-      <button class="btn big" id="bCamp">📜 Campanii <small>Poveștile lui Ștefan, Vlad, Iancu și Mehmed</small></button>
+      <button class="btn big" id="bCamp">📜 Campanii <small>Mircea, Vlad, Ștefan, Mihai, Iancu și vecinii lor</small></button>
       <button class="btn big" id="bSkirmish">⚔️ Bătălie liberă <small>Alegi civilizația, adversarii, harta și epoca</small></button>
       <button class="btn" id="bQuick">⚡ Joc rapid <small>Cu ultimele setări</small></button>
-      <div class="row2"><button class="btn" id="bTree">🌳 Tehnologii</button><button class="btn" id="bMedals">🏅 Medalii</button><button class="btn" id="bHelp">❔ Cum se joacă</button></div>
+      <div class="row2"><button class="btn" id="bTree">🌳 Tehnologii</button><button class="btn" id="bMedals">🏅 Medalii</button><button class="btn" id="bHelp">❔ Cum se joacă</button><button class="btn" id="bFilm">🎬 Filmul</button></div>
     </div>
   </div>
 </div>
@@ -348,6 +368,8 @@
 <script src="js/camp-domni.js" onerror="void 0"></script>
 <script src="js/camp-noi.js" onerror="void 0"></script>
 <script src="js/menu.js"></script>
+<script src="js/poze.js" onerror="void 0"></script>
+<script src="js/cinematic.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

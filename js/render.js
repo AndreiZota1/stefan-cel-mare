@@ -973,6 +973,7 @@ var G = globalThis.G || (globalThis.G = {});
   }
 
   function hpBar(e, x, y, w) {
+    if (G.cine) return;   // în film, fără bare de viață
     var mx = G.maxHp(e) || 1, f = Math.max(0, Math.min(1, e.hp / mx));
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - w / 2 - 1, y - 1, w + 2, 4.5);
     ctx.fillStyle = f > 0.6 ? '#4cd964' : f > 0.3 ? '#f5c542' : '#ff4b3e';

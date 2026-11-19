@@ -38,7 +38,7 @@ var G = globalThis.G || (globalThis.G = {});
   // bătălia din spatele meniului: două civilizații la întâmplare, camera urmărește luptele
   var demoT = 0, demoTgt = null;
   function startDemo() {
-    if (G.running || !document.body.classList.contains('desk')) return;
+    if (G.running || (G.Cine && G.Cine.active) || !document.body.classList.contains('desk')) return;
     var L = G.CIV_LIST.slice().sort(function () { return Math.random() - 0.5; }), types = ['rau', 'codri', 'stepa', 'delta', 'munti'];
     try {
       G.newGame({ seed: (Math.random() * 1e9) | 0, size: 72, diff: 'normal', startAge: 2, res: 'mult', popMax: 70, reveal: 'tot',
@@ -145,6 +145,8 @@ var G = globalThis.G || (globalThis.G = {});
   function frame(now) {
     var dt = Math.min(0.1, (now - last) / 1000);
     last = now;
+    // filmul de început ține tot ecranul
+    if (G.Cine && G.Cine.active) { G.Cine.tick(dt); requestAnimationFrame(frame); return; }
     if (G.S && G.running && !G.paused) {
       var sim = dt * G.speed;
       while (sim > 1e-6) { var st = Math.min(0.05, sim); G.update(st); sim -= st; }
@@ -203,6 +205,16 @@ var G = globalThis.G || (globalThis.G = {});
     setInterval(function () { if (G.running && !G.paused) G.saveGame(); }, 30000);
     window.addEventListener('pagehide', function () { if (G.running) G.saveGame(); });
     requestAnimationFrame(frame);
-    setTimeout(startDemo, 300);
+    // filmul: prima dată pornește singur (după o apăsare, ca să se audă), apoi din butonul 🎬 Filmul
+    function film() {
+      show('start', false);
+      G.Cine.play({ onEnd: function () { refreshStart(); show('start', true); setTimeout(startDemo, 50); } });
+    }
+    if ($('bFilm')) $('bFilm').addEventListener('click', function () { if (!G.running) film(); });
+    var seen = false; try { seen = !!localStorage.getItem('scm_film'); } catch (e) {}
+    if (G.Cine && !seen && !navigator.webdriver && !G.spectate) {
+      show('splash', true);
+      $('splash').addEventListener('click', function () { show('splash', false); film(); }, { once: true });
+    } else setTimeout(startDemo, 300);
   });
 })();

@@ -1,7 +1,9 @@
-# Ștefan cel Mare — Apărarea Moldovei
+# Age of Empires România
 
-Joc de strategie în timp real, în stilul Age of Empires II, făcut pentru telefon (ținut pe orizontală).
-Moldova, 1475: strângi resurse cu țăranii, ridici cetatea și oastea, treci prin epoci și dărâmi Cetatea Otomană a lui Soliman Pașa.
+Joc de strategie în timp real, în stilul Age of Empires II, pentru calculator și telefon (ținut pe orizontală).
+Șase civilizații (Moldova, Țara Românească, Ungaria, Polonia, Imperiul Otoman, Hanatul Crimeii), cinci epoci,
+27 de misiuni în opt campanii: Mircea cel Bătrân, Vlad Țepeș, Ștefan cel Mare, Mihai Viteazul, Iancu de Hunedoara,
+Mehmed Cuceritorul, Vladislav Jagiello și Mengli Giray. Proiect de pasionat, fără legătură cu seria Age of Empires.
 
 Se joacă direct în browser, fără instalare. Totul e desenat din cod, fără imagini sau sunete din alte jocuri.
 

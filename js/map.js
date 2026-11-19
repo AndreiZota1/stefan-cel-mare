@@ -446,7 +446,7 @@ G.hash2 = function (x, y, s) {
   function isWet(t) { return t === WA || t === FO || t === BR; }
   function heightField(C, type, bases, mission) {
     var N = C.N, V = N + 1, H = new Float32Array(V * V), seed = C.seed + 97, i, vx, vy;
-    var amp = mission ? 0.6 : ({ munti: 1.45, codri: 1.15, rau: 1.0, delta: 0.35, stepa: 0.8, mare: 0.9, lac: 0.95 }[type] || 0.9);
+    var amp = mission ? (C.amp || 0.6) : ({ munti: 1.45, codri: 1.15, rau: 1.0, delta: 0.35, stepa: 0.8, mare: 0.9, lac: 0.95 }[type] || 0.9);
     var dW = bfs(C, isWet), dL = bfs(C, function (t) { return !isWet(t); }), dR = bfs(C, function (t) { return t !== RO; });
     var wet = new Uint8Array(V * V);   // 0 uscat, 1 mal, 2 apă
     function hills(x, y) { var f = fbm(x * 0.045, y * 0.045, seed), f2 = fbm(x * 0.11, y * 0.11, seed + 7); return Math.max(0, smh(0.32, 0.86, f) * 2.3 * amp + (f2 - 0.5) * 0.4 * amp); }
@@ -565,7 +565,7 @@ G.hash2 = function (x, y, s) {
       else if (op[0] === 'decor') C.decor.push({ k: op[1], x: op[2], y: op[3] });
     });
     decorate(C, spec.season || 'vara');
-    S.ter = C.ter; S.decor = C.decor; S.base = []; S.hgt = heightField(C, 'spec', [], true);
+    C.amp = spec.amp; S.ter = C.ter; S.decor = C.decor; S.base = []; S.hgt = heightField(C, 'spec', [], true);
     return { objs: C.objs.filter(function (o) { return G.RESD[o.t]; }) };
   };
 })();
