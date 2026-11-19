@@ -53,3 +53,16 @@ Ce a contat:
 - Animalele sunt resurse (`S.ents`, `k: 'r'`) cu `hp`; vânătoarea = țăranul le lovește întâi, apoi le jupoaie. Cerbul fuge când e lovit; mistrețul răspunde; lupul atacă singur oamenii din apropiere.
 - Corăbiile: grilă de trecere separată pentru apă; `findPath(..., o, naval)`; portul se pune pe apă lângă mal.
 - Imaginile noi se randează cu `tools/bake2.js` (animalele în `n/`, corăbiile în `u/<tip>_<civ>`, portul în `b/port_<civ>`).
+
+## A treia rundă (cerută de Andrei: clădirile pe epoci, alte lucruri ca în AoE2, verificare pe detalii)
+
+- [x] Clădirile pe epoci. Treapta rustică `_r` (Epoca Întunecată: lemn, lut, stuf, cetatea cu gard de pari), cea de acum (Feudală și a Cetăților) și treapta impunătoare `_g` (Imperială și Renașterea: piatră, brâie, stindarde, cupru la polonezi, țiglă smălțuită la unguri). `render.js` alege după epoca proprietarului.
+- [x] Ogoarele se termină: 300 de hrană, +100 pe unealtă. Se reînnoiesc pe 60 de lemne, singure sau plătite dinainte la moară.
+- [x] Anunțul mare la trecerea într-o epocă nouă, fumul din hornuri, poverile țăranilor, oaia culcată, butonul 💬, portul în arborele tehnologiilor.
+- [x] Muzica: o temă pe stil, care revine; instrumentele cresc cu epocile.
+- [x] Verificări:
+  - salvarea cu toate noutățile;
+  - diacriticele în texte;
+  - poveștile campaniilor, verificate istoric;
+  - trecerea vizuală prin joc.
+- [x] Reparat un bug care ajunsese publicat: clădirile terminate se desenau cu schelă (un `else` lipit de alt `if`). Lecția: testele automate nu văd grafica, deci trecerea vizuală e obligatorie după orice schimbare în `drawBld`.

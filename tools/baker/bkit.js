@@ -311,7 +311,7 @@ export function kit(civ, tier = 1) {
     case 'pol': Object.assign(K, {
       wall: TM('castle_brick_07', '#ffe0d0', 0.9, 1.2), brick: TM('castle_brick_07', '#ffffff', 0.9, 1.2), base: TM('castle_wall_slates', '#e0dcd4', 0.95, 1.2), stone: TM('castle_brick_07', '#f0d0c0', 0.9, 1.2),
       roof: TM('roof_tiles', '#b0584a', 0.85, 1.2), timber: PM('#3a2a20', 0.85), trim: '#f2ece0', shut: '#f2ece0', winStyle: 'lancet', winCol: '#1a2026', stepGable: true,
-      pitch: 1.85, eave: 0.05, roofKind: 'gable', towerRound: false, towerTop: 'pyramid', towerPitch: 2.8, fin: 'spike', accent: '#c02828', copper: PM('#5fa088', 0.55, 0.35) }); break;
+      pitch: 1.85, eave: 0.05, roofKind: 'gable', towerRound: false, towerTop: 'pyramid', towerPitch: 2.8, fin: 'spike', accent: '#c02828', copper: PM('#467a66', 0.6, 0.3) }); break;
     case 'oto': Object.assign(K, {
       wall: TM('plastered_wall', '#fff6e8', 0.95, 0.8), stone: TMb('large_sandstone_blocks', '#ffe8c4', 1.9, 0.95, 1.2), base: TMb('large_sandstone_blocks', '#f4dcb4', 1.6, 0.95, 1.2),
       roof: TMb('roof_09', '#ff9a70', 1.05, 0.85, 1.1), timber: PM('#5a3a24', 0.85), trim: '#d9b44a', shut: '#2f6a4a', winStyle: 'arch', winCol: '#24343c',
