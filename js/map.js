@@ -338,6 +338,27 @@ G.hash2 = function (x, y, s) {
       }
       for (var k5 = 0; k5 < N * N / 900; k5++) { var mx = R() * N, my = R() * N; if (C.get(mx | 0, my | 0) === GR) C.cluster(R() < 0.5 ? 'gold' : 'stone', mx, my, 4 + ((R() * 3) | 0)); }
     }
+    if (type === 'mare' || type === 'lac') {
+      // marea de jur împrejur (Țărmul Mării Negre) sau un lac mare în mijloc; plaje de nisip; crânguri pe uscat
+      for (var y5 = 0; y5 < N; y5++) for (var x5 = 0; x5 < N; x5++) {
+        var wob = (fbm(x5 * 0.06, y5 * 0.06, C.seed + 51) - 0.5) * N * 0.06, dw;
+        if (type === 'mare') dw = Math.min(x5, y5, M - x5, M - y5) - (N * 0.1 + wob);
+        else dw = Math.hypot(x5 - cx, y5 - cy) - (N * 0.2 + wob);
+        if (dw < 0) C.set(x5, y5, WA); else if (dw < 1.6) C.set(x5, y5, SA);
+      }
+      for (var k6 = 0; k6 < N * N * 0.0055; k6++) { var tx6 = R() * N, ty6 = R() * N; if (C.get(tx6 | 0, ty6 | 0) === GR) C.disc(tx6, ty6, 2.2 + R() * 2.8, function (x, y) { if (C.get(x, y) === GR && R() < 0.72) C.put('tree', x, y); }); }
+      // bancurile de pești în larg (doar pentru bărci)
+      var placedF = 0;
+      for (var tf = 0; tf < 600 && placedF < Math.ceil(N / 9 / (sym || 1)); tf++) {
+        var fx6 = (R() * N) | 0, fy6 = (R() * N) | 0;
+        if (C.get(fx6, fy6) !== WA || C.blk[fy6 * N + fx6] || (sym && !canonical(N, sym, fx6, fy6))) continue;
+        var deep = true; for (var dy6 = -2; dy6 <= 2 && deep; dy6++) for (var dx6 = -2; dx6 <= 2; dx6++) if (C.get(fx6 + dx6, fy6 + dy6) !== WA) { deep = false; break; }
+        if (!deep || C.objs.some(function (o) { return o.t === 'fishd' && Math.hypot(o.x - fx6, o.y - fy6) < 6; })) continue;
+        C.blk[fy6 * N + fx6] = 2; C.objs.push({ t: 'fishd', x: fx6, y: fy6 });
+        if (C.get(fx6 + 1, fy6) === WA && !C.blk[fy6 * N + fx6 + 1]) { C.blk[fy6 * N + fx6 + 1] = 2; C.objs.push({ t: 'fishd', x: fx6 + 1, y: fy6 }); }
+        placedF++;
+      }
+    }
     // 2. bazele: poienile lor curate
     bases.forEach(function (b) {
       var cr = type === 'codri' ? 9.5 : 7.5;
@@ -393,7 +414,7 @@ G.hash2 = function (x, y, s) {
     }
     var seen2 = reach(C, [Math.floor(bases[0][0]), Math.floor(bases[0][1])]);
     C.objs.forEach(function (o) {
-      if (o.t === 'tree' || o.t === 'sheep' || o.t === 'deer' || o.t === 'boar' || o.t === 'wolf' || o.t === 'fish' || o.t === 'relic') return;
+      if (o.t === 'tree' || o.t === 'sheep' || o.t === 'deer' || o.t === 'boar' || o.t === 'wolf' || o.t === 'fish' || o.t === 'fishd' || o.t === 'relic') return;
       if (!bases.some(function (b) { return Math.hypot(o.x - b[0], o.y - b[1]) < 22; })) return;
       var ok = false;
       for (var dy3 = -1; dy3 <= 1; dy3++) for (var dx3 = -1; dx3 <= 1; dx3++) { var X = o.x + dx3, Y = o.y + dy3; if (C.ok(X, Y) && seen2[Y * N + X]) ok = true; }

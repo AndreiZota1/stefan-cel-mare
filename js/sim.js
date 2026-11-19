@@ -132,19 +132,19 @@ var G = globalThis.G || (globalThis.G = {});
     var gateO = d && d.gate && e.built ? e.o : -1;
     for (var y = e.ty; y < e.ty + n; y++) for (var x = e.tx; x < e.tx + n; x++) {
       var i = y * N + x;
-      if (on) { C.occ[i] = e.id; setPass(i, walk ? G.PASS_T[S.ter[i]] : 0, gateO); C.gate[i] = gateO >= 0 ? gateO + 1 : 0; }
-      else if (C.occ[i] === e.id) { C.occ[i] = 0; setPass(i, G.PASS_T[S.ter[i]] ? 1 : 0, -1); C.gate[i] = 0; }
+      if (on) { C.occ[i] = e.id; setPass(i, walk ? G.PASS_T[S.ter[i]] : 0, gateO); C.gate[i] = gateO >= 0 ? gateO + 1 : 0; if (C.wpass) C.wpass[i] = 0; }
+      else if (C.occ[i] === e.id) { C.occ[i] = 0; setPass(i, G.PASS_T[S.ter[i]] ? 1 : 0, -1); C.gate[i] = 0; if (C.wpass) C.wpass[i] = S.ter[i] === 2 ? 1 : 0; }
     }
   }
   G.rebuild = function () {
     var N = S.N, M = N * N, nP = S.players.length, p;
-    C.byId = new Map(); C.occ = new Int32Array(M); C.pass = new Uint8Array(M); C.gate = new Int8Array(M); C.vis = new Uint8Array(M);
+    C.byId = new Map(); C.occ = new Int32Array(M); C.pass = new Uint8Array(M); C.wpass = new Uint8Array(M); C.gate = new Int8Array(M); C.vis = new Uint8Array(M);
     C.pp = []; for (p = 0; p < nP; p++) C.pp.push(new Uint8Array(M));
     C.sc = []; C.bc = []; C.gm = []; C.fxl = []; C.hero = [];
     for (p = 0; p < nP; p++) { C.sc.push({}); C.bc.push({}); C.gm.push({}); C.fxl.push(null); C.hero.push(0); }
     C.gcount = {};
     setTeams();
-    for (var i = 0; i < M; i++) { var v = G.PASS_T[S.ter[i]] ? 1 : 0; C.pass[i] = v; for (p = 0; p < nP; p++) C.pp[p][i] = v; }
+    for (var i = 0; i < M; i++) { var v = G.PASS_T[S.ter[i]] ? 1 : 0; C.pass[i] = v; C.wpass[i] = S.ter[i] === 2 ? 1 : 0; for (p = 0; p < nP; p++) C.pp[p][i] = v; }
     S.ents.forEach(function (e) {
       C.byId.set(e.id, e);
       if (e.dead) return;
@@ -154,6 +154,11 @@ var G = globalThis.G || (globalThis.G = {});
     G.Path.init(N);
   };
   G.passFor = function (o) { return (o >= 0 && C.pp[o]) || C.pass; };
+  // corăbiile merg pe apă: altă grilă de trecere și altă cheie pentru căutarea drumului
+  function isNaval(u) { return !!(u && u.k === 'u' && G.UNITS[u.t].naval); }
+  function pgrid(u) { return isNaval(u) ? C.wpass : (C.pp[u.o] || C.pass); }
+  function pk(u) { return isNaval(u) ? 'w' : u.o; }
+  G.isNaval = isNaval; G.pgrid = pgrid;
   function addEnt(e) { e.id = S.nextId++; S.ents.push(e); C.byId.set(e.id, e); if (blocks(e)) occupy(e, true); return e; }
 
   G.addUnit = function (t, o, x, y) {
@@ -192,12 +197,12 @@ var G = globalThis.G || (globalThis.G = {});
   };
 
   // un loc liber lângă clădire, cât mai aproape de țintă
-  function freeSpot(b, tgt) {
-    var tx = tgt ? tgt[0] : b.x + b.n, ty = tgt ? tgt[1] : b.y + b.n, best = null, bd = 1e9, N = S.N;
+  function freeSpot(b, tgt, grid) {
+    var tx = tgt ? tgt[0] : b.x + b.n, ty = tgt ? tgt[1] : b.y + b.n, best = null, bd = 1e9, N = S.N, pass = grid || C.pass;
     for (var ring = 1; ring <= 6 && !best; ring++) {
       for (var y = b.ty - ring; y < b.ty + b.n + ring; y++) for (var x = b.tx - ring; x < b.tx + b.n + ring; x++) {
         if (x > b.tx - ring && x < b.tx + b.n + ring - 1 && y > b.ty - ring && y < b.ty + b.n + ring - 1) continue;
-        if (x < 0 || y < 0 || x >= N || y >= N || !C.pass[y * N + x]) continue;
+        if (x < 0 || y < 0 || x >= N || y >= N || !pass[y * N + x]) continue;
         var d = (x + 0.5 - tx) * (x + 0.5 - tx) + (y + 0.5 - ty) * (y + 0.5 - ty) + Math.random() * 0.8;
         if (d < bd) { bd = d; best = [x + 0.5 + (Math.random() - 0.5) * 0.3, y + 0.5 + (Math.random() - 0.5) * 0.3]; }
       }
@@ -212,7 +217,7 @@ var G = globalThis.G || (globalThis.G = {});
       var mob = u.k === 'u' || (u.k === 'r' && !G.RESD[u.t].block);
       if (!mob) return;
       if (u.x > b.tx - 0.05 && u.x < b.tx + b.n + 0.05 && u.y > b.ty - 0.05 && u.y < b.ty + b.n + 0.05) {
-        var sp = freeSpot(b, [u.x, u.y]); u.x = sp[0]; u.y = sp[1]; u.path = null;
+        var sp = freeSpot(b, [u.x, u.y], isNaval(u) ? C.wpass : null); u.x = sp[0]; u.y = sp[1]; u.path = null;
         if (u.k === 'r') { u.tx = Math.floor(u.x); u.ty = Math.floor(u.y); }
       }
     });
@@ -244,12 +249,12 @@ var G = globalThis.G || (globalThis.G = {});
     }
     return { x: Math.floor(e.x), y: Math.floor(e.y), r: Math.max(0, Math.floor(reach * 0.7)) };
   }
-  function accessible(e) {
+  function accessible(e, naval) {
     if (!G.RESD[e.t].block) return true;
-    var N = S.N;
+    var N = S.N, pass = naval ? C.wpass : C.pass;
     for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
       var x = e.tx + dx, y = e.ty + dy;
-      if ((dx || dy) && x >= 0 && y >= 0 && x < N && y < N && C.pass[y * N + x]) return true;
+      if ((dx || dy) && x >= 0 && y >= 0 && x < N && y < N && pass[y * N + x]) return true;
     }
     return false;
   }
@@ -391,22 +396,24 @@ var G = globalThis.G || (globalThis.G = {});
   G.forUnitsNear = forUnitsNear;
 
   function findEnemy(u, r) {
-    var st = ust(u), best = null, bd = 1e9, minr = st.minr || 0;
+    var st = ust(u), best = null, bd = 1e9, minr = st.minr || 0, navU = isNaval(u);
     var ign = u.ign, en = C.en[u.o];
     if (ign) for (var k in ign) if (ign[k] < S.t) delete ign[k];
     if (!st.onlyBld) forUnitsNear(u.x, u.y, r, function (e) {
       if (e.dead || e.gin || !en[e.o] || (ign && ign[e.id])) return;
+      if (!st.rng && navU !== isNaval(e)) return;
       var dx = e.x - u.x, dy = e.y - u.y, d = dx * dx + dy * dy;
       if (d > r * r || (minr && d < minr * minr)) return;
       if (e.t === 'vil') d += 6;
       if (d < bd) { bd = d; best = e; }
     });
     // lupii din apropiere sunt ținte pentru oșteni
-    if (!best && u.k === 'u' && C.wild && C.wild.length && G.UNITS[u.t].cls !== 'vil') for (var w = 0; w < C.wild.length; w++) {
+    if (!best && u.k === 'u' && !navU && C.wild && C.wild.length && G.UNITS[u.t].cls !== 'vil') for (var w = 0; w < C.wild.length; w++) {
       var a = C.wild[w]; if (a.dead || a.hp <= 0) continue;
       var d2 = (a.x - u.x) * (a.x - u.x) + (a.y - u.y) * (a.y - u.y); if (d2 <= r * r && d2 < bd) { bd = d2; best = a; }
     }
     if (best) return best;
+    if (navU && !st.rng) return null;
     if (st.proj === 'arrow' || st.proj === 'bolt' || st.proj === 'jav') return null; // săgețile nu fac aproape nimic zidurilor
     for (var i = 0; i < C.blds.length; i++) {
       var b = C.blds[i];
@@ -437,7 +444,7 @@ var G = globalThis.G || (globalThis.G = {});
   }
   function moveAlong(u, dt) {
     if (!u.path) return true;
-    var sp = spdOf(u) * dt, N = S.N, pass = C.pp[u.o] || C.pass;
+    var sp = spdOf(u) * dt, N = S.N, pass = pgrid(u);
     while (sp > 0 && u.pi < u.path.length) {
       var w = u.path[u.pi], dx = w[0] - u.x, dy = w[1] - u.y, dd = Math.sqrt(dx * dx + dy * dy);
       if (!pass[Math.floor(w[1]) * N + Math.floor(w[0])]) { u.path = null; u.rp = 0; return true; }
@@ -461,7 +468,7 @@ var G = globalThis.G || (globalThis.G = {});
     var dist = G.distTo(u, e);
     if (dist <= reach) { u.path = null; u.fails = 0; return true; }
     var key = e.id;
-    if (e.k === 'u' && dist < 1.6 && G.Path.clear(u.x, u.y, e.x, e.y, u.o)) {
+    if (e.k === 'u' && dist < 1.6 && G.Path.clear(u.x, u.y, e.x, e.y, pk(u))) {
       u.path = [[e.x, e.y]]; u.pi = 0; u.gk = key; u.gx = e.x; u.gy = e.y;
       moveAlong(u, dt);
       return false;
@@ -478,7 +485,7 @@ var G = globalThis.G || (globalThis.G = {});
         if (dist < u.pd) u.pd = dist;
       }
       if (u.fails > 6 || u.np > 7) return 'fail';
-      var p = G.findPath(u.x, u.y, goalFor(e, reach), 5200, u.o);
+      var p = G.findPath(u.x, u.y, goalFor(e, reach), 5200, pk(u));
       u.gk = key; u.gx = e.x; u.gy = e.y; u.rp = 0.7; u.pi = 0;
       if (p === null) { u.path = null; return 'fail'; }
       if (p.length === 0) {
@@ -504,7 +511,7 @@ var G = globalThis.G || (globalThis.G = {});
       C.budget--;
       if (u.gk === key) T.n = (T.n || 0) + 1;
       if (T.n > 4) { finish(u, T); return; }
-      var p = G.findPath(u.x, u.y, { x: Math.floor(T.x), y: Math.floor(T.y), r: 0 }, 5200, u.o);
+      var p = G.findPath(u.x, u.y, { x: Math.floor(T.x), y: Math.floor(T.y), r: 0 }, 5200, pk(u));
       u.gk = key; u.rp = 0.8; u.pi = 0;
       if (p === null) { finish(u, T); return; }
       if (p.length) {
@@ -622,6 +629,7 @@ var G = globalThis.G || (globalThis.G = {});
       if (by && by.o !== undefined && G.enemy(by.o, e.o)) S.players[by.o].st.killed++;
       if (e.relic) { var rp = nearestPassable(e.x, e.y); if (rp) G.addRes('relic', Math.floor(rp[0]), Math.floor(rp[1])); e.relic = 0; }
       if (e.gin) { var gb = getE(e.gin); if (gb) gb.gar = gb.gar.filter(function (id) { return id !== e.id; }); }
+      if (e.gar && e.gar.length) { var lost = e.gar.slice(); e.gar = []; lost.forEach(function (id) { var pu = getE(id); if (pu) { pu.x = e.x; pu.y = e.y; pu.gin = 0; G.kill(pu, by); } }); }
       if (G.UNITS[e.t].hero && C.hero[e.o] === e.id) {
         C.hero[e.o] = 0;
         var hn = G.ename(e);
@@ -652,6 +660,65 @@ var G = globalThis.G || (globalThis.G = {});
   };
   // îndepărtare fără urme (jucător învins, ziduri înlocuite de porți)
   function vanish(e) { if (e.dead) return; e.dead = 1; S.dirty = 1; if (blocks(e)) occupy(e, false); if (e.k === 'u' && C.hero[e.o] === e.id) C.hero[e.o] = 0; }
+
+  // ---------- corăbiile de transport ----------
+  function shipLoad(s) { return (s.gar || []).length; }
+  G.shipLoad = shipLoad;
+  // apa cea mai apropiată de (x, y) care atinge uscatul (acolo trage corabia la mal)
+  function shoreWater(x, y) {
+    var N = S.N, fx = Math.floor(x), fy = Math.floor(y), best = null, bd = 1e9;
+    for (var dy = -10; dy <= 10; dy++) for (var dx = -10; dx <= 10; dx++) {
+      var tx = fx + dx, ty = fy + dy;
+      if (tx < 1 || ty < 1 || tx >= N - 1 || ty >= N - 1 || !C.wpass[ty * N + tx]) continue;
+      if (!(C.pass[ty * N + tx + 1] || C.pass[ty * N + tx - 1] || C.pass[(ty + 1) * N + tx] || C.pass[(ty - 1) * N + tx])) continue;
+      var d = dx * dx + dy * dy; if (d < bd) { bd = d; best = [tx + 0.5, ty + 0.5]; }
+    }
+    return best;
+  }
+  G.shoreWater = shoreWater;
+  // îmbarcarea: corabia trage la malul cel mai apropiat de oameni, iar ei merg acolo și urcă
+  G.cmdBoard = function (units, ship) {
+    var land = units.filter(function (u) { return u && !u.dead && !u.gin && !isNaval(u) && u.o === ship.o; });
+    if (!land.length) return;
+    var cx = 0, cy = 0, N = S.N; land.forEach(function (u) { cx += u.x; cy += u.y; }); cx /= land.length; cy /= land.length;
+    var w = shoreWater(cx, cy);
+    if (!w) { if (ship.o === 0) G.msg('Duceți oamenii mai aproape de apă.', 'warn'); return; }
+    var wx = Math.floor(w[0]), wy = Math.floor(w[1]), L = null;
+    [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(function (d) { if (!L && C.pass[(wy + d[1]) * N + wx + d[0]]) L = [wx + d[0] + 0.5, wy + d[1] + 0.5]; });
+    if (!L) return;
+    if (G.dist(ship, { x: w[0], y: w[1] }) > 1.2) setTask(ship, { k: 'move', x: w[0], y: w[1] });
+    land.forEach(function (u) { setTask(u, { k: 'board', id: ship.id, mx: L[0], my: L[1], wx: w[0], wy: w[1] }); });
+  };
+  function doBoard(u, T, dt) {
+    var s = getE(T.id);
+    if (!s || !G.UNITS[s.t].carry) { u.task = null; return; }
+    if (shipLoad(s) >= G.UNITS[s.t].carry) { u.why = 'corabia e plină'; u.task = null; return; }
+    if (G.dist(u, s) <= 2.3) { (s.gar || (s.gar = [])).push(u.id); u.gin = s.id; u.task = null; u.path = null; u.carry = null; S.dirty = 1; if (u.o === 0) G.sfx('ack'); return; }
+    var r = approach(u, { k: 'p', id: -7, x: T.mx, y: T.my }, 0.45, dt);
+    if (r === 'fail') { u.why = 'nu ajunge la mal'; u.task = null; return; }
+    // corabia a plecat în altă parte: o chemăm înapoi la locul de îmbarcare
+    if (r && !s.task && G.dist(s, { x: T.wx, y: T.wy }) > 1.2) setTask(s, { k: 'move', x: T.wx, y: T.wy });
+  }
+  G.cmdUnload = function (ship, x, y) {
+    if (!shipLoad(ship)) return;
+    var w = shoreWater(x, y); if (!w) { if (ship.o === 0) G.msg('Acolo nu e mal unde să tragă corabia.', 'warn'); return; }
+    setTask(ship, { k: 'move', x: w[0], y: w[1], then: { k: 'unl', lx: x, ly: y } });
+  };
+  function unloadShip(s, lx, ly) {
+    var N = S.N, ids = s.gar || [], spots = [];
+    for (var r = 1; r <= 4 && spots.length < ids.length; r++) for (var dy = -r; dy <= r; dy++) for (var dx = -r; dx <= r; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+      var tx = Math.floor(s.x) + dx, ty = Math.floor(s.y) + dy;
+      if (tx < 0 || ty < 0 || tx >= N || ty >= N || !C.pass[ty * N + tx]) continue;
+      spots.push([tx + 0.5, ty + 0.5]);
+    }
+    if (!spots.length) { if (s.o === 0) G.msg('Corabia nu e lângă mal.', 'warn'); return; }
+    var out = [];
+    ids.forEach(function (id, i) { var u = getE(id); if (!u) return; var p = spots[i % spots.length]; u.gin = 0; u.x = p[0] + (Math.random() - 0.5) * 0.3; u.y = p[1] + (Math.random() - 0.5) * 0.3; u.task = null; u.path = null; out.push(u); });
+    s.gar = []; S.dirty = 1;
+    if (lx !== undefined && out.length && C.pass[Math.floor(ly) * N + Math.floor(lx)]) G.cmdMove(out, lx, ly);
+  }
+  G.unloadShip = unloadShip;
 
   // ---------- vânatul ----------
   // țăranul aruncă sulița până cade animalul; apoi îl jupoaie ca pe o resursă obișnuită (doGat)
@@ -717,7 +784,7 @@ var G = globalThis.G || (globalThis.G = {});
   // ---------- resurse ----------
   function resKind(e) { return e.k === 'b' ? 'farm' : e.t; }
   function resType(e) { return e.k === 'b' ? 'f' : G.RESD[e.t].r; }
-  G.findRes = function (o, kind, x, y, rad, useLim) {
+  G.findRes = function (o, kind, x, y, rad, useLim, naval) {
     var best = null, bd = rad * rad, i;
     if (kind === 'farm') {
       for (i = 0; i < C.blds.length; i++) {
@@ -736,18 +803,18 @@ var G = globalThis.G || (globalThis.G = {});
       if (d >= bd) continue;
       if (useLim !== false && (C.gcount[e.id] || 0) >= lim) continue;
       if (o === 0 && !S.players[0].ai && !S.exp[e.ty * N + e.tx]) continue;
-      if (!accessible(e)) continue;
+      if (!accessible(e, naval)) continue;
       bd = d; best = e;
     }
     return best;
   };
-  function findDrop(o, r, x, y) {
+  function findDrop(o, r, x, y, naval) {
     var best = null, bd = 1e9;
     for (var i = 0; i < C.blds.length; i++) {
       var b = C.blds[i];
       if (b.dead || b.o !== o || !b.built) continue;
-      var dr = G.BLDS[b.t].drop;
-      if (!dr || dr.indexOf(r) < 0) continue;
+      var bd0 = G.BLDS[b.t], dr = bd0.drop;
+      if (naval ? !bd0.dock : (!dr || dr.indexOf(r) < 0 || bd0.dock)) continue;
       var d = distRect(x, y, rectOf(b));
       if (d < bd) { bd = d; best = b; }
     }
@@ -768,15 +835,15 @@ var G = globalThis.G || (globalThis.G = {});
 
   // un loc liber lângă resursă, ca țăranii să nu stea unul peste altul
   function slotFor(u, e) {
-    var best = null, bd = 1e9, N = S.N;
+    var best = null, bd = 1e9, N = S.N, pass = pgrid(u);
     for (var dy = -1; dy <= 1; dy++) for (var dx = -1; dx <= 1; dx++) {
       if (!dx && !dy) continue;
       var x = e.tx + dx, y = e.ty + dy;
-      if (x < 0 || y < 0 || x >= N || y >= N || !C.pass[y * N + x]) continue;
-      if (dx && dy && !C.pass[e.ty * N + x] && !C.pass[y * N + e.tx]) continue;
+      if (x < 0 || y < 0 || x >= N || y >= N || !pass[y * N + x]) continue;
+      if (dx && dy && !pass[e.ty * N + x] && !pass[y * N + e.tx]) continue;
       var cx = x + 0.5, cy = y + 0.5, d = (cx - u.x) * (cx - u.x) + (cy - u.y) * (cy - u.y), taken = 0;
       forUnitsNear(cx, cy, 0.8, function (o) {
-        if (o === u || o.o !== u.o || o.t !== 'vil' || !o.task) return;
+        if (o === u || o.o !== u.o || o.t !== u.t || !o.task) return;
         var ot = o.task.k === 'gat' ? o.task : (o.task.k === 'ret' ? o.task.back : null);
         if (ot && ot.slot && Math.abs(ot.slot[0] - cx) < 0.1 && Math.abs(ot.slot[1] - cy) < 0.1) taken++;
       });
@@ -793,7 +860,7 @@ var G = globalThis.G || (globalThis.G = {});
       if (C.budget <= 0) return false;
       C.budget--;
       if (u.gk === key) { u.fails = (u.fails || 0) + 1; if (u.fails > 3) { T.slot = null; u.fails = 0; return approach(u, e, 0.75, dt); } }
-      var p = G.findPath(u.x, u.y, { x: Math.floor(T.slot[0]), y: Math.floor(T.slot[1]), r: 0 }, 5200, u.o);
+      var p = G.findPath(u.x, u.y, { x: Math.floor(T.slot[0]), y: Math.floor(T.slot[1]), r: 0 }, 5200, pk(u));
       u.gk = key; u.rp = 0.8; u.pi = 0;
       if (p === null) return 'fail';
       if (p.length) { var l = p[p.length - 1]; if (Math.floor(l[0]) === Math.floor(T.slot[0]) && Math.floor(l[1]) === Math.floor(T.slot[1])) { l[0] = T.slot[0]; l[1] = T.slot[1]; } u.path = p; }
@@ -807,7 +874,8 @@ var G = globalThis.G || (globalThis.G = {});
     var st = ust(u), e = getE(T.id);
     if (e && e.k === 'b' && (e.o !== u.o || !e.built)) e = null;
     if (!e) {
-      var ne = G.findRes(u.o, T.kind, T.ox, T.oy, 11);
+      var ne = G.findRes(u.o, T.kind, T.ox, T.oy, 11, undefined, isNaval(u));
+      if (!ne && isNaval(u)) ne = G.findRes(u.o, T.kind === 'fish' ? 'fishd' : 'fish', T.ox, T.oy, 16, undefined, true);
       if (!ne && (T.kind === 'sheep' || T.kind === 'berry')) {
         ne = G.findRes(u.o, T.kind === 'sheep' ? 'berry' : 'sheep', T.ox, T.oy, 12) || G.findRes(u.o, 'farm', T.ox, T.oy, 12);
         if (ne) { T.kind = ne.k === 'b' ? 'farm' : ne.t; T.slot = null; }
@@ -838,7 +906,7 @@ var G = globalThis.G || (globalThis.G = {});
   function doRet(u, T, dt) {
     if (!u.carry || u.carry.n < 0.01) { u.carry = null; finishRet(u, T); return; }
     var d = T.did ? getE(T.did) : null;
-    if (!d) { d = findDrop(u.o, u.carry.r, u.x, u.y); if (!d) { u.why = 'nu are unde duce'; u.task = null; return; } T.did = d.id; u.gk = null; }
+    if (!d) { d = findDrop(u.o, u.carry.r, u.x, u.y, isNaval(u)); if (!d) { u.why = isNaval(u) ? 'n-are port' : 'nu are unde duce'; u.task = null; return; } T.did = d.id; u.gk = null; }
     var r = approach(u, d, 0.75, dt);
     if (r === 'fail') { u.why = 'nu ajunge la depozit'; u.task = null; return; }
     if (!r) return;
@@ -1049,6 +1117,8 @@ var G = globalThis.G || (globalThis.G = {});
       case 'relic': doRelic(u, T, dt); break;
       case 'gar': doGar(u, T, dt); break;
       case 'trade': doTrade(u, T, dt); break;
+      case 'board': doBoard(u, T, dt); break;
+      case 'unl': unloadShip(u, T.lx, T.ly); u.task = null; break;
       default: u.task = null;
     }
   }
@@ -1057,7 +1127,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (T.slot) T.slot = null;
     if (T.back && T.back.slot) T.back.slot = null;
     // un pas mic într-o parte, ca să iasă din înghesuială
-    var N = S.N, pass = C.pp[u.o] || C.pass;
+    var N = S.N, pass = pgrid(u);
     for (var k = 0; k < 6; k++) {
       var a = Math.random() * 6.283, nx = u.x + Math.cos(a) * 0.4, ny = u.y + Math.sin(a) * 0.4;
       if (nx > 0 && ny > 0 && nx < N && ny < N && pass[Math.floor(ny) * N + Math.floor(nx)]) { u.x = nx; u.y = ny; break; }
@@ -1071,7 +1141,7 @@ var G = globalThis.G || (globalThis.G = {});
   function separate(dt) {
     var k = Math.min(1, dt * 10), N = S.N;
     function shift(u, mx, my) {
-      var nx = u.x + mx, ny = u.y + my, pass = C.pp[u.o] || C.pass;
+      var nx = u.x + mx, ny = u.y + my, pass = pgrid(u);
       if (nx > 0 && ny > 0 && nx < N && ny < N && pass[Math.floor(ny) * N + Math.floor(nx)]) { u.x = nx; u.y = ny; }
     }
     for (var i = 0; i < C.units.length; i++) {
@@ -1079,7 +1149,7 @@ var G = globalThis.G || (globalThis.G = {});
       if (a.dead) continue;
       var ra = G.UNITS[a.t].r;
       forUnitsNear(a.x, a.y, 1, function (b) {
-        if (b.id <= a.id || b.dead || b.gin) return;
+        if (b.id <= a.id || b.dead || b.gin || isNaval(a) !== isNaval(b)) return;
         var rr = ra + G.UNITS[b.t].r, dx = b.x - a.x, dy = b.y - a.y, d2 = dx * dx + dy * dy;
         if (d2 >= rr * rr) return;
         // cei care merg trec unii prin alții (ca în AoE), ca să nu se blocheze pe drum
@@ -1158,7 +1228,7 @@ var G = globalThis.G || (globalThis.G = {});
   }
   function spawnUnit(b, t) {
     var P = S.players[b.o];
-    var sp = freeSpot(b, b.rally ? [b.rally.x, b.rally.y] : null);
+    var sp = freeSpot(b, b.rally ? [b.rally.x, b.rally.y] : null, G.UNITS[t].naval ? C.wpass : null);
     var u = G.addUnit(t, b.o, sp[0], sp[1]);
     P.pop++; P.st.trained++;
     if (t === 'car') {
@@ -1403,15 +1473,15 @@ var G = globalThis.G || (globalThis.G = {});
     for (var k in cost) if (P.res[k] < cost[k]) return 'Îți mai trebuie ' + Math.ceil(cost[k] - P.res[k]) + ' ' + G.RES_ICON[k] + ' ' + G.RES_NAME[k].toLowerCase() + '.';
     return '';
   };
-  function nearestPassable(x, y) {
-    var N = S.N, fx = Math.floor(x), fy = Math.floor(y);
-    if (fx >= 0 && fy >= 0 && fx < N && fy < N && C.pass[fy * N + fx]) return [x, y];
-    for (var r = 1; r < 6; r++) {
+  function nearestPassable(x, y, grid, maxR) {
+    var N = S.N, fx = Math.floor(x), fy = Math.floor(y), pass = grid || C.pass;
+    if (fx >= 0 && fy >= 0 && fx < N && fy < N && pass[fy * N + fx]) return [x, y];
+    for (var r = 1; r < (maxR || 6); r++) {
       var best = null, bd = 1e9;
       for (var dy = -r; dy <= r; dy++) for (var dx = -r; dx <= r; dx++) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
         var tx = fx + dx, ty = fy + dy;
-        if (tx < 0 || ty < 0 || tx >= N || ty >= N || !C.pass[ty * N + tx]) continue;
+        if (tx < 0 || ty < 0 || tx >= N || ty >= N || !pass[ty * N + tx]) continue;
         var d = (tx + 0.5 - x) * (tx + 0.5 - x) + (ty + 0.5 - y) * (ty + 0.5 - y);
         if (d < bd) { bd = d; best = [tx + 0.5, ty + 0.5]; }
       }
@@ -1423,7 +1493,10 @@ var G = globalThis.G || (globalThis.G = {});
   G.cmdMove = function (units, x, y, amove) {
     units = units.filter(function (u) { return u && !u.dead && !u.gin; });
     if (!units.length) return;
-    var p = nearestPassable(x, y); if (!p) return;
+    var nav = units.filter(isNaval);
+    if (nav.length && nav.length < units.length) { G.cmdMove(nav, x, y, amove); units = units.filter(function (u) { return !isNaval(u); }); }
+    var grid = isNaval(units[0]) ? C.wpass : C.pass;
+    var p = nearestPassable(x, y, grid, grid === C.wpass ? 14 : 6); if (!p) return;
     x = p[0]; y = p[1];
     var kind = amove ? 'amove' : 'move';
     if (units.length === 1) { setTask(units[0], { k: kind, x: x, y: y }); return; }
@@ -1433,7 +1506,7 @@ var G = globalThis.G || (globalThis.G = {});
       for (var dy = -ring; dy <= ring; dy++) for (var dx = -ring; dx <= ring; dx++) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
         var sx = x + dx * sp, sy = y + dy * sp;
-        if (sx < 0 || sy < 0 || sx >= N || sy >= N || !C.pass[Math.floor(sy) * N + Math.floor(sx)]) continue;
+        if (sx < 0 || sy < 0 || sx >= N || sy >= N || !grid[Math.floor(sy) * N + Math.floor(sx)]) continue;
         spots.push([sx, sy]);
       }
     }
@@ -1472,6 +1545,13 @@ var G = globalThis.G || (globalThis.G = {});
       var rest = units.filter(function (u) { return u !== mons[0]; });
       if (rest.length) G.cmdMove(rest, e.x, e.y);
       return;
+    }
+    if (e.k === 'r' && G.RESD[e.t].water) {
+      var fishers = units.filter(function (u) { return G.UNITS[u.t].fisher; });
+      fishers.forEach(function (u) { setTask(u, { k: 'gat', id: e.id, kind: e.t, ox: e.x, oy: e.y }); });
+      units = units.filter(function (u) { return !G.UNITS[u.t].fisher; });
+      if (G.RESD[e.t].deep) { if (units.length) G.cmdMove(units, e.x, e.y); return; }
+      if (!units.length) return;
     }
     var vils = units.filter(function (u) { return u.t === 'vil'; });
     var others = units.filter(function (u) { return u.t !== 'vil'; });
@@ -1616,12 +1696,19 @@ var G = globalThis.G || (globalThis.G = {});
     if (tx < 0 || ty < 0 || tx + n > N || ty + n > N) return false;
     for (var y = ty; y < ty + n; y++) for (var x = tx; x < tx + n; x++) {
       var i = y * N + x;
-      if (!G.BUILD_T[S.ter[i]]) return false;
+      if (d.dock ? S.ter[i] !== 2 : !G.BUILD_T[S.ter[i]]) return false;
       if (C.occ[i]) {
         var oc = C.byId.get(C.occ[i]);
         if (!(d.gate && oc && oc.k === 'b' && oc.o === o && G.BLDS[oc.t].wall === d.wall && !G.BLDS[oc.t].gate)) return false;
       }
       if (o === 0 && !S.players[0].ai && !S.exp[i]) return false;
+    }
+    if (d.dock) {
+      var shore = false;
+      for (var yy = ty - 1; yy <= ty + n && !shore; yy++) for (var xx = tx - 1; xx <= tx + n; xx++) {
+        if ((yy === ty - 1 || yy === ty + n || xx === tx - 1 || xx === tx + n) && xx >= 0 && yy >= 0 && xx < N && yy < N && C.pass[yy * N + xx]) { shore = true; break; }
+      }
+      if (!shore) return false;
     }
     // nu peste dușmani sau oi
     var bad = false;

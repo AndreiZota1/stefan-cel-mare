@@ -97,8 +97,16 @@ var G = globalThis.G || (globalThis.G = {});
     var vils = mine.filter(function (u) { return u.t === 'vil'; });
     function ack(list, kind) { if (G.voice) G.voice(list, kind || 'ack'); G.sfx('ack'); }
     if (UI.amove) { UI.amove = false; G.cmdMove(mine, w[0], w[1], true); mark(w[0], w[1], RED); ack(mine, 'atk'); lastSig = ''; return; }
+    // corabia cu oameni la bord: malul atins e locul unde coboară
+    var full = mine.filter(function (u) { return G.UNITS[u.t].carry && G.shipLoad(u); });
+    if (full.length && (!e || e.k !== 'u') && G.C.pass[Math.floor(w[1]) * G.S.N + Math.floor(w[0])]) {
+      full.forEach(function (sh) { G.cmdUnload(sh, w[0], w[1]); }); mark(w[0], w[1], YEL); ack(full);
+      mine = mine.filter(function (u) { return full.indexOf(u) < 0; }); if (!mine.length) return;
+    }
     if (!e) { G.cmdMove(mine, w[0], w[1]); mark(w[0], w[1]); ack(mine); return; }
     if (e.k !== 'r' && G.enemy(0, e.o)) { G.cmdAttack(mine, e); mark(e.x, e.y, RED); ack(mine, 'atk'); return; }
+    // oamenii aleși urcă pe corabia de transport atinsă
+    if (e.k === 'u' && e.o === 0 && G.UNITS[e.t].carry && mine.some(function (u) { return !G.isNaval(u); })) { G.cmdBoard(mine.filter(function (u) { return !G.isNaval(u); }), e); mark(e.x, e.y, YEL); ack(mine); return; }
     if (e.k === 'r') { G.cmdGather(mine, e); mark(e.x, e.y, YEL); ack(mine); return; }
     var mons = mine.filter(function (u) { return G.UNITS[u.t].heal; });
     if (e.k === 'u' && mons.length && G.ally(0, e.o) && e.hp < G.maxHp(e) && G.UNITS[e.t].cls !== 'sie') { G.cmdHeal(mine, e); mark(e.x, e.y, 'rgba(120,255,140,0.95)'); ack(mons); return; }
@@ -361,6 +369,8 @@ var G = globalThis.G || (globalThis.G = {});
         var pw = G.POWERS[G.CIVS[civ].power], perr = G.powerError(0);
         out.push({ id: 'power', icon: pw.icon, label: pw.name, enabled: !perr, err: perr, tip: pw.desc, cls: 'age', act: function () { var e2 = G.cmdPower(0); if (e2) { G.msg(e2, 'warn'); G.sfx('err'); } } });
       }
+      var carriers = units.filter(function (u) { return G.UNITS[u.t].carry && G.shipLoad(u); });
+      if (carriers.length) out.push({ id: 'unl', icon: '⚓', label: 'Coboară aici', enabled: true, act: function () { carriers.forEach(function (s2) { G.cmdUnload(s2, s2.x, s2.y); }); } });
       out.push({ id: 'stop', icon: '✋', label: 'Stai', enabled: true, act: function () { G.cmdStop(units); } });
       if (units.length === 1) out.push({ id: 'del', icon: '🗑️', label: 'Renunță', enabled: true, act: function () { confirmDel(units[0]); } });
       return out;

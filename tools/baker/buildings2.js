@@ -8,7 +8,7 @@ import {
   fencePosts, wattle, paintedMat, glazedMat, paintedEave, kit, kwalls, kroof, kwin, ktower
 } from './bkit.js';
 
-export const NB = { cetate: 4, casa: 2, joagar: 2, mina: 2, moara: 2, ogor: 3, cazarma: 3, poligon: 3, grajd: 3, fierarie: 3, targ: 3, turn1: 2, turn2: 2, manastire: 3, universitate: 3, atelier: 3, fortareata: 4, minune: 5 };
+export const NB = { port: 3, cetate: 4, casa: 2, joagar: 2, mina: 2, moara: 2, ogor: 3, cazarma: 3, poligon: 3, grajd: 3, fierarie: 3, targ: 3, turn1: 2, turn2: 2, manastire: 3, universitate: 3, atelier: 3, fortareata: 4, minune: 5 };
 
 // ---------- piese compuse ----------
 function winsAlong(g, K, face, a, b, fixed, y0, skip, gap = 0.42, ww = 0.16, wh = 0.17) {
@@ -563,6 +563,23 @@ B.atelier = (g, K) => {
   g.add(at(cyl(0.002, 0.002, 0.4, PM('#3a2a1a'), 4), 2.5, 0.68, 1.95)); g.add(at(box(0.08, 0.08, 0.08, TM('castle_wall_slates', '#c8c0b4')), 2.5, 0.45, 1.95));
   logPile(g, 2.3, 2.65, 2, 0.5); [[1.0, 2.7], [1.15, 2.75]].forEach(([x, z]) => g.add(at(mesh(new THREE.TorusGeometry(0.08, 0.014, 5, 12), PM('#5a3e22')), x, 0.08, z, 0, 0.6, 0)));
   topFlag(g, 2.75, 0, 0.3, 0.9, 0.22);
+};
+
+// ---------- portul (pe apă): ponton pe piloni, magazia în stilul civilizației, macara, butoaie ----------
+B.port = (g, K) => {
+  const c = K.civ, deckM = TM('brown_planks_05', '#e8d4b8', 0.9, 1.2), top = new THREE.Group(); top.position.y = 0.12; g.add(top);
+  g.add(blk(0.12, 0.12, 2.88, 2.88, 0.05, 0.07, deckM, 2.2));
+  for (let i = 0; i < 5; i++) [[0.16 + i * 0.67, 2.86], [2.86, 0.16 + i * 0.67]].forEach(([x, z]) => g.add(at(cyl(0.045, 0.05, 0.26, TM('medieval_wood', '#8a6a48'), 8, 2), x, -0.02, z)));
+  [[2.86, 2.86], [0.16, 2.86], [2.86, 0.16]].forEach(([x, z]) => top.add(at(cyl(0.035, 0.04, 0.12, K.timber, 8), x, 0.06, z)));
+  if (c === 'tat') { tentStriped(top, 0.95, 0.95, 0.5, 0.3, 0.38, 12); carpet(top, 1.9, 1.0, 0.4, 0.3, 0.3, 1); }
+  else if (c === 'oto') { top.add(blk(0.3, 0.3, 1.5, 1.4, 0, 0.42, K.stone, 1.6)); domeOn(top, 0.9, 0.85, 0.42, 0.3, K.lead, { drum: 0.05, drumM: K.stone, fs: 0.7 }); door(top, 'z', 0.78, 1.02, 1.4, 0.32, { style: 'arch' }); door(top, 'x', 0.72, 0.98, 1.5, 0.32, { style: 'arch' }); }
+  else hall(top, K, 0.3, 0.3, 1.55, 1.35, 0.42, { dw: 0.24, roof: { alongX: true, pitch: Math.min(K.pitch, 1.25), steps: K.civ === 'pol' } });
+  // macaraua cu o ladă atârnată
+  top.add(at(cyl(0.025, 0.03, 0.75, K.timber, 8), 2.4, 0.375, 0.55)); const jib = box(0.6, 0.03, 0.03, K.timber); at(jib, 2.6, 0.72, 0.75, 0, -Math.PI / 4, -0.35); top.add(jib);
+  top.add(at(cyl(0.003, 0.003, 0.3, PM('#3a2a1a'), 4), 2.78, 0.62, 0.93)); top.add(at(box(0.1, 0.08, 0.1, TM('raw_plank_wall', '#c8a888'), 3), 2.78, 0.44, 0.93));
+  barrel(top, 2.2, 2.3); barrel(top, 2.35, 2.42, 0.9); crate(top, 1.9, 2.55); crate(top, 2.55, 1.95, 1, 0.5); crate(top, 2.6, 2.1, 0.8, 0.2);
+  for (let i = 0; i < 3; i++) top.add(at(cyl(0.035, 0.035, 0.03, cloth('#c8b48a', 'linen'), 10), 1.4 + i * 0.12, 0.015 + i * 0.03, 2.5, 0, 0, Math.PI / 2));
+  topFlag(top, 2.75, 0, 2.75, 0.85, 0.24);
 };
 
 // ---------- centrul orașului ----------

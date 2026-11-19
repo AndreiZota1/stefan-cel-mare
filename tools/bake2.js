@@ -7,9 +7,9 @@ const arg = (n, d) => { const i = process.argv.indexOf('--' + n); return i > 0 ?
 const CIVS = arg('civ', 'mol,val,ung,pol,oto,tat').split(','), GRP = arg('grp', 'u,b,i,j').split(','), ONLY = arg('only', '') ? arg('only').split(',') : null;
 const KU = +arg('k', 1.5), KB = +arg('kb', 2);
 const UNIQ = { mol: 'raz', val: 'vit', ung: 'hus', pol: 'cpl', oto: 'ien', tat: 'nog' };
-const unitsOf = c => ['vil', 'vilf', 'mon', 'hero', 'mil1', 'mil2', 'mil3', 'mil4', 'mil5', 'spr1', 'spr2', 'spr3', 'skr1', 'skr2', 'arc1', 'arc2', 'arc3'].concat(c === 'tat' ? [] : ['gun1', 'gun2'], ['lcv1', 'lcv2', 'lcv3', 'kni1', 'kni2', 'kni3', 'har1', 'har2', UNIQ[c] + '1', UNIQ[c] + '2', 'car']);
+const unitsOf = c => ['vil', 'vilf', 'mon', 'hero', 'mil1', 'mil2', 'mil3', 'mil4', 'mil5', 'spr1', 'spr2', 'spr3', 'skr1', 'skr2', 'arc1', 'arc2', 'arc3'].concat(c === 'tat' ? [] : ['gun1', 'gun2'], ['lcv1', 'lcv2', 'lcv3', 'kni1', 'kni2', 'kni3', 'har1', 'har2', UNIQ[c] + '1', UNIQ[c] + '2', 'car', 'pesc', 'gal1', 'gal2', 'foc', 'tra']);
 const SIEGE = ['ram1', 'ram2', 'cat1', 'cat2', 'can1', 'can2', 'treb', 'car'];
-const BLDS = ['cetate', 'casa', 'joagar', 'mina', 'moara', 'ogor', 'cazarma', 'poligon', 'grajd', 'fierarie', 'targ', 'turn1', 'turn2', 'manastire', 'universitate', 'atelier', 'fortareata', 'minune'];
+const BLDS = ['port', 'cetate', 'casa', 'joagar', 'mina', 'moara', 'ogor', 'cazarma', 'poligon', 'grajd', 'fierarie', 'targ', 'turn1', 'turn2', 'manastire', 'universitate', 'atelier', 'fortareata', 'minune'];
 const WALLS = ['zid_x', 'zid_y', 'zid_p', 'poarta_x', 'poarta_y'];
 const SHARED = ['pal_x', 'pal_y', 'pal_p', 'ppal_x', 'ppal_y', 'zid_x', 'zid_y', 'zid_p', 'poarta_x', 'poarta_y', 'ruina2', 'ruina3', 'ruina4', 'ruina5', 'schela2', 'schela3', 'schela4', 'schela5'];
 const MIME = { '.js': 'text/javascript', '.html': 'text/html', '.json': 'application/json', '.jpg': 'image/jpeg', '.png': 'image/png' };

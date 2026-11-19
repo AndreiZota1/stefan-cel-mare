@@ -529,6 +529,78 @@ function gallop(H, a, amp = 0.55) {
   H.neck.rotation.z = -Math.sin(a) * 0.12;
 }
 
+// ---------- corăbiile ----------
+// coca: o cutie ascuțită la prova și la pupa, cu fundul îngust și capetele ridicate
+function hull(len, wid, h, mat) {
+  const g = new THREE.BoxGeometry(len, h, wid, 16, 2, 4), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    let x = p.getX(i), y = p.getY(i), z = p.getZ(i), t = x / (len / 2);
+    z *= (1 - Math.pow(Math.abs(t), 2.6) * 0.92) * (y < 0 ? 0.6 : 1);
+    y += t * t * h * 0.7 + (y < 0 ? 0 : 0);
+    p.setXYZ(i, x, y, z);
+  }
+  g.computeVertexNormals();
+  return mesh(g, mat);
+}
+const SHIPSTYLE = {
+  mol: { sail: 'square', hull: '#5a3e26', shields: 'round', trim: '#e8dcc0' }, val: { sail: 'square', hull: '#4a2e1e', shields: 'round', trim: '#8c1418' },
+  ung: { sail: 'square', hull: '#7a5a3a', shields: 'heater', castles: true, trim: '#2e3a2c' }, pol: { sail: 'square', hull: '#6a4a30', shields: 'heater', castles: true, trim: '#f2ece0' },
+  oto: { sail: 'lateen', hull: '#6a2a1a', stripe: '#2f7d4a', crescent: true, trim: '#d9ab3c' }, tat: { sail: 'lateen', hull: '#7a4a24', stripe: '#2a5a8a', crescent: true, trim: '#d8a640' }
+};
+function sailOn(S, st, x, h, w, y0) {
+  const g = new THREE.Group(); at(g, x, y0, 0); S.root.add(g);
+  g.add(at(cyl(0.012, 0.015, h, WOOD('#5a3a22'), 6), 0, h / 2, 0));
+  if (st.sail === 'square') {
+    g.add(at(box(0.012, 0.012, w * 1.1, WOOD('#5a3a22')), 0, h * 0.86, 0));
+    const sg = new THREE.PlaneGeometry(w, h * 0.55, 6, 4), pp = sg.attributes.position;
+    for (let i = 0; i < pp.count; i++) pp.setZ(i, Math.sin((pp.getX(i) / w + 0.5) * Math.PI) * 0.05);
+    const sl = mesh(sg, team('linen', 0.9)); at(sl, 0.03, h * 0.57, 0, 0, Math.PI / 2, 0); g.add(sl);
+  } else {
+    const sh = new THREE.Shape(); sh.moveTo(-w * 0.55, h * 0.95); sh.lineTo(w * 0.55, h * 0.3); sh.lineTo(-w * 0.35, h * 0.22); sh.lineTo(-w * 0.55, h * 0.95);
+    // vela latină (otomani, tătari): triunghi pe lungimea corăbiei, cu o vergă înclinată
+    const sl = mesh(new THREE.ShapeGeometry(sh), team('linen', 0.9)); at(sl, 0, 0, 0.012); g.add(sl);
+    const yard = cyl(0.008, 0.01, w * 1.3, WOOD('#5a3a22'), 5); at(yard, 0, h * 0.62, 0.012, 0, 0, -1.08); g.add(yard);
+  }
+  if (st.crescent) finialBall(g, 0, h, 0, true); else g.add(at(box(0.004, 0.04, 0.08, team('velvet')), 0, h + 0.01, 0.04));
+  return g;
+}
+function finialBall(g, x, y, z, crescent) { g.add(at(sph(0.012, GOLD(), 6, 4), x, y + 0.01, z)); if (crescent) g.add(at(torus(0.022, 0.005, GOLD(), 4, 10, Math.PI * 1.4), x, y + 0.05, z, 0, 0, Math.PI * 0.8)); }
+export function shipModel(vis, civ) {
+  if (vis === 'gal1') vis = 'gal';
+  const st = SHIPSTYLE[civ] || SHIPSTYLE.mol, S = { root: new THREE.Group(), oars: [] }, W = WOOD(st.hull), deck = WOOD('#8a6a48');
+  const big = vis === 'gal2' ? 1.12 : 1;
+  const L = { pesc: 0.46, gal: 0.95, gal2: 1.05, foc: 0.8, tra: 0.92 }[vis], Wd = { pesc: 0.17, gal: 0.22, gal2: 0.25, foc: 0.21, tra: 0.32 }[vis], Hh = vis === 'pesc' ? 0.09 : 0.13;
+  const hl = hull(L, Wd, Hh, W); at(hl, 0, 0.03, 0); S.root.add(hl);
+  S.root.add(at(box(L * 0.82, 0.012, Wd * 0.72, deck, 3), 0, 0.03 + Hh / 2 + 0.004, 0));
+  if (st.stripe) S.root.add(at(box(L * 0.9, 0.025, Wd * 1.0, cloth(st.stripe, 'velvet')), 0, 0.03 + Hh * 0.18, 0)).children;
+  // bordurile cu scuturi (moldoveni, munteni, unguri, polonezi)
+  if (st.shields && (vis === 'gal' || vis === 'gal2' || vis === 'tra')) {
+    const n = vis === 'tra' ? 4 : 5;
+    [1, -1].forEach(sd => { for (let i = 0; i < n; i++) { const x = -L * 0.32 + i * L * 0.64 / (n - 1), z = sd * Wd * 0.47; let sh; if (st.shields === 'round') { sh = cyl(0.032, 0.032, 0.008, team('leather', 0.7), 12); sh.rotation.x = Math.PI / 2; } else sh = box(0.05, 0.06, 0.008, team('leather', 0.7)); at(sh, x, 0.03 + Hh * 0.62, z); if (st.shields === 'round') sh.rotation.set(Math.PI / 2, 0, 0); S.root.add(sh); } });
+  }
+  if (st.castles && vis !== 'pesc') { S.root.add(at(box(L * 0.2, 0.09, Wd * 0.8, W, 3), -L * 0.36, 0.03 + Hh / 2 + 0.05, 0)); S.root.add(at(box(L * 0.14, 0.07, Wd * 0.7, W, 3), L * 0.38, 0.03 + Hh / 2 + 0.06, 0)); }
+  // vâslele galerelor
+  if (vis === 'gal' || vis === 'gal2' || vis === 'foc') {
+    const n = vis === 'foc' ? 4 : 6;
+    [1, -1].forEach(sd => { for (let i = 0; i < n; i++) { const o = new THREE.Group(); at(o, -L * 0.3 + i * L * 0.6 / (n - 1), 0.03 + Hh * 0.35, sd * Wd * 0.48); const oar = box(0.012, 0.01, 0.2, WOOD('#7a5634')); at(oar, 0, -0.03, sd * 0.09, sd * 0.35, 0, 0); o.add(oar); S.root.add(o); S.oars.push([o, sd]); } });
+  }
+  const H = vis === 'pesc' ? 0.36 : vis === 'tra' ? 0.62 : 0.66 * big;
+  sailOn(S, st, vis === 'pesc' ? 0.02 : 0.02, H, vis === 'pesc' ? 0.2 : vis === 'tra' ? 0.36 : 0.32 * big, 0.03 + Hh / 2);
+  if (vis === 'gal2') sailOn(S, st, -L * 0.3, H * 0.7, 0.2, 0.03 + Hh / 2);
+  if (vis === 'pesc') { const net = box(0.12, 0.004, 0.1, cloth('#3a3a30', 'stripes', 1)); at(net, -0.12, 0.09, 0.09, 0.4, 0, 0); S.root.add(net); S.root.add(at(cyl(0.012, 0.014, 0.06, cloth('#6a4a2a', 'wool'), 6), 0.1, 0.13, 0)); S.root.add(at(sph(0.013, SKINM('#d8a880'), 6, 4), 0.1, 0.175, 0)); }
+  if (vis === 'tra') for (let i = 0; i < 4; i++) S.root.add(at(box(0.07, 0.06, 0.07, WOOD('#a08060')), -0.25 + i * 0.12, 0.03 + Hh / 2 + 0.04, (i % 2 - 0.5) * 0.12));
+  if (vis === 'foc') { [[0.32, 0], [0.22, 0.06], [0.22, -0.06]].forEach(([x, z]) => { S.root.add(at(cyl(0.025, 0.018, 0.04, IRON(), 8), x, 0.12, z)); S.root.add(at(cone(0.022, 0.07, cloth('#ff8a2a', 'velvet', 0.6, { metal: 0 }), 8), x, 0.17, z)); }); }
+  if (vis === 'gal' || vis === 'gal2' || vis === 'foc') S.root.add(at(cone(0.025, 0.09, DARKIRON(), 6), L * 0.53, 0.02, 0, 0, 0, -Math.PI / 2));
+  S.reset = () => { S.root.position.set(0, 0, 0); S.root.rotation.x = 0; S.root.rotation.z = 0; S.oars.forEach(([o]) => o.rotation.set(0, 0, 0)); };
+  const actions = [
+    { name: 'idle', frames: 1, pose: () => {} },
+    { name: 'walk', frames: 4, pose: t => { S.root.rotation.z = Math.sin(t * TAU) * 0.035; S.root.position.y = Math.sin(t * TAU * 2) * 0.006; S.oars.forEach(([o, sd]) => { o.rotation.y = Math.sin(t * TAU) * 0.5 * sd; o.rotation.x = Math.cos(t * TAU) * 0.15 * sd; }); } },
+    { name: 'atk', frames: 4, loop: false, pose: t => { S.root.rotation.x = key([0, 0.06, 0.02, 0], t); } },
+    { name: 'die', frames: 4, loop: false, pose: t => { const e = Math.min(1, t * 1.3); S.root.rotation.x = e * 0.5; S.root.rotation.z = e * 0.25; S.root.position.y = -e * 0.14; } }
+  ];
+  return { root: S.root, reset: S.reset, actions, cell: 'siege' };
+}
+
 // vânatul: cerb, mistreț, lup (scheletul calului, cu alte proporții); ultimul cadru din „die” e animalul doborât
 function animalModel(kind) {
   const o = kind === 'deer' ? { coat: '#a8784a', mane: '#7a5634' } : kind === 'boar' ? { coat: '#3e3026', mane: '#1e1610' } : { coat: '#8a8a90', mane: '#4a4a50' };
@@ -562,6 +634,7 @@ function animalModel(kind) {
 // { root, reset, actions, cell } pentru o imagine de unitate (vis = vil, mil3, hero, raz...)
 export function unitModel(vis, civ) {
   if (vis === 'deer' || vis === 'boar' || vis === 'wolf') return animalModel(vis);
+  if (/^(pesc|gal1|gal2|foc|tra)$/.test(vis)) return shipModel(vis, civ);
   if (/^(ram|cat|can|treb|car)/.test(vis)) {
     const S = siege(vis, civ);
     const actions = [

@@ -11,7 +11,9 @@ var G = globalThis.G || (globalThis.G = {});
 
   var MAPS = [['rau', 'Valea Siretului', 'Un râu cu vaduri și poduri desparte țările.'], ['codri', 'Codrii Cosminului', 'Pădure deasă, poieni și drumuri înguste.'],
     ['stepa', 'Stepa Bugeacului', 'Câmpie deschisă, bălți, multe turme.'], ['delta', 'Delta Dunării', 'Brațe de apă, stuf și ostroave legate prin vaduri.'],
-    ['munti', 'Carpații', 'Creste de stâncă, trecători, aur și piatră din belșug.'], ['rnd', 'La întâmplare', 'O hartă aleasă de soartă.']];
+    ['munti', 'Carpații', 'Creste de stâncă, trecători, aur și piatră din belșug.'],
+    ['mare', 'Țărmul Mării Negre', 'Marea de jur împrejur: porturi, pescuit în larg, bătălii pe apă.'], ['lac', 'Lacul', 'Un lac mare în mijloc, cu bancuri de pești. Cine ține apa, ține mijlocul.'],
+    ['rnd', 'La întâmplare', 'O hartă aleasă de soartă.']];
   var MODES = [['1v1', '1 contra 1', [2]], ['1v2', '1 contra 2', [2, 2]], ['2v2', '2 contra 2', [1, 2, 2]], ['ffa3', 'Toți contra toți (3)', [2, 3]], ['ffa4', 'Toți contra toți (4)', [2, 3, 4]], ['1v3', '1 contra 3', [2, 2, 2]]];
   var DEF = { civ: 'mol', mode: '1v1', ai: ['oto', 'rnd', 'rnd'], map: 'rau', size: 0, season: 'vara', diff: 'normal', victory: 'cucerire', startAge: 0, res: 'std', popMax: 100, peace: 0, reveal: 'normal' };
   var cfg = Object.assign({}, DEF);
@@ -74,7 +76,7 @@ var G = globalThis.G || (globalThis.G = {});
       used[civ] = 1;
       players.push({ civ: civ, ai: true, team: team });
     });
-    var mapT = c.map === 'rnd' ? MAPS[Math.floor(Math.random() * 5)][0] : c.map;
+    var mapT = c.map === 'rnd' ? MAPS[Math.floor(Math.random() * (MAPS.length - 1))][0] : c.map;
     var size = c.size || (players.length > 2 ? 96 : 72);
     G.startGame({ diff: c.diff, players: players, size: size, map: { type: mapT, season: c.season }, victory: c.victory, startAge: c.startAge, res: c.res,
       popMax: c.popMax, peace: c.peace, reveal: c.reveal, aiBoth: !!G.spectate });

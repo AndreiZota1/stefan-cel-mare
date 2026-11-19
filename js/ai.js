@@ -18,7 +18,7 @@ var G = globalThis.G || (globalThis.G = {});
     D = pid === 0 ? G.DIFF.normal : (G.DIFF[S.diff] || G.DIFF.normal);
     A = S.ai[pid] || (S.ai[pid] = { wave: 0, next: Math.max(D.first, S.opt.peace || 0), reb: 0, feud: 0, threat: 0, mkt: 0, relic: 0, bell: 0, calm: 0 });
     collect();
-    if (tc && P.aiMode !== 'defend') { economy(); buildings(); }
+    if (tc && P.aiMode !== 'defend') { economy(); buildings(); naval(); }
     military();
   };
 
@@ -30,7 +30,7 @@ var G = globalThis.G || (globalThis.G = {});
   function cur(t) { return G.curType(pid, t); }
 
   function collect() {
-    my = { vils: [], army: [], mons: [], blds: [], cnt: {}, built: {}, uc: {}, hero: null, gat: { f: 0, w: 0, g: 0, s: 0 }, byR: { f: [], w: [], g: [], s: [] }, idle: [], builders: {}, siege: 0, cls: {} };
+    my = { fishers: [], navy: [], vils: [], army: [], mons: [], blds: [], cnt: {}, built: {}, uc: {}, hero: null, gat: { f: 0, w: 0, g: 0, s: 0 }, byR: { f: [], w: [], g: [], s: [] }, idle: [], builders: {}, siege: 0, cls: {} };
     tc = null;
     C.units.forEach(function (u) {
       if (u.dead || u.o !== pid) return;
@@ -43,6 +43,7 @@ var G = globalThis.G || (globalThis.G = {});
         var r = resOf(T);
         if (r) { my.gat[r]++; my.byR[r].push(u); }
       } else if (d.cls === 'mon') my.mons.push(u);
+      else if (d.naval) { if (d.fisher) my.fishers.push(u); else my.navy.push(u); }
       else if (d.cls !== 'car') {
         my.army.push(u);
         my.cls[d.cls] = (my.cls[d.cls] || 0) + 1;
@@ -378,6 +379,62 @@ var G = globalThis.G || (globalThis.G = {});
     } else return null;
     return pick(opts);
   }
+  // ---------- apa: port, bărci de pescuit, flotă ----------
+  function portSpot() {
+    var best = null, bd = 1e9, N = S.N;
+    for (var y = Math.max(1, Math.floor(tc.y) - 24); y < Math.min(N - 4, Math.floor(tc.y) + 24); y++) for (var x = Math.max(1, Math.floor(tc.x) - 24); x < Math.min(N - 4, Math.floor(tc.x) + 24); x++) {
+      var d = (x + 1.5 - tc.x) * (x + 1.5 - tc.x) + (y + 1.5 - tc.y) * (y + 1.5 - tc.y);
+      if (d >= bd || d < 36) continue;
+      if (G.canPlace(pid, 'port', x, y)) { bd = d; best = { tx: x, ty: y }; }
+    }
+    return best;
+  }
+  function naval() {
+    if (A.noWater && S.t < A.noWater) return;
+    var port = null, anyPort = false;
+    my.blds.forEach(function (b) { if (b.t === 'port') { anyPort = true; if (b.built && !port) port = b; } });
+    if (!anyPort) {
+      // portul nu așteaptă rezerva (altfel lemnul e mereu „ținut” pentru altceva): ajunge să fie 200 de lemne
+      if (my.vils.length < Math.round(11 * D.vil) || G.placeError(pid, 'port') || P.res.w < 200) return;
+      var spot = portSpot(); if (!spot) { A.noWater = S.t + 90; return; }
+      build('port', spot, 2);
+      return;
+    }
+    if (!port) return;
+    // câți pești sunt aproape de port (o dată la jumătate de minut)
+    if (!A.fishT || S.t > A.fishT) {
+      A.fishT = S.t + 30;
+      A.fishN = S.ents.filter(function (e) { return e.k === 'r' && !e.dead && (e.t === 'fishd' || e.t === 'fish') && G.dist(e, port) < 30 && G.accessible(e, true); }).length;
+    }
+    my.fishers.forEach(function (u) {
+      if (u.task) return;
+      var f = G.findRes(pid, 'fishd', u.x, u.y, 34, undefined, true) || G.findRes(pid, 'fish', u.x, u.y, 34, undefined, true);
+      if (f) G.cmdGather([u], f);
+    });
+    var R = reserve(), inQ = function (t) { return port.q.filter(function (it) { return it.u === t; }).length; };
+    var wantF = Math.min(Math.round(7 * D.vil), (A.fishN || 0) * 2);
+    if (my.fishers.length + inQ('pesc') < wantF && port.q.length < 2 && P.pop + 1 < P.cap && G.canAfford(P, G.costOf(pid, 'pesc'), R)) G.cmdTrain(port, 'pesc');
+    if (P.age < 1) return;
+    // flota: doar dacă dușmanul are corăbii sau port
+    var enemyNav = null;
+    C.units.forEach(function (e) { if (!enemyNav && !e.dead && G.enemy(pid, e.o) && G.UNITS[e.t].naval) enemyNav = e; });
+    var enemyPort = C.blds.find(function (b) { return !b.dead && b.t === 'port' && G.enemy(pid, b.o); });
+    if (!enemyNav && !enemyPort) return;
+    var wantG = Math.round([0, 4, 7, 9, 12][P.age] * D.army);
+    if (my.navy.length + inQ('gal') + inQ('gal2') + inQ('foc') < wantG && port.q.length < 2 && P.pop + 1 < P.cap) {
+      var gt = cur('gal'); if (P.age >= 2 && my.navy.length % 3 === 2 && !G.trainError(port, 'foc')) gt = 'foc';
+      if (!G.trainError(port, gt) && G.canAfford(P, G.costOf(pid, gt), R)) G.cmdTrain(port, gt);
+    }
+    // corăbiile libere vânează flota dușmană, apoi bărcile de pescuit, apoi portul
+    my.navy.forEach(function (sh) {
+      if (sh.task) return;
+      var best = null, bd = 1e9;
+      C.units.forEach(function (e) { if (e.dead || e.gin || !G.enemy(pid, e.o) || !G.UNITS[e.t].naval) return; var d = G.dist(sh, e); if (d < bd) { bd = d; best = e; } });
+      if (!best && enemyPort && G.UNITS[sh.t].rng) best = enemyPort;
+      if (best) G.cmdAttack([sh], best);
+    });
+  }
+
   function military() {
     var R = reserve(), en = enemyComp();
     var armyCap = Math.max(0, P.cap - my.vils.length);
@@ -385,7 +442,7 @@ var G = globalThis.G || (globalThis.G = {});
     var want = Math.round([5, 14, 26, 40, 50][P.age] * D.army), rich = P.res.f > 700 && P.res.g > 500;
     if (my.army.length >= want && !A.threat && !rich && P.aiMode !== 'defend') armyCap = Math.min(armyCap, my.army.length);
     my.blds.forEach(function (b) {
-      if (!b.built || b.q.length >= 2 || b.t === 'cetate' || b.t === 'targ') return;
+      if (!b.built || b.q.length >= 2 || b.t === 'cetate' || b.t === 'targ' || b.t === 'port') return;
       if (P.aiMode === 'defend' && my.army.length > 40) return;
       var list = G.trainList(b).filter(function (t) { return !G.trainError(b, t) || G.trainError(b, t).indexOf('Îți mai trebuie') === 0; });
       if (!list.length) return;

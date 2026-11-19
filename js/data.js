@@ -147,6 +147,17 @@ G.UNITS = {
   // Mănăstire, Târg
   mon:  { name: { def: 'Călugăr', oto: 'Derviș', tat: 'Derviș' }, cls: 'mon', hp: 30, atk: 0, rng: 0, rof: 1, ma: 0, pa: 0, spd: 0.75, los: 9, cost: { g: 100 }, time: 25, age: 1, r: 0.2, heal: 3,
           desc: 'Vindecă oamenii răniți din jur. Duce moaștele la mănăstire. Nu luptă.' },
+  // pe apă (se fac la port; merg doar pe apă)
+  pesc: { name: 'Barcă de pescuit', cls: 'shp', naval: 1, hp: 60, atk: 0, rng: 0, rof: 1, ma: 0, pa: 4, spd: 1.2, los: 5, cost: { w: 75 }, time: 18, age: 0, r: 0.35, fisher: 1, cap: 15,
+          desc: 'Prinde pește la mal și în larg și îl aduce la port. Peștele din larg nu se termină repede.' },
+  gal:  { name: 'Galeră', line: 'gal', tier: 1, cls: 'shp', naval: 1, hp: 120, atk: 6, rng: 5, rof: 2.5, ma: 0, pa: 6, spd: 1.25, los: 7, cost: { w: 90, g: 30 }, time: 22, age: 1, r: 0.42, proj: 'arrow', bonus: { shp: 2 },
+          desc: 'Corabie de luptă cu arcași. Bună contra bărcilor și a oamenilor de pe mal.' },
+  gal2: { name: 'Galeră de război', line: 'gal', tier: 2, cls: 'shp', naval: 1, hp: 150, atk: 7, rng: 5.5, rof: 2.5, ma: 0, pa: 7, spd: 1.3, los: 8, cost: { w: 90, g: 30 }, time: 22, age: 2, r: 0.45, proj: 'arrow', bonus: { shp: 3 },
+          desc: 'Galera întărită: mai multă viață, trage mai departe.' },
+  foc:  { name: 'Corabie incendiară', cls: 'shp', naval: 1, hp: 100, atk: 2, rng: 0, rof: 0.3, ma: 0, pa: 6, spd: 1.4, los: 5, cost: { w: 75, g: 45 }, time: 25, age: 2, r: 0.42, bonus: { shp: 2 },
+          desc: 'Aruncă foc în corăbiile de lângă ea. Topește galerele.' },
+  tra:  { name: 'Corabie de transport', cls: 'shp', naval: 1, hp: 100, atk: 0, rng: 0, rof: 1, ma: 0, pa: 6, spd: 1.35, los: 5, cost: { w: 125 }, time: 25, age: 1, r: 0.45, carry: 10,
+          desc: 'Duce până la 10 oameni peste apă. Atinge-o cu oamenii aleși ca să urce; apoi atinge malul unde vrei să coboare.' },
   car:  { name: 'Car de negoț', cls: 'car', hp: 70, atk: 0, rng: 0, rof: 1, ma: 0, pa: 2, spd: 1.0, los: 5, cost: { f: 50, w: 100 }, time: 25, age: 1, r: 0.3, garr: false,
           desc: 'Face drumul între târgurile tale și aduce aur. Cu cât drumul e mai lung, cu atât mai mult aur.' },
 
@@ -202,6 +213,8 @@ G.BLDS = {
                tech: ['up_lcv2', 'up_lcv3', 'up_kni2', 'up_kni3', 'potcoave'], desc: 'Călăreți.' },
   fierarie:  { name: 'Fierărie', n: 3, hp: 1200, cost: { w: 150 }, time: 25, age: 1, los: 3,
                tech: ['forja', 'fonta', 'furnal', 'zale1', 'zale2', 'zale3', 'sab1', 'sab2', 'sab3', 'pene', 'varf', 'bratara', 'vesta1', 'vesta2', 'vesta3'], desc: 'Arme și armuri mai bune.' },
+  port:      { name: { def: 'Port', mol: 'Schela', val: 'Schela' }, n: 3, hp: 1800, cost: { w: 150 }, time: 35, age: 0, los: 6, dock: true, drop: 'n', train: ['pesc', 'tra', 'gal', 'foc'], tech: ['up_gal2', 'carena'],
+               desc: 'Se pune pe apă, lângă mal. Bărci de pescuit, corăbii de luptă și de transport.' },
   targ:      { name: { def: 'Târg', oto: 'Bazar', tat: 'Bazar' }, n: 3, hp: 1600, cost: { w: 175 }, time: 30, age: 1, los: 4, market: true, train: ['car'], tech: ['caravana', 'breasla'],
                desc: 'Vinzi și cumperi resurse pe aur. Carele de negoț aduc aur de la alt târg.' },
   turn:      { name: 'Turn de pază', n: 2, hp: 700, cost: { w: 25, s: 125 }, time: 30, age: 1, los: 8, atk: { atk: 5, rng: 7, rof: 2 }, gar: 5, garr: G.GARR_FOOT,
@@ -222,7 +235,7 @@ G.BLDS = {
                desc: 'Minunea civilizației tale. Dacă o ții în picioare 5 minute, câștigi (la victoria prin minune).' }
 };
 G.BLDS.capcana = { name: 'Copaci tăiați', n: 1, hp: 120, cost: {}, time: 12, age: 0, los: 3, walk: true, trap: true, desc: 'Copacii tăiați pe jumătate: când trece dușmanul, cad peste el.' };
-G.BUILD_ECO = ['casa', 'joagar', 'mina', 'moara', 'ogor', 'targ', 'manastire', 'universitate', 'cetate', 'minune'];
+G.BUILD_ECO = ['casa', 'joagar', 'mina', 'moara', 'ogor', 'port', 'targ', 'manastire', 'universitate', 'cetate', 'minune'];
 G.BUILD_MIL = ['cazarma', 'poligon', 'grajd', 'fierarie', 'atelier', 'fortareata', 'turn', 'palisada', 'poartal', 'zid', 'poarta'];
 G.BUILD_LIST = G.BUILD_ECO.concat(G.BUILD_MIL);
 G.BLD_ARMOR = { m: 2, p: 8 };
@@ -324,6 +337,8 @@ G.TECHS = {
   up_kni3:   { name: 'Cavaler de elită', icon: '⬆️', age: 4, cost: { f: 1300, g: 750 }, time: 70, req: ['up_kni2'], up: ['kni2', 'kni3'], desc: 'Cei mai grei călăreți.' },
   potcoave:  { name: 'Potcoave', icon: '🧲', age: 2, cost: { f: 150 }, time: 30, desc: 'Călăreții merg cu 10% mai repede.', fx: [{ u: { cls: ['cav', 'har'] }, s: 'spd', mul: 1.1 }] },
   // Atelier de asediu
+  up_gal2:   { name: 'Galeră de război', icon: '⬆️', age: 2, cost: { f: 230, g: 100 }, time: 35, up: ['gal', 'gal2'], desc: 'Galerele: mai multă viață, trag mai departe și mai tare.' },
+  carena:    { name: 'Carena', icon: '⚓', age: 1, cost: { f: 150, w: 150 }, time: 30, fx: [{ u: { cls: ['shp'] }, s: 'hp', mul: 1.15 }, { u: { cls: ['shp'] }, s: 'pa', add: 1 }], desc: 'Corăbiile: +15% viață și +1 armură la săgeți.' },
   up_ram2:   { name: 'Berbec greu', icon: '⬆️', age: 3, cost: { f: 300 }, time: 40, up: ['ram', 'ram2'], desc: 'Berbecii: mai multă viață și lovesc mai tare.' },
   up_cat2:   { name: 'Catapultă grea', icon: '⬆️', age: 3, cost: { f: 800, g: 500 }, time: 60, up: ['cat', 'cat2'], desc: 'Catapultele lovesc mai tare, mai departe, pe mai mulți.' },
   up_can2:   { name: 'Tun de asediu', icon: '⬆️', age: 4, cost: { f: 1000, g: 800 }, time: 60, up: ['can', 'can2'], desc: 'Bombardele devin tunuri de asediu.' },
@@ -368,7 +383,8 @@ G.RESD = {
   deer:  { name: 'Cerb', r: 'f', amt: 140, block: false, rate: 0.62, lim: 3, hunt: 1, hp: 5, spd: 2.0, flee: 1 },
   boar:  { name: 'Mistreț', r: 'f', amt: 340, block: false, rate: 0.62, lim: 6, hunt: 1, hp: 60, atk: 5, spd: 1.35 },
   wolf:  { name: 'Lup', r: 'f', amt: 40, block: false, rate: 0.5, lim: 2, hunt: 1, hp: 30, atk: 4, spd: 1.75, wild: 1 },
-  fish:  { name: 'Pește', r: 'f', amt: 220, block: true, rate: 0.45, lim: 3, water: 1 }
+  fish:  { name: 'Pește', r: 'f', amt: 220, block: true, rate: 0.45, lim: 3, water: 1 },
+  fishd: { name: 'Banc de pești', r: 'f', amt: 450, block: true, rate: 0.55, lim: 4, water: 1, deep: 1 }
 };
 G.FARM_RATE = 0.4;
 G.RELIC_GOLD = 0.5; // aur pe secundă pentru fiecare moaște din mănăstire

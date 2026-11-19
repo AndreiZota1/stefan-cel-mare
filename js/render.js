@@ -1263,7 +1263,14 @@ var G = globalThis.G || (globalThis.G = {});
         ctx.beginPath(); ctx.ellipse(p[0] + bk * 3.5 * z, p[1] - 16 * z, 2.2 * z, 1.8 * z, 0, 0, 6.3); ctx.fill(); ctx.stroke();
       }
     } else drawUnitAt(ctx, u, civ, p[0], p[1], z * 1.1 * (d.hero ? 1.1 : 1));
-    if (selected || (u.hit && S.t - u.hit < 2.5)) hpBar(u, p[0], p[1] - (d.cls === 'cav' || d.cls === 'har' ? 40 : d.cls === 'sie' ? 28 : 33) * z, d.cls === 'vil' ? 16 : 20);
+    if (d.carry && u.gar && u.gar.length) { ctx.font = 'bold ' + Math.round(11 * Math.max(0.8, z)) + 'px sans-serif'; ctx.textAlign = 'center'; var lbl = '⚑' + u.gar.length, lw = ctx.measureText(lbl).width + 8; ctx.fillStyle = 'rgba(20,14,8,0.75)'; ctx.fillRect(p[0] - lw / 2, p[1] - 52 * z - 12, lw, 15); ctx.fillStyle = '#fff'; ctx.fillText(lbl, p[0], p[1] - 52 * z); ctx.textAlign = 'start'; }
+    // dâra din spatele corăbiei care merge
+    if (d.naval && u.mv > 0) {
+      var wa = (u.dir8 || 0) * Math.PI / 4 + Math.PI / 4, wdx = Math.cos(wa), wdy = Math.sin(wa), bx = -(wdx - wdy) * 24 * z, by = -(wdx + wdy) * 12 * z, qx = (-wdy - wdx) * 7 * z, qy = (-wdy + wdx) * 3.5 * z;
+      ctx.strokeStyle = 'rgba(235,245,255,0.55)'; ctx.lineWidth = 1.2 * z;
+      for (var wv = -1; wv <= 1; wv += 2) { ctx.beginPath(); ctx.moveTo(p[0] + bx * 0.15, p[1] + by * 0.15); ctx.lineTo(p[0] + bx + qx * wv, p[1] + by + qy * wv); ctx.stroke(); }
+    }
+    if (selected || (u.hit && S.t - u.hit < 2.5)) hpBar(u, p[0], p[1] - (d.cls === 'cav' || d.cls === 'har' ? 40 : d.cls === 'sie' || d.cls === 'shp' ? 34 : 33) * z, d.cls === 'vil' ? 16 : 20);
   }
 
   R.clock = function () { return clock; };
@@ -1312,7 +1319,7 @@ var G = globalThis.G || (globalThis.G = {});
     mc.width = Math.round(mc.clientWidth * d); mc.height = Math.round(mc.clientHeight * d);
   };
   var TCOL = [[96, 140, 58], [152, 128, 88], [50, 96, 150], [88, 138, 178], [128, 98, 60]];
-  var RCOL = { tree: [36, 78, 34], gold: [232, 196, 70], stone: [176, 176, 170], berry: [130, 60, 140], sheep: [240, 240, 236], relic: [255, 236, 150], deer: [170, 120, 70], boar: [90, 60, 40], wolf: [120, 120, 125], fish: [200, 230, 255] };
+  var RCOL = { tree: [36, 78, 34], gold: [232, 196, 70], stone: [176, 176, 170], berry: [130, 60, 140], sheep: [240, 240, 236], relic: [255, 236, 150], deer: [170, 120, 70], boar: [90, 60, 40], wolf: [120, 120, 125], fish: [200, 230, 255], fishd: [200, 230, 255] };
   R.drawMini = function () {
     var S = G.S; if (!S || !mc) return;
     var C = G.C, N = S.N;

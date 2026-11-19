@@ -4,7 +4,7 @@ for (const f of ['data', 'map', 'path', 'sim', 'ai']) vm.runInThisContext(fs.rea
 const G = globalThis.G;
 const seeds = +(process.env.SEEDS || 6);
 let bad = 0;
-for (const type of ['rau', 'codri', 'stepa', 'delta', 'munti']) for (const N of [72, 96, 120]) for (const nP of [2, 3, 4]) {
+for (const type of (process.env.TYPES || 'rau,codri,stepa,delta,munti,mare,lac').split(',')) for (const N of [72, 96, 120]) for (const nP of [2, 3, 4]) {
   let worst = 0, fails = [], res = { gold: 0, stone: 0, sheep: 0, relic: 0, tree: 0 };
   for (let s = 0; s < seeds; s++) {
     const t0 = Date.now();
