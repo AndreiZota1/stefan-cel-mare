@@ -63,12 +63,18 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
         T.say('iscoada', 'Doamne! Petru Aron a aflat de noi și trimite călăreți spre sat!', 'say4');
         T.wave(1, [['lcv', 3], ['mil', 3]], [70, 47], [18, 48], 'raid');
       } },
+      // muntenii vin „cu noi”: se adună la vad și atacă abia când oastea ta ajunge lângă tabăra lui Petru Aron
+      // (înainte porneau singuri, oriunde era oastea ta, și mureau înainte să ajungi)
       { id: 'army', when: function (S, T) { return T.army(0).length >= 12; }, do: function (S, T) {
         T.done('o1');
         T.say('stefan', 'Oastea e gata. Munteni, cu noi! La Doljești!', 'say5');
-        T.mode(2, 'eco'); T.aiGo(2);
+        T.moveTo(T.byTag('munteni'), 46, 46);
       } },
-      { id: 'counter', at: 720, do: function (S, T) { T.aiGo(1); } },
+      { id: 'together', after: 'army', when: function (S, T) { return T.inArea(0, 78, 47, 22, function (u) { return G.isMil(u); }).length >= 8; }, do: function (S, T) {
+        T.mode(2, 'eco'); T.aiGo(2); T.attackMove(T.byTag('munteni'), 78, 47);
+      } },
+      // contraatacul lui Petru Aron: e prima misiune, deci pe Ușor și Normal ai mai mult timp să-ți strângi oastea
+      { id: 'counter', when: function (S) { return S.t >= ({ usor: 1080, normal: 900, greu: 720, foarte: 600 }[S.diff] || 900); }, do: function (S, T) { T.aiGo(1); } },
       { id: 'half', when: function (S, T) { var b = T.get('tabara'); return b && b.hp < b.mhp * 0.5; }, do: function (S, T) {
         T.say('petru', 'Cine sunteți voi să-mi luați tronul? Țineți-i pe loc!', 'say6');
       } },

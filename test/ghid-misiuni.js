@@ -62,6 +62,87 @@ function H(c) {
       const goal = h.nearest(targets, us[0]); walls.sort((a, b) => G.dist(a, goal) - G.dist(b, goal));
       return walls.slice(0, 3);
     },
+    // ---------- asediul, ca un om: adună oastea la adăpost, tunurile bat de departe, pedestrașii le păzesc, apoi asaltul ----------
+    // o: { tags: ținte (în ordine), min: câți oșteni strânge înainte, wait: câte secunde așteaptă cel mult, home: [x,y] }
+    shooters: () => G.C.blds.filter(b => !b.dead && b.built && G.enemy(0, b.o) && G.BLDS[b.t].atk),
+    range: (u) => (G.UNITS[u.t].rng || 0),
+    campaign: (o) => {
+      const targets = [].concat(...(o.tags || []).map(t => h.alive(t))).filter(e => !e.dead);
+      const goal = targets[0] || h.foeBlds()[0] || h.foes()[0]; if (!goal) return;
+      if (c.camp && c.camp.gid !== (o.tags || []).join()) c.camp = null;
+      const st = c.camp || (c.camp = { ph: 'mass', t0: S.t, gid: (o.tags || []).join(), stage: o.stage || null });
+      const army = h.army(), shoot = h.shooters();
+      const home = o.home || (G.C.blds.find(b => b.o === 0 && b.t === 'cetate') || army[0] || goal);
+      // locul de adunare: acasă, la câteva pătrățele de cetatea ta, spre țintă (departe de zona pe care o apără dușmanul)
+      if (!st.stage) {
+        const dx = goal.x - home.x, dy = goal.y - home.y, l = Math.sqrt(dx * dx + dy * dy) || 1;
+        for (let d = 7; d >= 3 && !st.stage; d--) { const x = home.x + dx / l * d, y = home.y + dy / l * d; if (G.C.pass[Math.floor(y) * S.N + Math.floor(x)]) st.stage = [x, y]; }
+        st.stage = st.stage || [home.x + 3, home.y + 3];
+      }
+      if (st.ph === 'mass') {
+        if (h.every('mass', 5)) army.forEach(u => { if (!u.task || u.task.k !== 'atk') if (G.hyp(u.x - st.stage[0], u.y - st.stage[1]) > 5) G.cmdMove([u], st.stage[0] + (u.id % 7 - 3) * 0.7, st.stage[1] + (u.id % 5 - 2) * 0.7, false); });
+        // cine vine peste oastea adunată primește bătaie; cine fugărește prea departe e chemat înapoi
+        const near = h.foes().filter(e => G.hyp(e.x - st.stage[0], e.y - st.stage[1]) < 12); if (near.length) h.attack(near, army);
+        army.forEach(u => { if (G.hyp(u.x - st.stage[0], u.y - st.stage[1]) > 20 && u.task && u.task.k === 'atk') G.cmdMove([u], st.stage[0], st.stage[1], false); });
+        // pornește când oastea e destul de mare, a avut timp să crească (o.after) și cea mai mare parte e strânsă la loc
+        const here = army.filter(u => G.hyp(u.x - st.stage[0], u.y - st.stage[1]) < 8).length;
+        if ((army.length >= (o.min || 20) && S.t >= (o.after === undefined ? 360 : o.after) && here >= army.length * 0.7) || S.t - st.t0 > (o.wait || 900)) { st.ph = 'siege'; }
+        return;
+      }
+      if (h.every('ws', 6)) h.workshop(o.siege || 4);
+      // oastea s-a topit: înapoi acasă, refacere, apoi încă un asalt (nu câte unul sub turnuri)
+      if (army.length < (o.min || 20) * 0.35 && !(goal.k === 'b' && goal.hp < G.maxHp(goal) * 0.3)) { st.ph = 'mass'; st.t0 = S.t; army.forEach(u => G.cmdMove([u], st.stage[0], st.stage[1], false)); return; }
+      if (!h.every('siege', 2)) return;
+      const sie = army.filter(u => G.UNITS[u.t].cls === 'sie'), far = sie.filter(u => h.range(u) >= 7), rams = sie.filter(u => !h.range(u));
+      const rest = army.filter(u => G.UNITS[u.t].cls !== 'sie');
+      // când vin dușmani peste mașini, mașinile se trag în spatele oastei, iar oastea îi oprește; abia apoi asediul merge mai departe
+      if (sie.length && rest.length) {
+        // primejdie: dușmanii ieșiți de sub turnuri care se apropie de mașini (cei de sub turnuri nu le ajung: tunurile bat mai departe)
+        const sc = sie[0], danger = h.foes().filter(e => G.hyp(e.x - sc.x, e.y - sc.y) < 14 && shoot.every(b => G.hyp(b.x - e.x, b.y - e.y) > 8.5));
+        if (danger.length) {
+          h.attack(danger, rest);
+          const back = st.stage; sie.forEach(u => { if (G.hyp(u.x - back[0], u.y - back[1]) > 4) G.cmdMove([u], back[0] + (u.id % 3 - 1), back[1] + (u.id % 2), false); });
+          return;
+        }
+      }
+      const reach = h.breach(targets.length ? targets : [goal], army.length ? army : undefined);
+      const open = reach.some(t => !(t.k === 'b' && G.BLDS[t.t].wall));
+      // tunurile: întâi turnurile care ne pot lovi, apoi ținta (dacă bat până la ea), apoi zidul care o închide
+      if (far.length) {
+        const c0 = far[0], tw = shoot.filter(b => G.hyp(b.x - c0.x, b.y - c0.y) < 20).sort((a, b) => G.dist(a, c0) - G.dist(b, c0));
+        h.attack(tw.length ? tw.slice(0, 1) : (open ? reach : reach.slice(0, 1)).concat(targets), far);
+      }
+      // berbecii: la zid sau la poartă unde nu bate niciun turn; fără tunuri care să dărâme turnurile, merg oricum, cu oastea după ei
+      if (rams.length) { const w = reach.filter(t => shoot.every(b => G.hyp(b.x - t.x, b.y - t.y) > 7.5)); h.attack(w.length ? w : (open || !far.length ? reach : []), rams); }
+      // pedestrașii: lovesc pe oricine se apropie de mașini; altfel stau lângă ele, în afara bătăii turnurilor
+      const anchor = sie[0] || rest[0];
+      const foesNear = anchor ? h.foes().filter(e => G.hyp(e.x - anchor.x, e.y - anchor.y) < 11) : [];
+      const towersLeft = shoot.filter(b => anchor && G.hyp(b.x - anchor.x, b.y - anchor.y) < 16).length;
+      if (open && (!towersLeft || !sie.length)) { st.ph = 'storm'; }
+      if (st.ph === 'storm' || !sie.length) { h.attack(foesNear.length ? foesNear : reach.concat(targets), rest); return; }
+      if (foesNear.length) h.attack(foesNear, rest);
+      else rest.forEach(u => { if (!(u.task && u.task.k === 'atk') && anchor && G.hyp(u.x - anchor.x, u.y - anchor.y) > 4) G.cmdMove([u], anchor.x + (u.id % 5 - 2), anchor.y + (u.id % 3 - 1), false); });
+    },
+    // oaste pe bandă, ca un om grăbit: o cazarmă lângă casă (dacă nu e), apoi oșteni din fiecare clădire de oaste
+    trainArmy: (types, where) => {
+      const home = G.C.blds.find(b => b.o === 0 && b.t === 'cetate' && b.built);
+      const mil = G.C.blds.filter(b => b.o === 0 && !b.dead && (b.t === 'cazarma' || b.t === 'poligon' || b.t === 'grajd'));
+      if (!mil.some(b => b.t === 'cazarma') && home && !G.placeError(0, 'cazarma') && !c.placedBarracks) {
+        for (let r = 5; r < 12 && !c.placedBarracks; r++) for (let a = 0; a < 12 && !c.placedBarracks; a++) { const x = Math.round(home.x + r * Math.cos(a * 0.52)), y = Math.round(home.y + r * Math.sin(a * 0.52)); if (G.canPlace(0, 'cazarma', x, y)) { G.cmdPlace(0, 'cazarma', x, y, h.vils().slice(0, 3)); c.placedBarracks = 1; } }
+      }
+      mil.filter(b => b.built && (!b.q || b.q.length < 2)).forEach(b => { for (const t of types) if (!G.trainError(b, t)) { G.cmdTrain(b, t); break; } });
+    },
+    workshop: (want) => {
+      const P = S.players[0], home = G.C.blds.find(b => b.o === 0 && b.t === 'cetate' && b.built);
+      const ws = G.C.blds.filter(b => b.o === 0 && !b.dead && b.t === 'atelier');
+      if (!ws.length) {
+        if (!home || G.placeError(0, 'atelier')) return;
+        for (let r = 6; r < 14; r++) for (let a = 0; a < 12; a++) { const x = Math.round(home.x + r * Math.cos(a * 0.52)), y = Math.round(home.y + r * Math.sin(a * 0.52)); if (G.canPlace(0, 'atelier', x, y)) { G.cmdPlace(0, 'atelier', x, y, h.vils().slice(0, 3)); return; } }
+        return;
+      }
+      const sie = G.C.units.filter(u => u.o === 0 && !u.dead && G.UNITS[u.t].cls === 'sie').length;
+      ws.filter(b => b.built && (!b.q || b.q.length < 2)).forEach(b => { if (sie >= want) return; for (const t of ['can', 'ram', 'cat']) if (!G.trainError(b, t)) { G.cmdTrain(b, t); break; } });
+    },
     every: (key, sec) => { const v = c.mem || (c.mem = {}); if ((v[key] || -1e9) + sec <= S.t) { v[key] = S.t; return true; } return false; },
     done: (o) => T.isDone(o),
     v: () => S.scen.vars
@@ -70,9 +151,6 @@ function H(c) {
 }
 
 module.exports = {
-  // Ștefan: oastea de 12, apoi tabăra lui Petru Aron
-  // (un om strânge o oaste mare și atacă odată cu muntenii, nu câte puțini)
-  st1: { tick(c) { const h = H(c); if (h.done('o1') && (h.army().length >= 20 || c.go) && h.every('a', 4)) { c.go = 1; h.assault(['tabara']); } } },
   // Baia: ziua strângi oaste (fără să lovești), noaptea casele târgului, apoi regele
   st3: { tick(c) {
     const h = H(c); if (!h.S.night || !h.every('a', 3)) return;
@@ -83,7 +161,7 @@ module.exports = {
   st4: { tick(c) {
     const h = H(c), v = h.v();
     if (!c.horns) { c.horns = 1; const a = h.army(u => h.G.UNITS[u.t].cls === 'cav').concat(h.army()).slice(0, 3); [[18, 40], [20, 56], [24, 72]].forEach((p, i) => a[i] && h.G.cmdMove([a[i]], p[0], p[1], false)); c.hornU = a.map(u => u.id); }
-    if ((v.waves || 0) >= 3 && h.done('o1') && h.every('a', 4)) h.assault(['tabara'], h.army(u => !(c.hornU || []).includes(u.id) || h.done('o2')));
+    if (h.done('o1')) h.campaign({ tags: ['tabara', 'garda'], min: 25, after: 0 });
   } },
   // Neamțul: garnizoana stă în ziduri și trage; oastea lui Ștefan lovește tunurile și trebușetele care bat cetatea,
   // apoi, cu oastea nouă, restul asediului și tabăra
@@ -106,18 +184,6 @@ module.exports = {
     const h = H(c); if (!h.done('o1') || !h.every('m', 3)) return;
     const hero = h.hero(); if (hero) h.G.cmdMove([hero], 72, 7, false); h.move(72, 9);
   } },
-  // Dristra: berbecii și oastea la fortăreață; apoi cetatea ta pe locul ei, apărată
-  mi3: { tick(c) {
-    const h = H(c);
-    if (!h.done('o1')) { if (h.every('a', 4) && h.army().length >= 12) h.assault(['dristra']); return; }
-    if (!c.built && h.every('b', 3)) {
-      const vs = h.vils().slice(0, 8), err = h.G.placeError(0, 'cetate');
-      if (!err) for (let r = 0; r < 8 && !c.built; r++) for (let a = 0; a < 8 && !c.built; a++) { const x = Math.round(61 + r * Math.cos(a * 0.785)), y = Math.round(69 + r * Math.sin(a * 0.785)); if (h.G.canPlace(0, 'cetate', x, y)) { h.G.cmdPlace(0, 'cetate', x, y, vs); c.built = 1; } }
-    }
-    if (h.every('d', 4)) { const f = h.foes().filter(u => h.G.hyp(u.x - 62, u.y - 70) < 25); if (f.length) h.attack(f); }
-  } },
-  // Târgoviște: curtea și Vladislav
-  vl1: { tick(c) { const h = H(c); if (h.army().length >= 18 && h.every('a', 4)) { const k = h.G.heroOf(1); h.attack(h.breach(h.alive('curtea').concat(k ? [k] : []))) || h.assault([]); } } },
   // Poenari: piatră, apoi fortăreața la steag și două turnuri lângă ea (turnurile cer și ele piatră)
   vl2: { tick(c) {
     const h = H(c), G = h.G, P = h.S.players[0], vs = h.vils();
@@ -152,13 +218,33 @@ module.exports = {
     if (!h.done('o1')) { if (h.army().length >= 20 && h.every('a', 4)) { const k = h.G.heroOf(1); h.attack(h.alive('oastea').concat(k ? [k] : [])) || h.assault([]); } return; }
     const hero = h.hero(); if (hero && h.every('e', 3)) h.G.cmdMove([hero], 16, 16, false); if (h.every('m', 4)) h.amove(18, 18);
   } },
-  // Unirea: întâi Suceava, apoi Hotinul
-  mh4: { tick(c) { const h = H(c); if (h.army().length >= 22 && h.every('a', 4)) h.assault(['suceava', 'garda_sv', 'hotin', 'garda_ho']); } },
-  // Iarna cea lungă: zidurile, apoi fortăreața din trecătoare
-  ia2: { tick(c) { const h = H(c); if (h.army().length >= 18 && h.every('a', 4)) h.assault(['fort']); } },
-  // Constantinopol: bombardele la ziduri, apoi palatul și împăratul
-  me1: { tick(c) {
+  // Doljești: o oaste mare, adunată pe malul nostru, apoi tabăra lui Petru Aron (cu muntenii)
+  st1: { tick(c) {
+    const h = H(c); if (h.every('tr', 3)) h.trainArmy(['spr', 'mil', 'arc']);
+    if (!h.done('o1')) { h.army().forEach(u => { if (u.x > 50 && u.task && u.task.k === 'atk') h.G.cmdMove([u], 28, 46, false); }); return; }
+    h.campaign({ tags: ['tabara'], min: 18, after: 0, stage: [44, 46] });
+  } },
+  // Chilia: tunurile dărâmă turnurile de departe, berbecii poarta, apoi fortăreața
+  st2: { tick(c) { H(c).campaign({ tags: ['chilia'], min: 32, after: 420 }); } },
+  // Dristra: asediul fortăreței; apoi cetatea ta pe locul ei, apărată
+  mi3: { tick(c) {
     const h = H(c);
-    if (h.army().length >= 20 && h.every('a', 4)) { const k = h.G.heroOf(1); h.attack(h.breach(h.alive('vlaherne').concat(k ? [k] : []))) || h.assault([]); }
-  } }
+    if (!h.done('o1')) { h.campaign({ tags: ['dristra'], min: 34, after: 420 }); return; }
+    if (!c.built && h.every('b', 3)) {
+      const vs = h.vils().slice(0, 8), err = h.G.placeError(0, 'cetate');
+      if (!err) for (let r = 0; r < 8 && !c.built; r++) for (let a = 0; a < 8 && !c.built; a++) { const x = Math.round(61 + r * Math.cos(a * 0.785)), y = Math.round(69 + r * Math.sin(a * 0.785)); if (h.G.canPlace(0, 'cetate', x, y)) { h.G.cmdPlace(0, 'cetate', x, y, vs); c.built = 1; } }
+    }
+    if (h.every('d', 4)) { const f = h.foes().filter(u => h.G.hyp(u.x - 62, u.y - 70) < 25); if (f.length) h.attack(f); }
+  } },
+  // Târgoviște: palisada, curtea și Vladislav
+  vl1: { tick(c) { const h = H(c); h.campaign({ tags: ['curtea'], min: 24, after: 960 }); const k = h.G.heroOf(1); if (k && c.camp && c.camp.ph === 'storm' && h.every('k', 4)) h.attack([k], h.army(u => h.G.UNITS[u.t].cls === 'cav')); } },
+  // Unirea: întâi Suceava, apoi Hotinul
+  mh4: { tick(c) { const h = H(c); h.campaign({ tags: h.alive('suceava').length ? ['suceava'] : ['hotin'], min: 45, after: 300 }); } },
+  // Iarna cea lungă: zidurile trecătorii, apoi fortăreața
+  // (turcii atacă ei primii, la minutul 10: îi aștepți acasă, apoi contraataci)
+  ia2: { tick(c) { H(c).campaign({ tags: ['fort'], min: 30, after: 780 }); } },
+  // Constantinopol: tunurile și trebușetele sparg zidul, apoi palatul Vlaherne și împăratul
+  me1: { tick(c) { const h = H(c); h.campaign({ tags: ['vlaherne'], min: 30 }); const k = h.G.heroOf(1); if (k && c.camp && c.camp.ph === 'storm' && h.every('k', 4)) h.attack([k], h.army(u => h.G.UNITS[u.t].cls !== 'sie')); } },
+  // Valea Albă: tunurile la palisadă, apoi tabăra lui Ștefan
+  me2: { tick(c) { H(c).campaign({ tags: ['tabara'], min: 30 }); } }
 };

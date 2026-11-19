@@ -19,10 +19,11 @@ function safeHero(h, st) {
   h.noAi = true;
   if (h.gin) return;
   if (h.hp < G.maxHp(h) * 0.5) st.heroLow++;
-  const homes = G.C.blds.filter(b => b.o === 0 && !b.dead && b.built && G.BLDS[b.t].gar && (b.t === 'cetate' || b.t === 'fortareata' || b.t === 'turn'));
+  // doar clădirile în care mai e loc (la bătaia clopotului, țăranii umplu cetatea)
+  const homes = G.C.blds.filter(b => b.o === 0 && !b.dead && b.built && G.BLDS[b.t].gar && (b.t === 'cetate' || b.t === 'fortareata' || b.t === 'turn') && (b.gar || []).length < G.BLDS[b.t].gar);
   if (homes.length) { homes.sort((a, b) => G.dist(a, h) - G.dist(b, h)); if (!(h.task && h.task.k === 'gar')) G.cmdGarrison([h], homes[0]); return; }
   let foe = null, fd = 1e9; G.C.units.forEach(u => { if (!u.dead && G.enemy(0, u.o) && G.isMil(u)) { const d = G.dist(u, h); if (d < fd) { fd = d; foe = u; } } });
-  if (foe && fd < 12) { const dx = h.x - foe.x, dy = h.y - foe.y, l = Math.sqrt(dx * dx + dy * dy) || 1; G.cmdMove([h], Math.max(1, Math.min(G.S.N - 2, h.x + dx / l * 6)), Math.max(1, Math.min(G.S.N - 2, h.y + dy / l * 6)), false); }
+  if (foe && fd < 16) { const dx = h.x - foe.x, dy = h.y - foe.y, l = Math.sqrt(dx * dx + dy * dy) || 1; G.cmdMove([h], Math.max(1, Math.min(G.S.N - 2, h.x + dx / l * 6)), Math.max(1, Math.min(G.S.N - 2, h.y + dy / l * 6)), false); }
 }
 function play(id, diff) {
   G.newGame(T.options(id, diff)); T.begin(id);
