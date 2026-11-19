@@ -1046,6 +1046,8 @@ var G = globalThis.G || (globalThis.G = {});
       var sp = natSprite('sheep', Math.sin(clock * 0.7 + e.id * 1.7) > 0.3 ? 1 : 0);
       if (!sp) { drawSheep(ctx, e, p[0], p[1], z); return; }
       var ks = z * 1.1;
+      // oaia din care se strânge hrană stă culcată pe o parte, ca în AoE2
+      if (e.amt < G.RESD.sheep.amt) { ctx.save(); ctx.translate(p[0], p[1] - 2 * z); ctx.rotate((e.id % 2 ? 1 : -1) * 1.35); ctx.globalAlpha = 0.92; ctx.drawImage(sp.c, -sp.ax * ks * 0.9, -sp.ay * ks * 0.55, sp.w * ks * 0.9, sp.h * ks * 0.9); ctx.restore(); return; }
       if (e.id % 2) { ctx.save(); ctx.translate(p[0], p[1]); ctx.scale(-1, 1); ctx.drawImage(sp.c, -sp.ax * ks, -sp.ay * ks, sp.w * ks, sp.h * ks); ctx.restore(); }
       else ctx.drawImage(sp.c, p[0] - sp.ax * ks, p[1] - sp.ay * ks, sp.w * ks, sp.h * ks);
       return;

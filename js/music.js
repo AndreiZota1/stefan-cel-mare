@@ -19,6 +19,7 @@ var G = globalThis.G || (globalThis.G = {});
     hijaz: { root: 146.83, peace: HIJAZ, battle: HIJAZ, lead: 'ney', pluck: 'oud', war: 'zurna' },
     stepa: { root: 110, peace: [0, 3, 5, 7, 10, 12, 15], battle: [0, 3, 5, 7, 10, 12, 15], lead: 'flute', pluck: 'dombra', war: 'horn', gallop: true }
   };
+  Object.keys(STYLES).forEach(function (k) { STYLES[k].name = k; });
   var ST = STYLES.doina;
   Mu.setCiv = function (civ) { ST = STYLES[(G.CIVS[civ] || {}).music] || STYLES.doina; ROOT = ST.root; DOINA = ST.peace; HIJAZ = ST.battle; };
   function hz(deg, scale, oct) {
@@ -116,15 +117,15 @@ var G = globalThis.G || (globalThis.G = {});
     else if (ST.lead === 'recorder') flute(f * 2, t, dur, vel * 0.8);
     else flute(f, t, dur, vel);
   }
-  function drum(t, vel, low) {
+  function drum(t, vel, low, dest) {
     var o = ac.createOscillator(), g = ac.createGain();
     o.type = 'sine'; o.frequency.setValueAtTime(low ? 90 : 160, t); o.frequency.exponentialRampToValueAtTime(low ? 45 : 70, t + 0.18);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vel * 0.5, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
-    o.connect(g); g.connect(moodGain.battle); o.start(t); o.stop(t + 0.35);
+    o.connect(g); g.connect(dest || moodGain.battle); o.start(t); o.stop(t + 0.35);
     var n = ac.createBufferSource(), nf = ac.createBiquadFilter(), ng = ac.createGain();
     n.buffer = G.Audio.noiseBuf(); nf.type = 'lowpass'; nf.frequency.value = low ? 600 : 1800;
     ng.gain.setValueAtTime(0.0001, t); ng.gain.exponentialRampToValueAtTime(vel * 0.12, t + 0.003); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
-    n.connect(nf); nf.connect(ng); ng.connect(moodGain.battle); n.start(t, R() * 0.5); n.stop(t + 0.15);
+    n.connect(nf); nf.connect(ng); ng.connect(dest || moodGain.battle); n.start(t, R() * 0.5); n.stop(t + 0.15);
   }
   function horn(f, t, dur, vel) {
     var o = ac.createOscillator(), o2 = ac.createOscillator(), f1 = ac.createBiquadFilter(), g = ac.createGain();
@@ -136,7 +137,17 @@ var G = globalThis.G || (globalThis.G = {});
   }
 
   // ---------- compoziția ----------
-  var deg = 4, phraseLeft = 0, rest = 0;
+  var deg = 4, phraseLeft = 0, rest = 0, phrases = 0, themeQ = [];
+  // tema fiecărui stil: o frază fixă care revine din când în când, ca să rămână în minte
+  var THEMES = {
+    doina: [[4, 0.84], [5, 0.42], [4, 0.42], [2, 0.84], [1, 0.42], [2, 0.42], [0, 1.68]],
+    ungar: [[0, 0.42], [2, 0.42], [4, 0.84], [5, 0.42], [4, 0.42], [2, 0.84], [0, 1.26]],
+    hijaz: [[0, 0.42], [1, 0.28], [3, 0.84], [2, 0.42], [1, 0.42], [0, 1.26]],
+    stepa: [[0, 0.28], [2, 0.28], [4, 0.56], [2, 0.28], [4, 0.28], [7, 0.84], [4, 1.12]]
+  };
+  // muzica crește odată cu țara: fluier singur la început, apoi țambal, a doua voce și o tobă domoală
+  Mu.age = 0;
+  Mu.setAge = function (a) { Mu.age = a || 0; };
   function nextDegree() {
     var r = R(), d;
     if (r < 0.62) d = R() < 0.5 ? 1 : -1;
@@ -153,12 +164,19 @@ var G = globalThis.G || (globalThis.G = {});
       if (!bat) {
         // doina: fraze libere de fluier, cu pauze și țambal rar
         if (rest > 0) { rest--; next += 0.42; if (R() < 0.25) plk(hz([0, 2, 4][(R() * 3) | 0], DOINA, 1), t, 0.6); continue; }
-        if (phraseLeft <= 0) { phraseLeft = 4 + ((R() * 6) | 0); }
-        var d = phraseLeft === 1 ? (R() < 0.6 ? 0 : 4) : nextDegree();
-        var len = [0.42, 0.42, 0.84, 0.84, 1.26, 0.28][(R() * 6) | 0] * (phraseLeft === 1 ? 2.2 : 1);
-        if (R() < 0.18) lead(hz(d + 1, DOINA, 1), t, 0.07, 0.6); // ornament
-        lead(hz(d, DOINA, 1), t + (R() < 0.18 ? 0.07 : 0), len, 0.7 + R() * 0.3);
-        if (step % 4 === 0) plk(hz(d - 7, DOINA, 1), t, 0.45);
+        if (phraseLeft <= 0) {
+          phrases++;
+          if (phrases % 5 === 2) { themeQ = (THEMES[ST.name] || THEMES.doina).slice(); phraseLeft = themeQ.length; }
+          else phraseLeft = 4 + ((R() * 6) | 0);
+        }
+        var d, len, th = themeQ.length ? themeQ.shift() : null;
+        if (th) { d = th[0]; len = th[1]; deg = d; }
+        else { d = phraseLeft === 1 ? (R() < 0.6 ? 0 : 4) : nextDegree(); len = [0.42, 0.42, 0.84, 0.84, 1.26, 0.28][(R() * 6) | 0] * (phraseLeft === 1 ? 2.2 : 1); }
+        if (!th && R() < 0.18) lead(hz(d + 1, DOINA, 1), t, 0.07, 0.6); // ornament
+        lead(hz(d, DOINA, 1), t + (!th && R() < 0.18 ? 0.07 : 0), len, 0.7 + R() * 0.3);
+        if (Mu.age >= 2 && (th || R() < 0.3)) lead(hz(d + 2, DOINA, 1), t + 0.02, len, 0.35); // a doua voce, la terță
+        if (step % (Mu.age >= 1 ? 2 : 4) === 0) plk(hz(d - 7, DOINA, 1), t, Mu.age >= 1 ? 0.5 : 0.45);
+        if (Mu.age >= 3 && step % 4 === 0) drum(t, 0.18, true, moodGain.peace);
         phraseLeft--; step++;
         next += len;
         if (phraseLeft <= 0) rest = 2 + ((R() * 5) | 0);

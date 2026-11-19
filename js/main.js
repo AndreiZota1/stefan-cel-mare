@@ -74,7 +74,7 @@ var G = globalThis.G || (globalThis.G = {});
     G.newGame(o);
     afterLoad(null);
     if (G.Voci && G.Voci.load) G.S.players.forEach(function (P) { G.Voci.load(P.civ); });
-    if (G.Music && G.Music.setCiv) G.Music.setCiv(G.S.players[0].civ);
+    if (G.Music && G.Music.setCiv) { G.Music.setCiv(G.S.players[0].civ); if (G.Music.setAge) G.Music.setAge(G.S.players[0].age); }
     if (!o.scen) {
       var S = G.S, me = S.players[0], foes = S.players.filter(function (P) { return G.enemy(0, P.id); }), fr = S.players.filter(function (P) { return P.id && G.ally(0, P.id); });
       G.msg('Ești ' + G.CIVS[me.civ].name + '. Te înfrunți cu: ' + foes.map(function (P) { return G.CIVS[P.civ].name; }).join(', ') + (fr.length ? '. Aliați: ' + fr.map(function (P) { return G.CIVS[P.civ].name; }).join(', ') : '') + '.', 'good');
@@ -92,7 +92,7 @@ var G = globalThis.G || (globalThis.G = {});
     try { G.deserialize(str); } catch (e) { alert('Salvarea nu s-a putut citi.'); return; }
     afterLoad(meta && meta.cam);
     if (G.Voci && G.Voci.load) G.S.players.forEach(function (P) { G.Voci.load(P.civ); });
-    if (G.Music && G.Music.setCiv) G.Music.setCiv(G.S.players[0].civ);
+    if (G.Music && G.Music.setCiv) { G.Music.setCiv(G.S.players[0].civ); if (G.Music.setAge) G.Music.setAge(G.S.players[0].age); }
     if (G.S.scen && G.Camp && G.Camp.loadNar) G.Camp.loadNar(G.S.scen.id, function () {});
     G.msg('Continuăm de unde ai rămas.', 'info');
   };
