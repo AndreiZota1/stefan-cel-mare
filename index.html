@@ -114,6 +114,8 @@
   #endStats { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px; }
   #endStats td, #endStats th { padding: 3px 6px; border-bottom: 1px solid #ffffff12; }
   #endStats td:first-child { text-align: left; color: #d8c9a8; }
+  #endObj { text-align: left; margin: 8px 0 4px; font-size: 14px; line-height: 1.45; }
+  #endObj div { padding: 1px 0; } #endObj .ok { color: #9be38a; } #endObj .no { color: #ff8a7a; } #endObj .op { color: #bfb39a; }
   #endGraph { width: 100%; height: 110px; background: #00000030; border-radius: 6px; margin: 4px 0 6px; }
   .btn.big { font-size: 18px; padding: 13px; }
   .btn.go { background: linear-gradient(#3f7a2e, #24461a); border-color: #8fd06a; }
@@ -341,10 +343,11 @@
   <div class="panel" style="max-width:640px">
     <h2 id="endT"></h2>
     <div id="endS"></div>
+    <div id="endObj"></div>
     <table id="endStats"></table>
     <canvas id="endGraph"></canvas>
     <button class="btn go" id="eNext" style="display:none">Misiunea următoare ▶</button>
-    <div class="row2"><button class="btn" id="eRetry">Mai joacă o dată</button><button class="btn" id="eAgain">Meniul principal</button></div>
+    <div class="row2"><button class="btn" id="eRetry">Mai joacă o dată</button><button class="btn" id="eCamp" style="display:none">Campania</button><button class="btn" id="eAgain">Meniul principal</button></div>
   </div>
 </div>
 
@@ -352,7 +355,7 @@
 <div id="say"></div>
 <div id="rotate"><div>📱</div>Întoarce telefonul pe orizontală</div>
 
-<script>var G = globalThis.G || (globalThis.G = {}); G.VER = 'bc54201f';</script>
+<script>var G = globalThis.G || (globalThis.G = {}); G.VER = '41d90cf2';</script>
 <script src="js/data.js?v=1e985cb5"></script>
 <script src="js/map.js?v=5f062507"></script>
 <script src="js/path.js?v=e444ccd4"></script>
@@ -373,14 +376,14 @@
 <script src="js/ui.js?v=c5f28d44"></script>
 <script src="js/input.js?v=58993dcd"></script>
 <script src="js/trig.js?v=2ff9cb41"></script>
-<script src="js/campaign.js?v=ba41d037"></script>
+<script src="js/campaign.js?v=83fbdf29"></script>
 <script src="js/camp-stefan.js?v=b89a5fc3" onerror="void 0"></script>
 <script src="js/camp-alte.js?v=2d379f90" onerror="void 0"></script>
 <script src="js/camp-domni.js?v=177ed2c4" onerror="void 0"></script>
 <script src="js/camp-noi.js?v=a732b425" onerror="void 0"></script>
-<script src="js/menu.js?v=a242efa8"></script>
+<script src="js/menu.js?v=54f7cfb9"></script>
 <script src="js/poze.js?v=cda1bcf8" onerror="void 0"></script>
 <script src="js/cinematic.js?v=2f1eaf72"></script>
-<script src="js/main.js?v=7c62908c"></script>
+<script src="js/main.js?v=09e963b6"></script>
 </body>
 </html>

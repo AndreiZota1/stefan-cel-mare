@@ -110,11 +110,12 @@ var G = globalThis.G || (globalThis.G = {});
   };
   G.pause = function () { if (!G.running) return; G.paused = true; G.saveGame(); show('menu', true); };
   G.resume = function () { G.paused = false; show('menu', false); show('help', false); };
-  G.toStart = function () {
-    G.saveGame();
-    G.running = false; G.paused = false;
+  G.toStart = function () { G.saveGame(); G.toMenu(); };
+  // meniul principal, fără salvare (după o misiune terminată nu e nimic de continuat)
+  G.toMenu = function () {
+    G.running = false; G.paused = false; G.endCamp = null;
     document.body.classList.remove('playing');
-    show('menu', false); show('end', false);
+    show('menu', false); show('end', false); if ($('camp')) show('camp', false); if ($('story')) show('story', false);
     refreshStart(); show('start', true);
     setTimeout(startDemo, 50);
   };
@@ -139,9 +140,10 @@ var G = globalThis.G || (globalThis.G = {});
     G.running = false;
     document.body.classList.remove('playing');
     try { localStorage.removeItem(SAVE); localStorage.removeItem(SAVE + '_meta'); } catch (e) {}
-    if (S.scen && G.Camp && G.Camp.onEnd) { if (G.Menu.award) G.Menu.award(S, win); G.Camp.onEnd(win); return; }
+    if (S.scen && G.Camp && G.Camp.onEnd) { G.Camp.onEnd(win); return; }
+    G.endCamp = null;
     G.Menu.endScreen(S, win);
-    $('eNext').style.display = 'none'; $('eRetry').style.display = '';
+    $('eNext').style.display = 'none'; $('eRetry').style.display = ''; $('eRetry').textContent = 'Mai joacă o dată'; $('eCamp').style.display = 'none';
     show('end', true);
   }
 
@@ -189,14 +191,21 @@ var G = globalThis.G || (globalThis.G = {});
     if ($('bChat')) $('bChat').addEventListener('click', function () { G.UI.openChat(); });
     if (G.Camp && G.Camp.open) $('bCamp').addEventListener('click', G.Camp.open); else $('bCamp').style.display = 'none';
     $('mTree').addEventListener('click', function () { G.Menu.openTree(); });
-    $('eRetry').addEventListener('click', function () { show('end', false); if (G.lastStart) G.startGame(JSON.parse(JSON.stringify(G.lastStart))); });
+    $('eRetry').addEventListener('click', function () {
+      show('end', false);
+      if (G.endCamp) G.Trig.start(G.endCamp.id, G.endCamp.diff);
+      else if (G.lastStart) G.startGame(JSON.parse(JSON.stringify(G.lastStart)));
+    });
+    // la campanii: povestea de după victorie, apoi harta campaniei
+    $('eNext').addEventListener('click', function () { if (G.endCamp && G.endCamp.win) { show('end', false); G.Camp.story(G.endCamp.id, 'outro'); } });
+    $('eCamp').addEventListener('click', function () { show('end', false); G.Camp.open(); });
     $('bContinue').addEventListener('click', G.continueGame);
     $('bHelp').addEventListener('click', function () { show('help', true); });
     $('helpClose').addEventListener('click', function () { show('help', false); });
     $('mResume').addEventListener('click', G.resume);
     $('mHelp').addEventListener('click', function () { show('help', true); });
     $('mExit').addEventListener('click', G.toStart);
-    $('eAgain').addEventListener('click', function () { show('end', false); refreshStart(); show('start', true); setTimeout(startDemo, 50); });
+    $('eAgain').addEventListener('click', function () { G.toMenu(); });
     function fillHelp() {
       var desk = document.body.classList.contains('desk');
       $('helpList').innerHTML = (desk ? G.HELP_DESK : G.HELP).map(function (h) { return '<li><span>' + h[0] + '</span><div>' + h[1] + '</div></li>'; }).join('');

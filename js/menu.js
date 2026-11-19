@@ -172,6 +172,7 @@ var G = globalThis.G || (globalThis.G = {});
     $('endT').textContent = title || (win ? 'Victorie!' : 'Înfrângere');
     $('endT').className = win ? 'win' : 'lose';
     $('endS').textContent = sub || (win ? 'Dușmanii tăi au fost învinși. Țara e liberă!' : 'Ai pierdut de data asta. Mai încerci o dată?');
+    if ($('endObj')) $('endObj').innerHTML = '';
     var fresh = M.award(S, win), md = $('endMd');
     if (!md) { md = document.createElement('div'); md.id = 'endMd'; $('endS').parentNode.insertBefore(md, $('endS').nextSibling); }
     md.innerHTML = fresh.length ? '<div class="mdnew">🏅 Medalii noi: ' + MEDALS.filter(function (x) { return fresh.indexOf(x[0]) >= 0; }).map(function (x) { return x[1] + ' ' + esc(x[2]); }).join(' · ') + '</div>' : '';

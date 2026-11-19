@@ -205,7 +205,8 @@ G.NAR = G.NAR || {};
     $('campBox').innerHTML = html;
     $('campBox').querySelectorAll('[data-c]').forEach(function (b) { b.addEventListener('click', function () { curC = +b.dataset.c; render(); }); });
     $('campBox').querySelectorAll('[data-m]').forEach(function (b) { b.addEventListener('click', function () { Camp.story(b.dataset.m, 'intro'); }); });
-    $('cBack').addEventListener('click', function () { show('camp', false); cancelAnimationFrame(raf); });
+    // înapoi: la meniul principal (după o misiune, meniul nu mai stă dedesubt)
+    $('cBack').addEventListener('click', function () { show('camp', false); cancelAnimationFrame(raf); if (!$('start').classList.contains('on')) G.toMenu(); });
     var t0 = performance.now(), cv = $('campMap');
     var marks = c.scen.map(function (id, i) { var m = G.MISSIONS[id]; return { lon: m.lon, lat: m.lat, n: i + 1, st: prog.done[id] ? 2 : unlocked(c, i) ? 1 : 0, label: '' }; });
     cancelAnimationFrame(raf);
@@ -223,8 +224,8 @@ G.NAR = G.NAR || {};
       (ph === 'lose' ? '<p class="sp on">' + esc(G.S && G.S.scen && G.S.scen.why ? G.S.scen.why : (m.loseText || 'Misiunea a eșuat.')) + '</p>' :
         texts.map(function (p, i) { return '<p class="sp" data-p="' + i + '">' + esc(p) + '</p>'; }).join('')) + '</div></div>';
     html += '<div class="row2">' + (ph === 'intro' ? '<button class="btn" id="stBack">Înapoi</button>' + diffSel + '<button class="btn go" id="stGo">⚔️ Începe misiunea</button>'
-      : ph === 'lose' ? '<button class="btn" id="stBack">Campania</button><button class="btn go" id="stRetry">Încearcă din nou</button>'
-      : '<button class="btn" id="stBack">Campania</button>' + (nextOf(id) ? '<button class="btn go" id="stNext">Misiunea următoare ▶</button>' : '')) + '</div>';
+      : ph === 'lose' ? '<button class="btn" id="stMenu">Meniul principal</button><button class="btn" id="stBack">Campania</button><button class="btn go" id="stRetry">Încearcă din nou</button>'
+      : '<button class="btn" id="stMenu">Meniul principal</button><button class="btn" id="stBack">Campania</button>' + (nextOf(id) ? '<button class="btn go" id="stNext">Misiunea următoare ▶</button>' : '')) + '</div>';
     $('storyBox').innerHTML = html;
     show('camp', false); show('story', true); show('end', false);
     if (G.Coloana && ph === 'intro') G.Coloana.set('poveste');
@@ -262,6 +263,7 @@ G.NAR = G.NAR || {};
     sp.forEach(function (e, j) { e.addEventListener('click', function () { playPara(j); }); });
     Camp.loadNar(id, function () { if (sp.length) playPara(0); });
     if ($('stBack')) $('stBack').addEventListener('click', function () { stopAudio(); show('story', false); Camp.open(); });
+    if ($('stMenu')) $('stMenu').addEventListener('click', function () { stopAudio(); G.toMenu(); });
     if ($('stGo')) $('stGo').addEventListener('click', function () { prog.diff = $('stDiff').value; saveProg(); stopAudio(); show('story', false); G.Trig.start(id, prog.diff); });
     if ($('stRetry')) $('stRetry').addEventListener('click', function () { stopAudio(); show('story', false); G.Trig.start(id, prog.diff || 'normal'); });
     if ($('stNext')) $('stNext').addEventListener('click', function () { stopAudio(); Camp.story(nextOf(id), 'intro'); });
@@ -294,11 +296,22 @@ G.NAR = G.NAR || {};
     var a = new Audio(src); a.volume = 1; a.play().catch(function () {});
   };
 
-  // ---------- sfârșitul misiunii ----------
+  // ---------- sfârșitul misiunii: întâi rezultatul și statisticile (ca în AoE), apoi povestea ----------
   Camp.onEnd = function (win) {
-    var S = G.S, id = S.scen.id;
-    if (win) { prog.done[id] = S.diff; saveProg(); Camp.story(id, 'outro'); }
-    else Camp.story(id, 'lose');
+    var S = G.S, id = S.scen.id, m = G.MISSIONS[id], c = G.CAMPAIGNS.filter(function (x) { return x.scen.indexOf(id) >= 0; })[0];
+    if (win) { prog.done[id] = S.diff; saveProg(); }
+    G.endCamp = { id: id, diff: S.diff, win: win };
+    show('end', true);
+    G.Menu.endScreen(S, win, win ? (c && !nextOf(id) ? 'Campania e câștigată!' : 'Victorie!') : 'Înfrângere',
+      m.title + ' · ' + m.year + (win ? (c && !nextOf(id) ? ' · ai dus la capăt campania „' + c.name + '”.' : '') : ' · ' + (S.scen.why || m.loseText || 'Misiunea a eșuat.')));
+    // obiectivele: ✓ ce ai făcut, ✗ ce ai ratat, ○ ce a rămas nefăcut („X trebuie să trăiască” e îndeplinit dacă ai câștigat)
+    $('endObj').innerHTML = S.scen.obj.map(function (o) {
+      var keep = /trebuie să trăiască/.test(o.text), ok = o.st === 1 || (win && !o.st && keep), no = o.st === 2;
+      return '<div class="' + (ok ? 'ok' : no ? 'no' : 'op') + '">' + (ok ? '✓ ' : no ? '✗ ' : '○ ') + esc(o.text) + (o.sec && !keep && !ok ? ' <i>(opțional)</i>' : '') + '</div>';
+    }).join('');
+    $('eNext').textContent = 'Sfârșitul poveștii ▶'; $('eNext').style.display = win ? '' : 'none';
+    $('eRetry').textContent = win ? 'Joacă din nou' : 'Încearcă din nou'; $('eRetry').style.display = '';
+    $('eCamp').style.display = '';
   };
 
   // ---------- obiectivele și dialogurile din joc ----------
