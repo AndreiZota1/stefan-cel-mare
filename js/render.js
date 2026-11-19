@@ -793,15 +793,6 @@ var G = globalThis.G || (globalThis.G = {});
         ell(ctx, p[0], p[1] - 1 * z, 3.5 * z, 2 * z, '#6b4a2a'); ell(ctx, p[0], p[1] - 1.8 * z, 2.6 * z, 1.3 * z, '#c99a62');
       }
     });
-    // semnele misiunii
-    if (S.scen && S.scen.marks) S.scen.marks.forEach(function (m) {
-      var p = R.w2s(m.x, m.y); if (p[0] < -60 || p[0] > W + 60 || p[1] < -60 || p[1] > H + 60) return;
-      var bob = Math.sin(clock * 3 + m.x) * 2 * z;
-      ctx.globalAlpha = 0.5 + 0.2 * Math.sin(clock * 4); ell(ctx, p[0], p[1], 16 * z, 8 * z, m.col); ctx.globalAlpha = 1;
-      ln(ctx, p[0], p[1], p[0], p[1] - 34 * z, '#3a2a18', 2);
-      ctx.fillStyle = m.col; ctx.beginPath(); ctx.moveTo(p[0], p[1] - 34 * z + bob); ctx.lineTo(p[0] + 16 * z, p[1] - 29 * z + bob); ctx.lineTo(p[0], p[1] - 23 * z + bob); ctx.closePath(); ctx.fill();
-      if (m.label) { ctx.font = 'bold ' + Math.round(12 * Math.max(0.85, z)) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillText(m.label, p[0] + 1, p[1] - 39 * z + 1); ctx.fillStyle = '#fff2c8'; ctx.fillText(m.label, p[0], p[1] - 39 * z); ctx.textAlign = 'start'; }
-    });
     // marcaje de comandă
     R.marks = R.marks.filter(function (m) { return clock - m.t < 0.7; });
     R.marks.forEach(function (m) {
@@ -867,6 +858,15 @@ var G = globalThis.G || (globalThis.G = {});
     // margini în afara hărții
     drawEdge(ox, oy, z, N);
     G.Terrain.vignette(ctx, W, H);
+    // semnele misiunii: peste ceață și peste noapte, ca să se vadă oriunde ar fi
+    if (S.scen && S.scen.marks) S.scen.marks.forEach(function (m) {
+      var p = R.w2s(m.x, m.y); if (p[0] < -60 || p[0] > W + 60 || p[1] < -60 || p[1] > H + 60) return;
+      var bob = Math.sin(clock * 3 + m.x) * 2 * z;
+      ctx.globalAlpha = 0.5 + 0.2 * Math.sin(clock * 4); ell(ctx, p[0], p[1], 16 * z, 8 * z, m.col); ctx.globalAlpha = 1;
+      ln(ctx, p[0], p[1], p[0], p[1] - 34 * z, '#3a2a18', 2);
+      ctx.fillStyle = m.col; ctx.beginPath(); ctx.moveTo(p[0], p[1] - 34 * z + bob); ctx.lineTo(p[0] + 16 * z, p[1] - 29 * z + bob); ctx.lineTo(p[0], p[1] - 23 * z + bob); ctx.closePath(); ctx.fill();
+      if (m.label) { ctx.font = 'bold ' + Math.round(12 * Math.max(0.85, z)) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillText(m.label, p[0] + 1, p[1] - 39 * z + 1); ctx.fillStyle = '#fff2c8'; ctx.fillText(m.label, p[0], p[1] - 39 * z); ctx.textAlign = 'start'; }
+    });
 
     // clădirea de pus (la ziduri: tot șirul, de la locul unde a început tragerea)
     var pl = G.UI && G.UI.place;
@@ -1501,6 +1501,14 @@ var G = globalThis.G || (globalThis.G = {});
     mctx.strokeStyle = '#fff'; mctx.lineWidth = 1.2; mctx.beginPath();
     cs.forEach(function (c, i2) { var mx = M / 2 + (c[0] - c[1]) * s, my = offY + (c[0] + c[1]) * s / 2; if (i2) mctx.lineTo(mx, my); else mctx.moveTo(mx, my); });
     mctx.closePath(); mctx.stroke();
+    // steagurile misiunii
+    if (S.scen && S.scen.marks) S.scen.marks.forEach(function (m) {
+      var mx = M / 2 + (m.x - m.y) * s, my = offY + (m.x + m.y) * s / 2, pu = (clock * 1.2) % 1;
+      mctx.globalAlpha = 1 - pu; mctx.strokeStyle = m.col; mctx.lineWidth = 2;
+      mctx.beginPath(); mctx.arc(mx, my, 4 + pu * 10, 0, 6.3); mctx.stroke(); mctx.globalAlpha = 1;
+      mctx.fillStyle = m.col; mctx.strokeStyle = '#000'; mctx.lineWidth = 1.2;
+      mctx.beginPath(); mctx.arc(mx, my, 3.6, 0, 6.3); mctx.fill(); mctx.stroke();
+    });
     R.miniS = s; R.miniOff = offY;
   };
   R.miniToWorld = function (cx, cy) {

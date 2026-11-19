@@ -190,7 +190,8 @@ G.MISSIONS = G.MISSIONS || {};
   };
 
   // ---------- semne pe hartă, efecte ----------
-  T.mark = function (id, x, y, label, col) { var sc = S().scen; sc.marks = sc.marks.filter(function (m) { return m.id !== id; }); sc.marks.push({ id: id, x: x, y: y, label: label || '', col: col || '#ffd75a' }); };
+  // steagul unui obiectiv: locul din jur se dezvăluie, ca să-l vezi de oriunde (se desenează peste ceață și pe harta mică)
+  T.mark = function (id, x, y, label, col) { var sc = S().scen; sc.marks = sc.marks.filter(function (m) { return m.id !== id; }); sc.marks.push({ id: id, x: x, y: y, label: label || '', col: col || '#ffd75a' }); G.reveal(x, y, 3); };
   T.unmark = function (id) { var sc = S().scen; sc.marks = sc.marks.filter(function (m) { return m.id !== id; }); };
   T.reveal = function (x, y, r) { G.reveal(x, y, r); };
   T.night = function (v) { S().night = v; S().losMul = v ? Math.min(S().losMul || 1, 0.65) : 1; };

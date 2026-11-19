@@ -137,7 +137,9 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
       ['forest', [[0, 0], [96, 0], [96, 12], [60, 16], [40, 14], [0, 16]], 0.65], ['forest', [[0, 30], [14, 34], [16, 70], [0, 80]], 0.55],
       ['forest', [[96, 30], [84, 36], [86, 72], [96, 80]], 0.55],
       ['river', [[-2, 92], [40, 88], [96, 94]], 4],
-      ['clear', 48, 56, 22], ['clear', 48, 22, 6]
+      ['clear', 48, 56, 22], ['clear', 48, 22, 6],
+      // poteca spre munți, prin pădurea din nord: pe aici scapă Vlad
+      ['road', [[48, 26], [47, 14], [48, 0]], 2]
     ] },
     night: 1, losMul: 0.6, popMax: 120, noHero: 1, keepHero: 'Vlad a căzut în tabăra turcească.',
     setup: function (S, T) {
@@ -164,7 +166,10 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
         v.alarm = 1; T.say('ienicer', 'Alarmă! Ghiaurii sunt în tabără!', 'say2'); T.mode(1, 'eco'); T.aiGo(1);
       }
       if (S.t > 900 && !v.dawn) { v.dawn = 1; T.night(0); T.say('narator', 'Se luminează. Toată oastea sultanului se trezește.', 'say3'); T.mode(1, 'eco'); T.aiGo(1); }
-      if (T.isDone('o1') && !v.esc) { v.esc = 1; T.obj('o4', 'Scapă: du-l pe Vlad la marginea de nord a hărții (steagul).'); T.mark('nord', 48, 8, 'Spre munți', '#7fdc6a'); }
+      if (T.isDone('o1') && !v.esc) {
+        v.esc = 1; T.obj('o4', 'Scapă spre munți: du-l pe Vlad la steagul galben din nord, pe poteca prin pădure.'); T.mark('nord', 48, 8, 'Spre munți');
+        for (var py = 26; py >= 2; py -= 3) T.reveal(48, py, 3);
+      }
       if (v.esc && T.heroIn(0, 48, 8, 6) && !v.won) { v.won = 1; T.done('o4'); T.win(); }
     },
     triggers: [

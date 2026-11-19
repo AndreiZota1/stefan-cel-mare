@@ -243,6 +243,8 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
       ['forest', [[64, 0], [96, 0], [96, 96], [62, 96], [66, 70], [62, 40], [66, 16]], 0.6],
       ['road', [[56, 96], [54, 76], [52, 56], [53, 40], [50, 22], [42, 12]], 2],
       ['clear', 42, 12, 9], ['clear', 56, 88, 9], ['clear', 18, 40, 3], ['clear', 20, 56, 3], ['clear', 24, 72, 3],
+      // poteci de vânători până la locurile buciumașilor (altfel pădurea e de netrecut)
+      ['road', [[38, 40], [18, 40]], 2], ['road', [[38, 56], [20, 56]], 2], ['road', [[38, 72], [24, 72]], 2],
       ['res', 'gold', 26, 10, 6], ['res', 'stone', 56, 6, 5], ['res', 'sheep', 36, 22, 6], ['res', 'berry', 30, 6, 6], ['res', 'gold', 58, 24, 5], ['res', 'sheep', 60, 14, 4]
     ] },
     fog: 1, losMul: 0.55, startAge: 2, maxAge: 2, popMax: 110, keepHero: 'Ștefan a căzut în ceața de la Vaslui.',
