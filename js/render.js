@@ -978,7 +978,9 @@ var G = globalThis.G || (globalThis.G = {});
   }
   var natC = {};
   function natSprite(kind, v) {
-    var k2 = 'n/' + (kind === 'tree' && G.S && G.S.map && G.S.map.season === 'iarna' && G.BAKED2 && G.BAKED2['n/treeS' + (v % 4)] ? 'treeS' + (v % 4) : kind + v);
+    // iarna: copacii goi sau nins (treeS), restul cu zăpadă (sufixul W), dacă au fost randate
+    var win = G.S && G.S.map && G.S.map.season === 'iarna', B2k = G.BAKED2 || {};
+    var k2 = 'n/' + (win && kind === 'tree' && B2k['n/treeS' + v] ? 'treeS' + v : win && B2k['n/' + kind + v + 'W'] ? kind + v + 'W' : kind + v);
     var n2 = natC[k2];
     if (G.BAKED2 && G.BAKED2[k2]) {
       if (!n2) { var B2 = G.BAKED2[k2]; n2 = natC[k2] = { c: loadImg('assets/' + k2 + '.webp'), w: B2.W / B2.k, h: B2.H / B2.k, ax: B2.ax / B2.k, ay: B2.ay / B2.k }; }
@@ -1010,7 +1012,12 @@ var G = globalThis.G || (globalThis.G = {});
     for (var i = 0; i < 40; i++) { g.fillStyle = 'rgba(250,252,255,' + (0.35 + Rn() * 0.4) + ')'; g.beginPath(); g.ellipse(Rn() * c.width, Rn() * c.height * 0.7, 3 + Rn() * 7, 2 + Rn() * 3, 0, 0, 6.3); g.fill(); }
     return (snowC[v] = { c: c, w: o.w, h: o.h, ax: o.ax, ay: o.ay });
   }
-  R.preloadNature = function () { for (var v = 0; v < 8; v++) natSprite('tree', v); ['gold', 'stone', 'berry'].forEach(function (k) { natSprite(k, 0); }); natSprite('sheep', 0); natSprite('sheep', 1); };
+  R.preloadNature = function () {
+    for (var v = 0; v < 8; v++) natSprite('tree', v);
+    ['gold', 'stone', 'berry'].forEach(function (k) { for (var q = 0; q < 3; q++) natSprite(k, q); });
+    natSprite('sheep', 0); natSprite('sheep', 1);
+    ['bush0', 'bush1', 'bush2', 'reed0', 'reed1', 'flowers0', 'flowers1', 'log0', 'log1', 'stump0', 'rock0', 'rock1', 'rock2'].forEach(function (k) { natSprite(k, ''); });
+  };
   // monumentul din mijloc (Regele dealului): obelisc de piatră, cercul zonei, steagul celui care îl ține
   function drawKoth(o) {
     var p = R.w2s(o.x, o.y), z = cam.z, K = o.K, col = K.o >= 0 ? pcol(K.o).color : '#d8d0c0';
@@ -1067,7 +1074,11 @@ var G = globalThis.G || (globalThis.G = {});
     }
     var s, scl;
     if (e.t === 'tree') { s = natSprite('tree', (G.hash2(e.tx, e.ty, 3) * 8) | 0) || G.Spr.tree((G.hash2(e.tx, e.ty, 3) * 8) | 0); scl = 0.86 + G.hash2(e.tx, e.ty, 4) * 0.28; }
-    else { s = natSprite(e.t, 0) || G.Spr.res(e.t); scl = Math.max(0.6, Math.min(1, 0.5 + e.amt / G.RESD[e.t].amt * 0.5)); }
+    else {
+      // minele și tufele vecine au așezări diferite (variantele randate), alese după loc
+      var nv = (G.hash2(e.tx, e.ty, 9) * 3) | 0; if (!(G.BAKED2 && G.BAKED2['n/' + e.t + nv])) nv = 0;
+      s = natSprite(e.t, nv) || natSprite(e.t, 0) || G.Spr.res(e.t); scl = Math.max(0.6, Math.min(1, 0.5 + e.amt / G.RESD[e.t].amt * 0.5));
+    }
     var k = z * scl;
     ctx.drawImage(s.c, p[0] - s.ax * k, p[1] - s.ay * k, s.w * k, s.h * k);
     if (G.UI && G.UI.selSet()[e.id]) { ctx.strokeStyle = '#ffe066'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(p[0], p[1], 14 * z, 7 * z, 0, 0, 6.3); ctx.stroke(); }

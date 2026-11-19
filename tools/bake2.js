@@ -14,7 +14,7 @@ const TIER_R = ['cetate', 'casa', 'joagar', 'mina', 'moara', 'cazarma', 'port'];
 const TIER_G = ['cetate', 'casa', 'joagar', 'mina', 'moara', 'cazarma', 'port', 'poligon', 'grajd', 'fierarie', 'targ', 'manastire', 'universitate', 'atelier', 'fortareata'];
 const WALLS = ['zid_x', 'zid_y', 'zid_p', 'poarta_x', 'poarta_y'];
 const SHARED = ['pal_x', 'pal_y', 'pal_p', 'ppal_x', 'ppal_y', 'zid_x', 'zid_y', 'zid_p', 'poarta_x', 'poarta_y', 'ruina2', 'ruina3', 'ruina4', 'ruina5', 'schela2', 'schela3', 'schela4', 'schela5'];
-const MIME = { '.js': 'text/javascript', '.html': 'text/html', '.json': 'application/json', '.jpg': 'image/jpeg', '.png': 'image/png' };
+const MIME = { '.js': 'text/javascript', '.html': 'text/html', '.json': 'application/json', '.jpg': 'image/jpeg', '.png': 'image/png', '.gltf': 'model/gltf+json', '.bin': 'application/octet-stream' };
 const save = (rel, dataUrl) => { const f = path.join(OUT, rel); fs.mkdirSync(path.dirname(f), { recursive: true }); fs.writeFileSync(f, Buffer.from(dataUrl.split(',')[1], 'base64')); };
 (async () => {
   const browser = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu'] });
@@ -28,7 +28,7 @@ const save = (rel, dataUrl) => { const f = path.join(OUT, rel); fs.mkdirSync(pat
     route.fulfill({ status: 200, body: fs.readFileSync(file), headers: { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' } });
   });
   await page.goto('http://bake.local/index2.html');
-  await page.waitForFunction(() => window.ready === true, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.ready === true && (window.natReady || window.natErr), null, { timeout: 60000 });
   const metaFile = path.join(OUT, 'baked.json');
   const meta = fs.existsSync(metaFile) ? JSON.parse(fs.readFileSync(metaFile, 'utf8')) : {};
   const want = k => !ONLY || ONLY.includes(k);
@@ -45,8 +45,26 @@ const save = (rel, dataUrl) => { const f = path.join(OUT, rel); fs.mkdirSync(pat
     for (const v of SIEGE) if (want(v)) { if (GRP.includes('u')) jobs.push(['u', v, 'all']); if (GRP.includes('i')) jobs.push(['i', v, 'all']); }
     for (const t of SHARED) if (want(t)) { if (GRP.includes('b')) jobs.push(['b', t, 'all']); if (GRP.includes('j') && !/^(ruina|schela)/.test(t)) jobs.push(['j', t, 'all']); }
   }
+  // natura v2 (grupa n): copaci, mine, tufe, oi, decoruri; iarna, cu zăpadă (copacii: treeS, restul: sufixul W)
+  if (GRP.includes('n')) {
+    const NAT = [['tree', 8, true], ['gold', 3, true], ['stone', 3, true], ['berry', 3, true], ['sheep', 2, false], ['bush', 3, true], ['reed', 2, true], ['flowers', 2, false], ['log', 2, true], ['stump', 1, true], ['rock', 3, true]];
+    for (const [kind, n, win] of NAT) for (let v = 0; v < n; v++) {
+      if (!want(kind) && !want(kind + v)) continue;
+      jobs.push(['n', kind, v, 0]);
+      if (win) jobs.push(['n', kind, v, 1]);
+    }
+  }
   let bytes = 0; const T0 = Date.now();
   for (const [grp, t, c, tier, suf] of jobs) {
+    if (grp === 'n') {
+      const winter = !!tier, key = 'n/' + (winter ? (t === 'tree' ? 'treeS' + c : t + c + 'W') : t + c), t0 = Date.now();
+      let r;
+      try { r = await page.evaluate(([t, v, w]) => window.bakeNat(t, v, 2, w), [t, c, winter]); }
+      catch (e) { console.log('EȘUAT', key, e.message.split('\n')[0]); continue; }
+      save(key + '.webp', r.webp); bytes += r.webp.length * 0.75;
+      meta[key] = r.meta; console.log(key, (Date.now() - t0) + ' ms', r.meta.W + 'x' + r.meta.H);
+      continue;
+    }
     const key = grp + '/' + t + '_' + c + (suf ? '_' + suf : ''), civ = c, t0 = Date.now();
     const fn = { u: 'bakeUnit', i: 'bakeUnitIcon', b: 'bakeBld', j: 'bakeBldIcon' }[grp];
     let r;

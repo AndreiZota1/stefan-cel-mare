@@ -106,7 +106,7 @@ void main() {
   float wForest = smoothstep(0.3, 0.62, t1.b + e3);
   float wWorn = smoothstep(0.25, 0.6, t1.a + e3);
   float under = 1.0 - smoothstep(-0.06, 0.04, h);   // albia, sub apă
-  float shore = 1.0 - smoothstep(0.03, 0.13 + 0.1 * n3.y, h);      // malul ud, o fâșie îngustă
+  float shore = (1.0 - smoothstep(0.03, 0.13 + 0.1 * n3.y, h)) * smoothstep(0.15, 0.6, t1.g);      // malul ud: o fâșie îngustă, doar lângă apă
   accA = vec3(0.0); accN = vec3(0.0);
   // iarba: pajiște cu petice, mai deasă la umbră și lângă ape, uscată pe stepă și pe culmi
   float gB = smoothstep(0.35, 0.68, n1.x);
@@ -138,7 +138,7 @@ void main() {
   float meadow = (1.0 - max(max(wDirt, wSand), max(wRock, wForest))) * (1.0 - shore) * (1.0 - wMarsh) * (1.0 - winter) * (1.0 - wWorn);
   if (meadow > 0.2) {
     vec2 fc = p * 7.0, ci = floor(fc), cf = fract(fc);
-    float hs = hash(ci), dens = smoothstep(0.62, 0.86, n2.z) * 0.32 + 0.006;
+    float hs = hash(ci), dens = smoothstep(0.66, 0.9, n2.z) * smoothstep(0.4, 0.7, n1.z) * 0.28;
     if (hs < dens) {
       vec2 cc = vec2(hash(ci + 1.7), hash(ci + 9.3)) * 0.6 + 0.2;
       float fw = fwf, d = length(cf - cc), m = (1.0 - smoothstep(0.07, 0.07 + fw * 1.5, d)) * (1.0 - smoothstep(0.12, 0.35, fw)) * meadow;
@@ -392,10 +392,21 @@ void main() {
     params(gl.TEXTURE_2D, gl.LINEAR, gl.CLAMP_TO_EDGE, false);
     // tipurile de teren
     var t0 = new Uint8Array(N * N * 4); typeT1 = new Uint8Array(N * N * 4);
-    for (var i = 0; i < N * N; i++) {
+    // apropierea de apă (pentru malul ud): distanța în pătrățele până la apă sau vad
+    var dw = new Float32Array(N * N), q = [], qi;
+    for (var i = 0; i < N * N; i++) { var tw = S.ter[i]; if (tw === 2 || tw === 3 || tw === 4) { dw[i] = 0; q.push(i); } else dw[i] = 1e9; }
+    for (qi = 0; qi < q.length; qi++) {
+      var c0 = q[qi], cx0 = c0 % N, cy0 = (c0 - cx0) / N;
+      for (var dd = 0; dd < 4; dd++) {
+        var nx0 = cx0 + (dd === 0 ? 1 : dd === 1 ? -1 : 0), ny0 = cy0 + (dd === 2 ? 1 : dd === 3 ? -1 : 0);
+        if (nx0 < 0 || ny0 < 0 || nx0 >= N || ny0 >= N) continue;
+        var j0 = ny0 * N + nx0; if (dw[j0] > dw[c0] + 1) { dw[j0] = dw[c0] + 1; q.push(j0); }
+      }
+    }
+    for (i = 0; i < N * N; i++) {
       var t = S.ter[i];
       t0[i * 4] = t === 1 ? 255 : 0; t0[i * 4 + 1] = t === 6 ? 255 : 0; t0[i * 4 + 2] = t === 5 ? 255 : 0; t0[i * 4 + 3] = t === 7 ? 255 : 0;
-      typeT1[i * 4] = t === 2 || t === 4 ? 255 : 0; typeT1[i * 4 + 1] = t === 3 ? 255 : 0;
+      typeT1[i * 4] = t === 2 || t === 4 ? 255 : 0; typeT1[i * 4 + 1] = Math.round(Math.max(0, Math.min(1, 1 - (dw[i] - 0.5) / 2)) * 255);
     }
     TX.t0 = TX.t0 || gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, TX.t0); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, N, N, 0, gl.RGBA, gl.UNSIGNED_BYTE, t0);
@@ -508,7 +519,7 @@ void main() {
   // ---------- desenarea ----------
   // corecția de culoare pe strat (texturile foto vin din locuri diferite): iarba spre verde, pământul spre brun
   var GAIN = [
-    [0.84, 1.0, 0.8], [0.84, 0.98, 0.82], [0.86, 1.02, 0.86], [0.92, 0.92, 0.8], [0.84, 0.84, 0.76], [0.78, 0.7, 0.62], [0.95, 0.92, 0.84], [0.9, 0.93, 0.9],
+    [0.84, 1.0, 0.8], [0.84, 0.98, 0.82], [0.86, 1.02, 0.86], [0.92, 0.92, 0.8], [0.84, 0.84, 0.76], [0.78, 0.7, 0.62], [0.98, 0.88, 0.7], [0.9, 0.93, 0.9],
     [0.88, 0.88, 0.88], [0.86, 0.9, 0.8], [0.9, 0.86, 0.8], [0.8, 0.78, 0.72], [1.0, 1.0, 1.0], [0.95, 0.97, 1.0], [0.5, 0.52, 0.42], [0.86, 0.92, 0.84]
   ];
   var gainArr = null;

@@ -41,6 +41,19 @@ window.bakeBldIcon = async (t, civ) => {
   const n = b.info.n, head = 40 + n * 46;
   return out(bakeIcon({ root: b.root, size: 96, k0: 1, guess: [n * 64 + 80, n * 32 + head + 30, 40 + n * 32, head], shadow: n * 1.1 + 1.6, scx: n / 2, scz: n / 2, fill: 0.92 }));
 };
+// natura v2: copaci, mine, tufe, oi, decoruri
+import('./nature2.js').then(N2 => {
+  window.bakeNat = async (kind, v, k, winter) => {
+    let m;
+    if (kind === 'tree') m = N2.tree(v, winter);
+    else m = await N2.natModel(kind, v, winter);
+    await texturesReady();
+    const g = m.guess || [120, 150, 50, 125];
+    const r = bakeStill({ root: m.root, k, ss: 2, shadow: m.shadow || 1.8, guess: g, pad: 3, noMask: true });
+    return out(r);
+  };
+  window.natReady = true;
+}).catch(e => { window.natErr = String(e && e.stack || e); });
 window.NB = NB;
 window.ready = true;
 </script>
