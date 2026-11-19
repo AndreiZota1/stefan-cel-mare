@@ -53,7 +53,7 @@ G.POWERS = {
   bucium:   { name: 'Buciumul', icon: '📯', cd: 90, r: 8, dur: 15, desc: 'Oastea din jur lovește și merge cu 30% mai tare, 15 secunde.' },
   teroare:  { name: 'Teroarea', icon: '💀', cd: 90, r: 7, dur: 15, desc: 'Dușmanii din jur lovesc cu 40% mai slab, 15 secunde.' },
   cruciada: { name: 'Cruciada de la Belgrad', icon: '✝️', cd: 100, r: 8, dur: 0, desc: 'Vindecă oastea din jur cu jumătate din viață.' },
-  garda:    { name: 'Garda regală', icon: '👑', cd: 120, r: 0, dur: 0, desc: 'Cheamă 3 cavaleri polonezi lângă rege.' },
+  garda:    { name: 'Garda regală', icon: '👑', cd: 240, r: 0, dur: 0, desc: 'Cheamă 2 cavaleri polonezi lângă rege.' },
   baterie:  { name: 'Bateria', icon: '💥', cd: 90, r: 9, dur: 20, desc: 'Mașinile de asediu din jur lovesc cu 50% mai tare, 20 de secunde.' },
   navala:   { name: 'Năvala', icon: '🐎', cd: 90, r: 10, dur: 15, desc: 'Călăreții din jur: +50% viteză și +2 atac, 15 secunde.' }
 };
@@ -174,9 +174,9 @@ G.UNITS = {
           bonus: { arc: 5, har: 5, sie: 10, mon: 6, gun: 5 }, desc: 'Călăreț ușor maghiar, cel mai rapid de pe câmp.' },
   hus2: { name: 'Husar de elită', line: 'hus', tier: 2, civ: 'ung', cls: 'cav', hp: 95, atk: 8, rng: 0, rof: 1.8, ma: 0, pa: 4, spd: 1.65, los: 8, cost: { f: 80, g: 20 }, time: 15, age: 3, r: 0.3,
           bonus: { arc: 6, har: 6, sie: 12, mon: 6, gun: 6 }, desc: 'Husarii lui Matia Corvin.' },
-  cpl:  { name: 'Cavaler polonez', line: 'cpl', tier: 1, civ: 'pol', cls: 'cav', hp: 118, atk: 11, rng: 0, rof: 1.9, ma: 3, pa: 3, spd: 1.3, los: 5, cost: { f: 75, g: 95 }, time: 20, age: 2, r: 0.3,
+  cpl:  { name: 'Cavaler polonez', line: 'cpl', tier: 1, civ: 'pol', cls: 'cav', hp: 112, atk: 11, rng: 0, rof: 1.9, ma: 3, pa: 3, spd: 1.3, los: 5, cost: { f: 75, g: 100 }, time: 20, age: 2, r: 0.3,
           desc: 'Cavaler greu, în zale și armură de plăci.' },
-  cpl2: { name: 'Cavaler polonez de elită', line: 'cpl', tier: 2, civ: 'pol', cls: 'cav', hp: 145, atk: 13, rng: 0, rof: 1.9, ma: 3, pa: 4, spd: 1.3, los: 6, cost: { f: 75, g: 95 }, time: 20, age: 3, r: 0.3,
+  cpl2: { name: 'Cavaler polonez de elită', line: 'cpl', tier: 2, civ: 'pol', cls: 'cav', hp: 138, atk: 13, rng: 0, rof: 1.9, ma: 3, pa: 4, spd: 1.3, los: 6, cost: { f: 75, g: 100 }, time: 20, age: 3, r: 0.3,
           desc: 'Floarea cavaleriei polone.' },
   ien:  { name: 'Ienicer', line: 'ien', tier: 1, civ: 'oto', cls: 'gun', hp: 45, atk: 15, rng: 6, rof: 3.2, ma: 1, pa: 1, spd: 0.9, los: 7, cost: { f: 45, g: 48 }, time: 18, age: 2, r: 0.2, bonus: { inf: 8, cav: 3 },
           proj: 'bullet', desc: 'Garda sultanului, cu pușcă. Trage de departe și greu.' },

@@ -9,7 +9,7 @@ var G = globalThis.G || (globalThis.G = {});
   // ce preferă fiecare civilizație (pondere în alegerea oștenilor)
   var TASTE = {
     mol: { inf: 1.2, arc: 1.2, cav: 1, uniq: 1.4 }, val: { inf: 1.3, arc: 0.9, cav: 1.1, uniq: 1.4 }, ung: { inf: 0.9, arc: 1, cav: 1.4, uniq: 1.4 },
-    pol: { inf: 0.9, arc: 0.9, cav: 1.5, uniq: 1.4 }, oto: { inf: 1.1, arc: 1.1, cav: 1, uniq: 1.5 }, tat: { inf: 0.6, arc: 1.4, cav: 1.5, uniq: 1.5 }
+    pol: { inf: 1.0, arc: 1.0, cav: 1.3, uniq: 1.3 }, oto: { inf: 1.1, arc: 1.1, cav: 1, uniq: 1.5 }, tat: { inf: 0.6, arc: 1.4, cav: 1.5, uniq: 1.5 }
   };
 
   G.aiTick = function (id) {
@@ -499,21 +499,21 @@ var G = globalThis.G || (globalThis.G = {});
     if (S.diff === 'usor' || P.age < 1 || A.threat || S.t < (S.opt.peace || 0)) return;
     var raiders = my.army.filter(function (u) { return u.raid; });
     raiders.forEach(function (u) {
-      if (u.hp < u.mhp * 0.45 || S.t > A.raidEnd) { u.raid = 0; if (my.home) G.cmdMove([u], my.home.x, my.home.y); return; }
+      if (u.hp < u.mhp * 0.6 || S.t > A.raidEnd) { u.raid = 0; if (my.home) G.cmdMove([u], my.home.x, my.home.y); return; }
       if (u.task && u.task.k === 'atk') return;
       var prey = raidPrey(u, -1, 14);
       if (prey) G.cmdAttack([u], prey); else { u.raid = 0; if (my.home) G.cmdMove([u], my.home.x, my.home.y); }
     });
     if (raiders.length || S.t < (A.raidT || 0)) return;
-    A.raidT = S.t + (S.diff === 'foarte' ? 120 : S.diff === 'greu' ? 160 : 220);
+    A.raidT = S.t + (S.diff === 'foarte' ? 160 : S.diff === 'greu' ? 220 : 300);
     var fast = my.army.filter(function (u) { var c = G.UNITS[u.t].cls; return !u.wave && !(u.task && u.task.k === 'atk') && u.hp > u.mhp * 0.75 && (c === 'cav' || c === 'har') && !G.UNITS[u.t].hero; });
-    var nr = S.diff === 'normal' ? 3 : 5;
+    var nr = S.diff === 'normal' ? 3 : 4;
     if (fast.length < 3 || !my.home) return;
     var p = targetPlayer(), prey = p >= 0 ? raidPrey(my.home, p, 90) : null;
     if (!prey) return;
     var grp = fast.slice(0, nr);
     grp.forEach(function (u) { u.raid = 1; });
-    A.raidEnd = S.t + 70;
+    A.raidEnd = S.t + 50;
     G.cmdAttack(grp, prey);
   }
   // ---------- retragerea: un val care pierde se întoarce acasă să se refacă ----------
@@ -641,10 +641,14 @@ var G = globalThis.G || (globalThis.G = {});
       var att = null, na = 0; G.forUnitsNear(v.x, v.y, 5, function (e) { if (!e.dead && G.enemy(pid, e.o) && G.isMil(e)) { na++; if (!att) att = e; } });
       if (!att) return;
       A.vHit = S.t; if (!threat) { threat = att; near++; }
-      if (tc && (na >= 2 || v.hp < v.mhp * 0.6) && G.dist(v, tc) < 30 && !(v.task && v.task.k === 'gar')) G.cmdGarrison([v], tc);
+      if (tc && (na >= 3 || v.hp < v.mhp * 0.5) && G.dist(v, tc) < 30 && !(v.task && v.task.k === 'gar')) G.cmdGarrison([v], tc);
     });
     // s-a liniștit: țăranii adăpostiți ies la treabă
-    if (!threat && tc && tc.gar && tc.gar.length && !P.bell && S.t - (A.vHit || 0) > 6) G.cmdUngarrison(tc);
+    // ies din cetate când nu mai e niciun dușman în jurul ei (chiar dacă raidurile continuă în altă parte)
+    if (tc && tc.gar && tc.gar.length && !P.bell) {
+      var nearTc = 0; G.forUnitsNear(tc.x, tc.y, 11, function (e) { if (!e.dead && G.enemy(pid, e.o) && G.isMil(e)) nearTc++; });
+      if (!nearTc) { A.tcCalm = A.tcCalm || S.t; if (S.t - A.tcCalm > 4) { G.cmdUngarrison(tc); A.tcCalm = 0; } } else A.tcCalm = 0;
+    }
     A.threat = threat ? threat.id : 0;
     // clopotul: când dușmanii mulți sunt lângă cetate și oastea e mică
     if (tc && threat && near >= 5 && my.army.length < near * 0.6 && !P.bell && G.dist(threat, tc) < 14) { G.cmdBell(pid); A.bell = S.t; }

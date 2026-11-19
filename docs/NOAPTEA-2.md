@@ -7,16 +7,34 @@ Cerut de Andrei pe 19.11: punctele 2–5 din evaluare (echilibru, vânătoare ș
 - [x] 1. Vânătoarea (commit 1579533): cerbi (fug), mistreți (se apără), lupi (atacă oamenii singuri, în codri); pește la mal (țăranii pescuiesc de pe mal)
 - [x] 2. Apa și corăbiile: port; barcă de pescuit; galeră (+upgrade); corabie incendiară; corabie de transport (încarcă/descarcă); pește în larg; hărți noi „mare” (coasta Mării Negre) și „lac”; corăbiile și portul pe civilizații; calculatorul pescuiește și se bate pe apă
 - [x] 3. Călugării convertesc dușmanii (cântare bisericească / ezan)
-- [ ] 4. Calculatorul: raiduri pe țărani, retragere și regrupare, palisade, ținte bune (asediu, călugări, țărani), cere pace când e pierdut, dificultăți reglate
+- [x] 4. Calculatorul: raiduri pe țărani, retragere și regrupare, palisade, ținte bune (asediu, călugări, țărani), cere pace când e pierdut, dificultăți reglate
 - [x] 5. Ordine: lanț cu Shift, patrulare, atitudini (agresiv / defensiv / pe loc)
 - [x] 6. Coduri secrete (mămăligă etc.) și strigăte pe numere
 - [x] 7. Moduri: Regele dealului, Nomazi, zi–noapte opțional
 - [x] 8. Diplomație: tribut către aliați
 - [x] 9. Medalii salvate în browser
-- [ ] 10. Turneul de echilibru (toate perechile, mai multe hărți), ajustări până la ≤ 60%
-- [ ] 11. Testele mari, publicarea, rezumatul pentru Andrei
+- [x] 10. Turneul de echilibru (toate perechile, mai multe hărți), ajustări până la ≤ 60%
+- [x] 11. Testele mari, publicarea, rezumatul pentru Andrei
 
-## Corăbiile: pașii (în lucru)
+## Echilibrul (turneul calculator contra calculator, 32 de minute, râu + stepă, 10 meciuri pe civilizație)
+
+| | la început | după reglaje |
+|---|---|---|
+| Polonia | 84–95% | 55% |
+| Otomani | 0–20% | 30% |
+| Țara Românească | 45% | 65% |
+| Moldova | 50% | 60% |
+| Tătari | 50% | 60% |
+| Ungaria | 60% | 30% (zgomot ±15%) |
+
+Ce a contat:
+- Garda regală a polonezilor aducea 3 cavaleri gratuiți la 2 minute. Acum aduce 2 la 4 minute.
+- Cavalerul polonez e mai scump și puțin mai slab.
+- Otomanii au țărani mai repede, ogoare și aur mai bogate și ieniceri mai ieftini.
+- Raidurile sunt mai mici și mai rare.
+- Țăranii calculatorului nu mai stau ascunși în cetate la fiecare raid.
+
+## Corăbiile: pașii (făcut)
 
 1. Date: unitățile `pesc` (barcă de pescuit), `gal`/`gal2` (galeră), `foc` (corabie incendiară), `tra` (transport); cls `shp`, `naval: 1`. Clădirea `port` (3×3, pe apă lângă mal, `dock: 1`), cu tehnologiile `up_gal2` și `carena`. Resursa `fishd` (banc de pești, doar pentru bărci).
 2. Simularea:

@@ -1777,7 +1777,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (id === 'bucium') near(function (u) { if (u.o === o && u.t !== 'vil') { u.buf = { a: 1.3, s: 1.3, until: until }; n++; } });
     else if (id === 'teroare') near(function (u) { if (G.enemy(o, u.o)) { u.deb = { a: 0.6, until: until }; n++; } });
     else if (id === 'cruciada') near(function (u) { if (G.ally(o, u.o) && G.UNITS[u.t].cls !== 'sie') { var m = ustT(u.o, u.t).hp; u.hp = Math.min(m, u.hp + m * 0.5); n++; } });
-    else if (id === 'garda') { G.placeUnits(o, curType(o, 'cpl'), 3, h.x + 1, h.y + 1).forEach(function (u) { u.task = null; }); n = 3; }
+    else if (id === 'garda') { G.placeUnits(o, curType(o, 'cpl'), 2, h.x + 1, h.y + 1).forEach(function (u) { u.task = null; }); n = 2; }
     else if (id === 'baterie') near(function (u) { if (u.o === o && G.UNITS[u.t].cls === 'sie') { u.buf = { a: 1.5, until: until }; n++; } });
     else if (id === 'navala') near(function (u) { if (u.o === o && (G.UNITS[u.t].cls === 'cav' || G.UNITS[u.t].cls === 'har')) { u.buf = { a: 1, add: 2, s: 1.5, until: until }; n++; } });
     P.pcd = S.t + pw.cd;
