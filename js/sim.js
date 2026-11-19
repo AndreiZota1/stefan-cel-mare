@@ -161,6 +161,22 @@ var G = globalThis.G || (globalThis.G = {});
     G.Path.init(N);
   };
   G.passFor = function (o) { return (o >= 0 && C.pp[o]) || C.pass; };
+  // relieful fin (G.reliefFine), calculat o dată pe hartă; hărțile vechi sunt plate
+  var RLF = null, RLsrc = null;
+  G.relief = function () {
+    if (!S || !S.hgt) return null;
+    if (RLsrc !== S.hgt) { RLsrc = S.hgt; RLF = G.reliefFine ? G.reliefFine(S) : null; }
+    return RLF;
+  };
+  // înălțimea solului într-un punct (0 = luciul apei; sub apă, oamenii și corăbiile stau pe luciu)
+  G.hAt = function (x, y) {
+    var F = G.relief(); if (!F) return 0;
+    var RF = F.RF, W = F.W, M = W - 1.001, h = F.h;
+    x *= RF; y *= RF; x = x < 0 ? 0 : x > M ? M : x; y = y < 0 ? 0 : y > M ? M : y;
+    var ix = x | 0, iy = y | 0, fx = x - ix, fy = y - iy, j = iy * W + ix;
+    var v = (h[j] * (1 - fx) + h[j + 1] * fx) * (1 - fy) + (h[j + W] * (1 - fx) + h[j + W + 1] * fx) * fy;
+    return v > 0 ? v : 0;
+  };
   // corăbiile merg pe apă: altă grilă de trecere și altă cheie pentru căutarea drumului
   function isNaval(u) { return !!(u && u.k === 'u' && G.UNITS[u.t].naval); }
   function pgrid(u) { return isNaval(u) ? C.wpass : (C.pp[u.o] || C.pass); }
@@ -625,6 +641,7 @@ var G = globalThis.G || (globalThis.G = {});
     var armor;
     if (e.k === 'b') armor = (ranged ? G.BLD_ARMOR.p : G.BLD_ARMOR.m) + bstT(e.o, e.t).arm;
     else { var es = ust(e); armor = ranged ? es.pa : es.ma; if (S.players[e.o].techs.bucium && inAura(e)) armor += 1; }
+    if (src && src.k === 'u' && e.k === 'u' && S.hgt) { var dh = G.hAt(src.x, src.y) - G.hAt(e.x, e.y); if (dh > 0.45) atk *= 1.2; else if (dh < -0.45) atk *= 0.85; }
     var dmg = Math.max(1, atk - armor);
     if (bonus) { var cls = e.k === 'b' ? 'bld' : G.UNITS[e.t].cls; if (bonus[cls]) dmg += bonus[cls]; }
     damage(e, dmg, src);
@@ -2013,13 +2030,13 @@ var G = globalThis.G || (globalThis.G = {});
   G.serialize = function () {
     var o = {};
     for (var k in S) o[k] = S[k];
-    o.ter = Array.from(S.ter); o.exp = Array.from(S.exp);
+    o.ter = Array.from(S.ter); o.exp = Array.from(S.exp); if (S.hgt) o.hgt = Array.from(S.hgt, function (v) { return Math.round(v * 100) / 100; });
     return JSON.stringify(o);
   };
   G.deserialize = function (str) {
     var o = JSON.parse(str);
     if (o.v !== 2) throw new Error('Salvare dintr-o versiune veche.');
-    o.ter = Uint8Array.from(o.ter); o.exp = Uint8Array.from(o.exp);
+    o.ter = Uint8Array.from(o.ter); o.exp = Uint8Array.from(o.exp); if (o.hgt) o.hgt = Float32Array.from(o.hgt);
     S = G.S = o;
     G.rebuild();
     refreshLists();

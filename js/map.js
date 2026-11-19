@@ -421,8 +421,109 @@ G.hash2 = function (x, y, s) {
       if (!ok) carve(C, [Math.floor(bases[0][0]), Math.floor(bases[0][1])], [o.x, o.y]);
     });
     decorate(C, season);
-    S.ter = C.ter; S.decor = C.decor; S.base = bases;
+    S.ter = C.ter; S.decor = C.decor; S.base = bases; S.hgt = heightField(C, type, bases, false);
     return { base: bases, objs: C.objs.filter(function (o) { return G.RESD[o.t]; }) };
+  };
+
+  // ---------- relieful ----------
+  // S.hgt: înălțimea în colțurile pătrățelelor ((N+1)², 0 = luciul apei, 16 px pe unitate la zoom 1).
+  // Dealuri line, văi spre ape, munți pe crestele de stâncă, albii sub apă, platouri la baze.
+  // Forma fină (colți de stâncă, ondulații) se calculează din S.hgt în G.reliefFine, la încărcare.
+  function smh(a, b, x) { var t = (x - a) / (b - a); t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); }
+  function bfs(C, isSrc) {
+    var N = C.N, d = new Float32Array(N * N), q = [], i;
+    for (i = 0; i < N * N; i++) { if (isSrc(C.ter[i])) { d[i] = 0; q.push(i); } else d[i] = 1e9; }
+    for (var qi = 0; qi < q.length; qi++) {
+      var c = q[qi], cx = c % N, cy = (c - cx) / N;
+      for (var k = 0; k < 4; k++) {
+        var nx = cx + (k === 0 ? 1 : k === 1 ? -1 : 0), ny = cy + (k === 2 ? 1 : k === 3 ? -1 : 0);
+        if (nx < 0 || ny < 0 || nx >= N || ny >= N) continue;
+        var j = ny * N + nx; if (d[j] > d[c] + 1) { d[j] = d[c] + 1; q.push(j); }
+      }
+    }
+    return d;
+  }
+  function isWet(t) { return t === WA || t === FO || t === BR; }
+  function heightField(C, type, bases, mission) {
+    var N = C.N, V = N + 1, H = new Float32Array(V * V), seed = C.seed + 97, i, vx, vy;
+    var amp = mission ? 0.6 : ({ munti: 1.45, codri: 1.15, rau: 1.0, delta: 0.35, stepa: 0.8, mare: 0.9, lac: 0.95 }[type] || 0.9);
+    var dW = bfs(C, isWet), dL = bfs(C, function (t) { return !isWet(t); }), dR = bfs(C, function (t) { return t !== RO; });
+    var wet = new Uint8Array(V * V);   // 0 uscat, 1 mal, 2 apă
+    function hills(x, y) { var f = fbm(x * 0.045, y * 0.045, seed), f2 = fbm(x * 0.11, y * 0.11, seed + 7); return Math.max(0, smh(0.32, 0.86, f) * 2.3 * amp + (f2 - 0.5) * 0.4 * amp); }
+    var plat = bases.map(function (b) { return Math.min(0.7, hills(b[0], b[1])); });
+    for (vy = 0; vy <= N; vy++) for (vx = 0; vx <= N; vx++) {
+      var cnt = 0, nW = 0, nRo = 0, dw = 1e9, dr = 0, dep = 0;
+      for (var dy = -1; dy <= 0; dy++) for (var dx = -1; dx <= 0; dx++) {
+        var tx = vx + dx, ty = vy + dy; if (tx < 0 || ty < 0 || tx >= N || ty >= N) continue;
+        var k2 = ty * N + tx, t = C.ter[k2]; cnt++;
+        if (isWet(t)) { nW++; dep += t === FO ? -0.16 : -(0.5 + 0.24 * Math.min(4, dL[k2])); }
+        else if (dW[k2] < dw) dw = dW[k2];
+        if (t === RO) { nRo++; dr += dR[k2]; }
+      }
+      var j = vy * V + vx, h;
+      if (nW === cnt) { H[j] = dep / cnt; wet[j] = 2; continue; }
+      if (nW) { H[j] = nW * 2 > cnt ? -0.12 : -0.04; wet[j] = 1; continue; }
+      // dealurile coboară spre ape
+      h = hills(vx, vy) * smh(0.6, 6.5, dw);
+      // munții: urcă spre mijlocul crestei, cu vârfuri diferite
+      if (nRo) {
+        var depth = dr / nRo, pk = 0.8 + fbm(vx * 0.16, vy * 0.16, seed + 31) * 0.8;
+        h += (nRo / cnt) * Math.min(5.4, 1.0 + depth * 1.1) * pk * (type === 'munti' ? 1.2 : 0.95);
+      }
+      bases.forEach(function (b, bi) { var d = Math.hypot(vx - b[0], vy - b[1]); if (d < 11) { var w = smh(6.5, 11, d); h = plat[bi] + (h - plat[bi]) * w; } });
+      h *= smh(0, 4, Math.min(vx, vy, N - vx, N - vy));
+      H[j] = 0.08 + h;
+    }
+    // o netezire ușoară pe uscat, ca dealurile să fie rotunde; malurile și apa rămân pe loc
+    var H2 = new Float32Array(H);
+    for (vy = 1; vy < N; vy++) for (vx = 1; vx < N; vx++) {
+      var jj = vy * V + vx; if (wet[jj]) continue;
+      var s = H[jj] * 4, w = 4;
+      [jj - 1, jj + 1, jj - V, jj + V].forEach(function (q) { if (!wet[q]) { s += H[q]; w++; } });
+      H2[jj] = Math.max(0.08, s / w);
+    }
+    for (i = 0; i < H2.length; i++) H2[i] = Math.round(Math.max(-2, Math.min(7.5, H2[i])) * 100) / 100;
+    return H2;
+  }
+  G.heightField = heightField;
+
+  // ---------- relieful fin: 4 puncte pe latura unui pătrățel, netezit (spline cubic) ----------
+  // Pe stânci: colți și văgăuni (zgomot cu creste); pe uscat: ondulații mici care prind lumina.
+  // Se calculează din S.hgt și S.ter, deci nu se salvează; aceeași hartă dă mereu același relief.
+  function ridged(x, y, s) { var a = 1 - Math.abs(vnoise(x, y, s) * 2 - 1), b = 1 - Math.abs(vnoise(x * 2.03, y * 2.03, s + 5) * 2 - 1), c = 1 - Math.abs(vnoise(x * 4.1, y * 4.1, s + 9) * 2 - 1); return a * a * 0.55 + b * b * a * 0.3 + c * c * b * 0.15; }
+  G.reliefFine = function (S) {
+    var N = S.N, V = N + 1, RF = 4, W = N * RF + 1, Hc = S.hgt, F = new Float32Array(W * W), seed = (S.seed % 1000000) + 5;
+    var rk = new Float32Array(V * V), vx, vy;
+    for (vy = 0; vy <= N; vy++) for (vx = 0; vx <= N; vx++) {
+      var c = 0, r = 0;
+      for (var dy = -1; dy <= 0; dy++) for (var dx = -1; dx <= 0; dx++) { var tx = vx + dx, ty = vy + dy; if (tx < 0 || ty < 0 || tx >= N || ty >= N) continue; c++; if (S.ter[ty * N + tx] === RO) r++; }
+      rk[vy * V + vx] = r / c;
+    }
+    function cv(ix, iy) { ix = ix < 0 ? 0 : ix > N ? N : ix; iy = iy < 0 ? 0 : iy > N ? N : iy; return Hc[iy * V + ix]; }
+    // spline cubic uniform (B-spline): fără depășiri la marginile abrupte
+    var Bw = [], t, u;
+    for (var f = 0; f < RF; f++) { t = f / RF; u = 1 - t; Bw.push([u * u * u / 6, (3 * t * t * t - 6 * t * t + 4) / 6, (-3 * t * t * t + 3 * t * t + 3 * t + 1) / 6, t * t * t / 6]); }
+    for (var fy = 0; fy < W; fy++) {
+      var iy = Math.min(N - 1, (fy / RF) | 0), wy = Bw[fy - iy * RF] || [0, 0, 1, 0];
+      if (fy === W - 1) { iy = N - 1; wy = [0, 1 / 6, 4 / 6, 1 / 6]; }
+      for (var fx = 0; fx < W; fx++) {
+        var ix = Math.min(N - 1, (fx / RF) | 0), wx = Bw[fx - ix * RF] || [0, 0, 1, 0];
+        if (fx === W - 1) { ix = N - 1; wx = [0, 1 / 6, 4 / 6, 1 / 6]; }
+        var h = 0;
+        for (var a = 0; a < 4; a++) { var row = 0; for (var b = 0; b < 4; b++) row += wx[b] * cv(ix - 1 + b, iy - 1 + a); h += wy[a] * row; }
+        var x = fx / RF, y = fy / RF;
+        var rx = Math.min(N, Math.max(0, x)), ry = Math.min(N, Math.max(0, y)), i0 = Math.min(N - 1, rx | 0), j0 = Math.min(N - 1, ry | 0), ax = rx - i0, ay = ry - j0;
+        var r = (rk[j0 * V + i0] * (1 - ax) + rk[j0 * V + i0 + 1] * ax) * (1 - ay) + (rk[(j0 + 1) * V + i0] * (1 - ax) + rk[(j0 + 1) * V + i0 + 1] * ax) * ay;
+        if (r > 0.02) {
+          var rr = r * r * (3 - 2 * r);
+          h += rr * (ridged(x * 0.42, y * 0.42, seed) - 0.3) * (1.1 + Math.min(1.6, h * 0.35));
+          h += rr * (fbm(x * 1.6, y * 1.6, seed + 3) - 0.5) * 0.55;
+        }
+        if (h > 0.08) h += (fbm(x * 1.25, y * 1.25, seed + 9) - 0.5) * 0.12;
+        F[fy * W + fx] = h;
+      }
+    }
+    return { RF: RF, W: W, h: F };
   };
 
   // ---------- pictorul de hărți pentru misiuni ----------
@@ -464,7 +565,7 @@ G.hash2 = function (x, y, s) {
       else if (op[0] === 'decor') C.decor.push({ k: op[1], x: op[2], y: op[3] });
     });
     decorate(C, spec.season || 'vara');
-    S.ter = C.ter; S.decor = C.decor; S.base = [];
+    S.ter = C.ter; S.decor = C.decor; S.base = []; S.hgt = heightField(C, 'spec', [], true);
     return { objs: C.objs.filter(function (o) { return G.RESD[o.t]; }) };
   };
 })();

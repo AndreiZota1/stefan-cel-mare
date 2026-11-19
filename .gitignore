@@ -2,3 +2,4 @@ test/
 .DS_Store
 tools/node_modules/
 tools/tex/
+tools/teren/out/

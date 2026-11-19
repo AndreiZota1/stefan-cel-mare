@@ -31,7 +31,9 @@ var G = globalThis.G || (globalThis.G = {});
     G.R.preloadBaked(); G.R.preloadBld();
     document.body.classList.add('playing');
     G.R.resize(); G.R.resizeMini(); G.UI.forceRefresh();
-    G.Terrain.build(); G.Terrain.fogUpdate(); G.Terrain.prewarm(G.cam, G.R.W, G.R.H, G.R.DPR);
+    G.Terrain.build(); G.Terrain.fogUpdate();
+    if (G.TerrainGL) { G.TerrainGL.build(); G.TerrainGL.fogUpdate(); }
+    if (G.TerrainGL && G.TerrainGL.active()) G.TerrainGL.prewarm(G.cam, G.R.W, G.R.H, G.R.DPR); else G.Terrain.prewarm(G.cam, G.R.W, G.R.H, G.R.DPR);
   }
   // bătălia din spatele meniului: două civilizații la întâmplare, camera urmărește luptele
   var demoT = 0, demoTgt = null;
@@ -46,6 +48,7 @@ var G = globalThis.G || (globalThis.G = {});
     G.cam.z = 1.05; G.R.resize(); G.R.center(G.S.N / 2, G.S.N / 2);
     G.R.preloadBaked(); G.R.preloadBld();
     G.Terrain.build(); G.Terrain.fogUpdate();
+    if (G.TerrainGL) { G.TerrainGL.build(); G.TerrainGL.fogUpdate(); }
     for (var i = 0; i < 1500; i++) G.update(0.1);
   }
   G.startDemo = startDemo;
@@ -164,7 +167,7 @@ var G = globalThis.G || (globalThis.G = {});
     var qs = new URLSearchParams(location.search);
     if (qs.get('spectate')) G.spectate = true;
     G.R.init($('cv')); G.R.initMini($('mini')); G.UI.init(); G.Input.init($('cv'));
-    G.R.preloadNature(); G.Terrain.loadTextures();
+    G.R.preloadNature(); G.Terrain.loadTextures(); if (G.TerrainGL) G.TerrainGL.loadTextures();
     function layout() {
       var desk = window.matchMedia('(pointer: fine)').matches && window.innerWidth >= 900 && window.innerHeight >= 520;
       document.body.classList.toggle('desk', desk);

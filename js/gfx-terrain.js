@@ -5,7 +5,15 @@ var G = globalThis.G || (globalThis.G = {});
 (function () {
   'use strict';
   var T = G.Terrain = {};
-  var CS = 256, MAXC = 190;
+  var CS = 256, MAXC = 190, HPX = 16, Hmax = 0;
+  // înălțimea terenului în (x, y), din vârfurile pătrățelelor
+  function hAtT(x, y) {
+    if (G.relief && G.relief()) return G.hAt(x, y);
+    var H = F && F.h; if (!H) return 0;
+    if (x < 0) x = 0; else if (x > N - 0.001) x = N - 0.001; if (y < 0) y = 0; else if (y > N - 0.001) y = N - 0.001;
+    var ix = x | 0, iy = y | 0, fx = x - ix, fy = y - iy, j = iy * V + ix;
+    return (H[j] * (1 - fx) + H[j + 1] * fx) * (1 - fy) + (H[j + V] * (1 - fx) + H[j + V + 1] * fx) * fy;
+  }
   var cache = new Map(), frameNo = 0;
   var N = 0, V = 0, F = null, shore = [], waterTiles = null;
   var NT = 256, nLow, nMid, nDet, grain;
@@ -63,6 +71,11 @@ var G = globalThis.G || (globalThis.G = {});
         if (dist[k] > dist[c] + 1) { dist[k] = dist[c] + 1; q.push(k); }
       });
     }
+    // relieful hărții (vârfurile pătrățelelor); hărțile vechi sunt plate
+    var HG = (S.hgt && S.hgt.length === M) ? S.hgt : null;
+    F.h = HG ? Float32Array.from(HG, function (v) { return v > 0 ? v : 0; }) : new Float32Array(M); Hmax = 0;
+    for (i = 0; i < M; i++) if (F.h[i] > Hmax) Hmax = F.h[i];
+    var RFn = G.relief && G.relief(); if (RFn) for (i = 0; i < RFn.h.length; i++) if (RFn.h[i] > Hmax) Hmax = RFn.h[i];
     var forest = new Float32Array(N * N);
     S.ents.forEach(function (e) { if (e.k === 'r' && e.t === 'tree') forest[e.ty * N + e.tx] = 1; });
     for (var vy = 0; vy < V; vy++) for (var vx = 0; vx < V; vx++) {
@@ -82,6 +95,14 @@ var G = globalThis.G || (globalThis.G = {});
       F.d[j] = cd / cnt; F.w[j] = cw / cnt; F.f[j] = cf / cnt; F.dep[j] = dep / cnt; F.fo[j] = fo / cnt; F.r[j] = cr / cnt; F.s[j] = cs / cnt; F.m[j] = cm / cnt;
       var h1 = bil(nLow, vx * 4 - 3, vy * 4), h2 = bil(nLow, vx * 4 + 3, vy * 4), h3 = bil(nLow, vx * 4, vy * 4 - 3), h4 = bil(nLow, vx * 4, vy * 4 + 3);
       F.sh[j] = 1 + ((h1 - h2) * 0.6 + (h3 - h4) * 0.35) * 1.15;
+      if (HG) {
+        // umbrirea dealurilor: lumina vine din stânga-sus a ecranului
+        var hl = F.h[vy * V + Math.max(0, vx - 1)], hr = F.h[vy * V + Math.min(N, vx + 1)], hu = F.h[Math.max(0, vy - 1) * V + vx], hd = F.h[Math.min(N, vy + 1) * V + vx];
+        var gx = (hr - hl) * 0.5, gy = (hd - hu) * 0.5, lit = 1 + (gx + 0.35 * gy) * 0.95 + F.h[j] * 0.03;
+        // văile (mai jos decât împrejurimile) puțin mai întunecate
+        var ao = (hl + hr + hu + hd) * 0.25 - F.h[j]; if (ao > 0) lit -= ao * 0.35;
+        F.sh[j] *= lit < 0.55 ? 0.55 : lit > 1.45 ? 1.45 : lit;
+      }
     }
     // malurile, pentru spuma animată
     shore = []; waterTiles = [];
@@ -195,12 +216,10 @@ var G = globalThis.G || (globalThis.G = {});
     var offX = N * 32 * k, X0 = cx * CS, Y0 = cy * CS, i32 = 1 / (32 * k), i16 = 1 / (16 * k);
     var Fd = F.d, Fw = F.w, Ff = F.f, Fdep = F.dep, Ffo = F.fo, Fsh = F.sh, Fr = F.r, Fs = F.s, Fm = F.m, Nm = N - 0.001, winter = G.S && G.S.map && G.S.map.season === 'iarna';
     var TG = TX.grass, TG2 = TX.grass2 || TX.grass, TF = TX.forest || TX.grass, TD = TX.dirt, TS = TX.sand || TX.dirt, TR = TX.rocks || TX.dirt;
-    for (var py = 0; py < CS; py += 2) {
-      var Yc = Y0 + py + 1, b = Yc * i16;
-      for (var px = 0; px < CS; px += 2) {
-        var Xc = X0 + px + 1, a = (Xc - offX) * i32;
-        var x = (a + b) * 0.5, y = (b - a) * 0.5;
-        if (x < -0.05 || y < -0.05 || x >= N + 0.05 || y >= N + 0.05) continue;
+    // relieful: fiecare coloană de pixeli se umple din față spre spate; dealurile din față le ascund pe cele din spate
+    var EK = HPX * k, HM = (Hmax + 0.05) * EK, col = [0, 0, 0];
+    function shadeAt(x, y, out) {
+      var xx = x, yy = y;
         var nm = bil(nMid, x * 9, y * 9), nm2 = bil(nMid, x * 9 + 131, y * 9 + 57);
         var sx = x + (nm - 0.5) * 0.75, sy = y + (nm2 - 0.5) * 0.75;
         if (sx < 0) sx = 0; else if (sx > Nm) sx = Nm;
@@ -225,12 +244,6 @@ var G = globalThis.G || (globalThis.G = {});
         var wr = 0, wg = 0, wb = 0;
         if (wm > 0) { var dep = Fdep[j0] * w0 + Fdep[j1] * w1 + Fdep[j2] * w2 + Fdep[j3] * w3, dd = sm(0, 2.6, dep); wr = 66 - 36 * dd; wg = 118 - 50 * dd; wb = 150 - 30 * dd; }
         var tint = 0.94 + nl * 0.14;
-        for (var oy = 0; oy < 2; oy++) {
-          var Yp = Y0 + py + oy + 0.5, bp = Yp * i16;
-          for (var ox = 0; ox < 2; ox++) {
-            var Xp = X0 + px + ox + 0.5, ap = (Xp - offX) * i32, xx = (ap + bp) * 0.5, yy = (bp - ap) * 0.5;
-            if (xx < 0 || yy < 0 || xx >= N || yy >= N) continue;
-            var o = ((py + oy) * CS + px + ox) << 2;
             var i1 = ti(xx, yy, 0.34), i2 = ti(yy + 7.3, xx + 3.1, 0.22);
             // iarba: două texturi amestecate, aduse spre verdele din AoE
             var r = TG[i1] * (1 - t2) + TG2[i2] * t2, gg = TG[i1 + 1] * (1 - t2) + TG2[i2 + 1] * t2, bb = TG[i1 + 2] * (1 - t2) + TG2[i2 + 2] * t2;
@@ -253,9 +266,21 @@ var G = globalThis.G || (globalThis.G = {});
               r += (sr - r) * sn; gg += (sg - gg) * sn; bb += (sb - bb) * sn;
               if (wm > 0) { r += (r * 0.8 + 18 - r) * wm; gg += (gg * 0.85 + 20 - gg) * wm; bb += (bb * 0.95 + 24 - bb) * wm; }
             }
-            d[o] = r; d[o + 1] = gg; d[o + 2] = bb; d[o + 3] = 255;
-          }
-        }
+      out[0] = r; out[1] = gg; out[2] = bb;
+    }
+    for (var px = 0; px < CS; px++) {
+      var Xq = X0 + px + 0.5, aq = (Xq - offX) * i32, ymin = CS;
+      for (var Yf = Y0 + CS + HM; Yf >= Y0 - 1 && ymin > 0; Yf -= 1) {
+        var bq = (Yf + 0.5) * i16, qx = (aq + bq) * 0.5, qy = (bq - aq) * 0.5;
+        if (qx < 0 || qy < 0 || qx >= N || qy >= N) continue;
+        var top = Math.ceil(Yf - Y0 - hAtT(qx, qy) * EK - 0.5);
+        if (top >= ymin) continue;
+        if (top < 0) top = 0;
+        shadeAt(qx, qy, col);
+        // fața dinspre noi a unui deal abrupt: mai întunecată
+        var span = ymin - top, dk = span > 2 ? Math.max(0.7, 1 - (span - 2) * 0.035) : 1;
+        for (var row = top; row < ymin; row++) { var o = (row * CS + px) << 2; d[o] = col[0] * dk; d[o + 1] = col[1] * dk; d[o + 2] = col[2] * dk; d[o + 3] = 255; }
+        ymin = top;
       }
     }
     g.putImageData(img, 0, 0);
@@ -270,9 +295,10 @@ var G = globalThis.G || (globalThis.G = {});
     var pts = [[X0, Y0], [X0 + CS, Y0], [X0, Y0 + CS], [X0 + CS, Y0 + CS]].map(function (p) {
       var a = (p[0] - offX) / (32 * k), b = p[1] / (16 * k); return [(a + b) / 2, (b - a) / 2];
     });
-    var mx0 = Math.max(0, Math.floor(Math.min(pts[0][0], pts[2][0])) - 1), mx1 = Math.min(N - 1, Math.ceil(Math.max(pts[1][0], pts[3][0])) + 1);
-    var my0 = Math.max(0, Math.floor(Math.min(pts[0][1], pts[1][1])) - 1), my1 = Math.min(N - 1, Math.ceil(Math.max(pts[2][1], pts[3][1])) + 1);
-    function P(x, y) { return [(x - y) * 32 * k + offX - X0, (x + y) * 16 * k - Y0]; }
+    var hx = Math.ceil(Hmax) + 1;
+    var mx0 = Math.max(0, Math.floor(Math.min(pts[0][0], pts[2][0])) - 1), mx1 = Math.min(N - 1, Math.ceil(Math.max(pts[1][0], pts[3][0])) + 1 + hx);
+    var my0 = Math.max(0, Math.floor(Math.min(pts[0][1], pts[1][1])) - 1), my1 = Math.min(N - 1, Math.ceil(Math.max(pts[2][1], pts[3][1])) + 1 + hx);
+    function P(x, y) { return [(x - y) * 32 * k + offX - X0, (x + y) * 16 * k - Y0 - hAtT(x, y) * HPX * k]; }
     g.lineCap = 'round';
     for (var ty = my0; ty <= my1; ty++) for (var tx = mx0; tx <= mx1; tx++) {
       var t = ter[ty * N + tx];

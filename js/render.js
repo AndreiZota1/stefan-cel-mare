@@ -45,10 +45,19 @@ var G = globalThis.G || (globalThis.G = {});
     cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR);
     R.W = W; R.H = H; R.DPR = DPR;
   };
-  R.w2s = function (x, y) { return [(x - y - cam.x + cam.y) * 32 * cam.z + W / 2, (x + y - cam.x - cam.y) * 16 * cam.z + H / 2]; };
+  // din lume pe ecran, cu relieful: 16 pixeli pe unitate de înălțime, la zoom 1
+  var HPX = 16;
+  R.w2s = function (x, y) { return [(x - y - cam.x + cam.y) * 32 * cam.z + W / 2, (x + y - cam.x - cam.y) * 16 * cam.z + H / 2 - G.hAt(x, y) * HPX * cam.z]; };
+  R.w2sAt = function (x, y, h) { return [(x - y - cam.x + cam.y) * 32 * cam.z + W / 2, (x + y - cam.x - cam.y) * 16 * cam.z + H / 2 - h * HPX * cam.z]; };
+  // colțul de sus al unei clădiri, ridicat cât mijlocul ei (pe pantă, clădirea stă pe mijloc)
+  R.bTop = function (tx, ty, n) { return R.w2sAt(tx, ty, G.hAt(tx + n / 2, ty + n / 2)); };
+  function s2wFlat(sx, sy) { var a = (sx - W / 2) / (32 * cam.z) + cam.x - cam.y, b = (sy - H / 2) / (16 * cam.z) + cam.x + cam.y; return [(a + b) / 2, (b - a) / 2]; }
+  // de pe ecran în lume: punctul de pe teren de sub cursor (câteva apropieri succesive)
   R.s2w = function (sx, sy) {
-    var a = (sx - W / 2) / (32 * cam.z) + cam.x - cam.y, b = (sy - H / 2) / (16 * cam.z) + cam.x + cam.y;
-    return [(a + b) / 2, (b - a) / 2];
+    var p = s2wFlat(sx, sy);
+    if (!G.S || !G.S.hgt) return p;
+    for (var i = 0; i < 4; i++) p = s2wFlat(sx, sy + G.hAt(p[0], p[1]) * HPX * cam.z);
+    return p;
   };
   R.clampCam = function () {
     var N = G.S ? G.S.N : 72;
@@ -715,10 +724,11 @@ var G = globalThis.G || (globalThis.G = {});
     var tw = 64 * z, th = 32 * z, ox = W / 2 - (cam.x - cam.y) * 32 * z, oy = H / 2 - (cam.x + cam.y) * 16 * z;
     var exp = S.exp, vis = C.vis, ter = S.ter;
     var x, y, k, sx, sy;
-    // teren (calculat pe bucăți) și apa vie
-    G.Terrain.draw(ctx, cam, W, H, DPR);
-    G.Terrain.water(ctx, cam, W, H, clock);
-    if (clock - lastFogT > 0.2 || lastFogT > clock) { G.Terrain.fogUpdate(); lastFogT = clock; }
+    // terenul: pe placa video (relief 3D, apă vie), altfel cel vechi, calculat pe bucăți
+    var glOn = !!(G.TerrainGL && G.TerrainGL.draw(ctx, cam, W, H, DPR, clock));
+    if (!glOn) { G.Terrain.draw(ctx, cam, W, H, DPR); G.Terrain.water(ctx, cam, W, H, clock); }
+    else G.TerrainGL.drawBridges(ctx, cam, W, H, exp);
+    if (clock - lastFogT > 0.2 || lastFogT > clock) { if (glOn) G.TerrainGL.fogUpdate(); else G.Terrain.fogUpdate(); lastFogT = clock; }
 
     // obiecte vizibile
     var list = [], ground = [];
@@ -761,7 +771,7 @@ var G = globalThis.G || (globalThis.G = {});
       } else if (f.k === 'rubble') {
         var rs = sheet2('b/ruina' + Math.min(5, Math.max(2, f.n)) + '_all');
         ctx.globalAlpha = Math.max(0, Math.min(1, (900 - age) / 120));
-        if (rs) { var rk = z / rs.B.k * (f.n / Math.min(5, Math.max(2, f.n))), tp0 = R.w2s(f.x - f.n / 2, f.y - f.n / 2); ctx.drawImage(rs.img, tp0[0] - rs.B.ax * rk, tp0[1] - rs.B.ay * rk, rs.B.W * rk, rs.B.H * rk); ctx.globalAlpha = 1; return; }
+        if (rs) { var rk = z / rs.B.k * (f.n / Math.min(5, Math.max(2, f.n))), tp0 = R.bTop(f.x - f.n / 2, f.y - f.n / 2, f.n); ctx.drawImage(rs.img, tp0[0] - rs.B.ax * rk, tp0[1] - rs.B.ay * rk, rs.B.W * rk, rs.B.H * rk); ctx.globalAlpha = 1; return; }
         if (age < 3) { ctx.globalAlpha = 0.6 * (1 - age / 3); ell(ctx, p[0], p[1] - 10 * z, (f.n * 26 + age * 25) * z, (f.n * 12 + age * 10) * z, '#9a8f80'); ctx.globalAlpha = Math.max(0, Math.min(1, (900 - age) / 120)); }
         var n = f.n, hw = n * 32 * z * 0.85, hh = n * 16 * z * 0.85;
         ctx.fillStyle = '#5c544a'; ctx.beginPath(); ctx.moveTo(p[0], p[1] - hh); ctx.lineTo(p[0] + hw, p[1]); ctx.lineTo(p[0], p[1] + hh); ctx.lineTo(p[0] - hw, p[1]); ctx.closePath(); ctx.fill();
@@ -796,13 +806,16 @@ var G = globalThis.G || (globalThis.G = {});
       ctx.globalAlpha = 1 - a; ctx.beginPath(); ctx.ellipse(p[0], p[1], (14 - a * 8) * z, (7 - a * 4) * z, 0, 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1;
     });
 
+    // munții înalți ascund ce e în spatele lor
+    if (glOn) { var oc = G.TerrainGL.occluders(minX, maxX, minY, maxY, exp); for (var oi = 0; oi < oc.length; oi++) list.push(oc[oi]); }
     list.sort(function (a, b) {
       var da = a.k === 'b' ? a.tx + a.ty + a.n : a.x + a.y, db = b.k === 'b' ? b.tx + b.ty + b.n : b.x + b.y;
       return da - db;
     });
     for (var j = 0; j < list.length; j++) {
       var o = list[j];
-      if (o.k === 'koth') drawKoth(o);
+      if (o.k === 'occ') G.TerrainGL.drawOcc(ctx, o, cam, W, H, DPR);
+      else if (o.k === 'koth') drawKoth(o);
       else if (o.k === 'r') drawRes(o);
       else if (o.k === 'd') drawDecor(o);
       else if (o.k === 'b') drawBld(o, sel[o.id]);
@@ -848,7 +861,7 @@ var G = globalThis.G || (globalThis.G = {});
     G.Terrain.clouds(ctx, cam, W, H, clock);
     if (S.night || S.fog) weather(S, z);
     if (S.map && S.map.season === 'iarna') snow(dt);
-    G.Terrain.fogDraw(ctx, cam, W, H, DPR);
+    if (!(glOn && G.TerrainGL.fogDraw(ctx, cam, W, H, DPR, clock))) G.Terrain.fogDraw(ctx, cam, W, H, DPR);
     // margini în afara hărții
     drawEdge(ox, oy, z, N);
     G.Terrain.vignette(ctx, W, H);
@@ -865,7 +878,7 @@ var G = globalThis.G || (globalThis.G = {});
           ctx.beginPath(); ctx.moveTo(tp[0], tp[1]); ctx.lineTo(tp[0] + 32 * z, tp[1] + 16 * z); ctx.lineTo(tp[0], tp[1] + 32 * z); ctx.lineTo(tp[0] - 32 * z, tp[1] + 16 * z); ctx.closePath(); ctx.fill();
         }
       });
-      var s2 = d.wall ? null : bldSprite(pl.t, S.players[0].civ, null, 0), top = R.w2s(pl.tx, pl.ty);
+      var s2 = d.wall ? null : bldSprite(pl.t, S.players[0].civ, null, 0), top = R.bTop(pl.tx, pl.ty, d.n);
       if (s2) { ctx.globalAlpha = ghostAlpha; ctx.drawImage(s2.c, top[0] - s2.ax * z, top[1] - s2.ay * z, s2.w * z, s2.h * z); ctx.globalAlpha = 1; }
     }
     // punctul de adunare
@@ -915,7 +928,7 @@ var G = globalThis.G || (globalThis.G = {});
         if (b.dead || !b.built || !S.exp[Math.floor(b.y) * S.N + Math.floor(b.x)]) return;
         var sp = bldSprite(b.t, S.players[b.o].civ, b); if (!sp || !sp.lit) return;
         if (!sp.litC) { var li = loadImg(sp.lit); if (!imgOk(li)) return; var lc = document.createElement('canvas'); lc.width = li.naturalWidth; lc.height = li.naturalHeight; var lg = lc.getContext('2d'); lg.drawImage(li, 0, 0); lg.globalCompositeOperation = 'source-in'; lg.fillStyle = '#ffb04a'; lg.fillRect(0, 0, lc.width, lc.height); sp.litC = lc; }
-        var top = R.w2s(b.tx, b.ty); if (top[0] < -300 || top[0] > W + 300 || top[1] < -300 || top[1] > H + 300) return;
+        var top = R.bTop(b.tx, b.ty, b.n); if (top[0] < -300 || top[0] > W + 300 || top[1] < -300 || top[1] > H + 300) return;
         ctx.globalAlpha = Math.min(1, S.night) * (0.82 + 0.12 * Math.sin(clock * 3 + b.id));
         ctx.drawImage(sp.litC, top[0] - sp.ax * z, top[1] - sp.ay * z, sp.w * z, sp.h * z);
       });
@@ -1098,6 +1111,8 @@ var G = globalThis.G || (globalThis.G = {});
     return (decC[kd] = { c: c, w: w, h: h, ax: cx, ay: cy });
   }
   function drawDecor(o) {
+    // pe terenul 3D, munții sunt chiar relieful: munticeii desenați ar sta cocoțați pe ei
+    if (/^mount/.test(o.kd) && G.TerrainGL && G.TerrainGL.active()) return;
     var s = natSprite(o.kd, '') || decorFallback(o.kd), p = R.w2s(o.x, o.y), z = cam.z;
     if (!s || p[0] < -120 || p[0] > W + 120 || p[1] < -40 || p[1] > H + 160) return;
     var k = z * (o.sc || 1);
@@ -1120,7 +1135,7 @@ var G = globalThis.G || (globalThis.G = {});
     ctx.globalAlpha = 1;
   }
   function drawBld(b, selected) {
-    var S = G.S, z = cam.z, civ = S.players[b.o].civ, s = bldSprite(b.t, civ, b), top = R.w2s(b.tx, b.ty), n = b.n;
+    var S = G.S, z = cam.z, civ = S.players[b.o].civ, s = bldSprite(b.t, civ, b), top = R.bTop(b.tx, b.ty, b.n), n = b.n;
     if (!s) { drawWallBlock(b); if (selected || (b.hit && S.t - b.hit < 3)) hpBar(b, top[0], top[1] - 6 * z, 24); return; }
     if (selected) {
       ctx.strokeStyle = b.o === 0 ? '#ffffff' : G.ally(0, b.o) ? '#9cf59c' : '#ff6a5a'; ctx.lineWidth = 1.6;
@@ -1337,7 +1352,7 @@ var G = globalThis.G || (globalThis.G = {});
         var n = e.n;
         if (w[0] >= e.tx && w[0] <= e.tx + n && w[1] >= e.ty && w[1] <= e.ty + n) score = 1000 + e.tx + e.ty;
         else {
-          var s = bldSprite(e.t, S.players[e.o].civ, e) || { ay: 30 }, top = R.w2s(e.tx, e.ty);
+          var s = bldSprite(e.t, S.players[e.o].civ, e) || { ay: 30 }, top = R.bTop(e.tx, e.ty, e.n);
           if (sx > top[0] - n * 26 * z && sx < top[0] + n * 26 * z && sy > top[1] - (s.ay - 10) * z && sy < top[1] + n * 16 * z) score = 900 + e.tx + e.ty;
         }
         if (G.BLDS[e.t].walk && score > -1e9) score -= 600;
