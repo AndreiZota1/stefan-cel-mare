@@ -1590,8 +1590,9 @@ var G = globalThis.G || (globalThis.G = {});
   G.update = function (dt) {
     if (!S || S.over) return;
     S.t += dt; S.tick = (S.tick || 0) + 1;
-    // pozițiile de dinainte de pas: desenul trece lin de la ele la cele noi (vezi R.lerp)
-    for (var q = 0; q < C.units.length; q++) { var uq = C.units[q]; uq.px = uq.x; uq.py = uq.y; }
+    // pozițiile de dinainte de pas: desenul trece lin de la ele la cele noi (vezi R.lerp).
+    // Atenție: u.px/u.py sunt ale pazei contra blocajelor (poziția de acum 2 secunde); aici sunt u.lx/u.ly.
+    for (var q = 0; q < C.units.length; q++) { var uq = C.units[q]; uq.lx = uq.x; uq.ly = uq.y; }
     if (S.opt.daynight) { var dc = (S.t % 720) / 720, dn = dc < 0.62 ? 0 : dc < 0.7 ? (dc - 0.62) / 0.08 : dc < 0.92 ? 1 : 1 - (dc - 0.92) / 0.08; S.night = dn * 0.85; S.losMul = 1 - 0.3 * dn; }
     C.budget = 10 + S.players.length * 2;
     refreshLists();

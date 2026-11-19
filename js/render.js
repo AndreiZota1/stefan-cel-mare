@@ -1468,9 +1468,9 @@ var G = globalThis.G || (globalThis.G = {});
     if (al > 1) al = 1;
     var us = G.C.units, su = [], pr = S.proj, sp = [];
     for (var i = 0; i < us.length; i++) {
-      var u = us[i]; if (u.px === undefined) continue;
-      var dx = u.x - u.px, dy = u.y - u.py; if (dx * dx + dy * dy > 4) continue;
-      su.push(u, u.x, u.y); u.x = u.px + dx * al; u.y = u.py + dy * al;
+      var u = us[i]; if (u.lx === undefined) continue;
+      var dx = u.x - u.lx, dy = u.y - u.ly; if (dx * dx + dy * dy > 4) continue;
+      su.push(u, u.x, u.y); u.x = u.lx + dx * al; u.y = u.ly + dy * al;
     }
     for (var j = 0; j < pr.length; j++) { var p = pr[j]; if (p.p >= 0 && p.dur > 0) { sp.push(p, p.p); p.p = Math.min(1, p.p + al * 0.05 / p.dur); } }
     lerpSaved = { u: su, p: sp, t: S.t }; S.t += al * 0.05;
