@@ -1465,6 +1465,7 @@ var G = globalThis.G || (globalThis.G = {});
   R.lerp = function (al) {
     var S = G.S; lerpSaved = null;
     if (!S || !(al > 0)) return;
+    if (al > 1) al = 1;
     var us = G.C.units, su = [], pr = S.proj, sp = [];
     for (var i = 0; i < us.length; i++) {
       var u = us[i]; if (u.px === undefined) continue;

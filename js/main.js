@@ -80,7 +80,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (G.Music && G.Music.setCiv) { G.Music.setCiv(G.S.players[G.me].civ); if (G.Music.setAge) G.Music.setAge(G.S.players[G.me].age); }
     if (G.Coloana) G.Coloana.set('joc', G.S.players[G.me].civ);
     if (!o.scen) {
-      var S = G.S, me = S.players[G.me], foes = S.players.filter(function (P) { return G.enemy(G.me, P.id); }), fr = S.players.filter(function (P) { return P.id && G.ally(G.me, P.id); });
+      var S = G.S, me = S.players[G.me], foes = S.players.filter(function (P) { return G.enemy(G.me, P.id); }), fr = S.players.filter(function (P) { return P.id !== G.me && G.ally(G.me, P.id); });
       G.msg('Ești ' + G.CIVS[me.civ].name + '. Te înfrunți cu: ' + foes.map(function (P) { return G.CIVS[P.civ].name; }).join(', ') + (fr.length ? '. Aliați: ' + fr.map(function (P) { return G.CIVS[P.civ].name; }).join(', ') : '') + '.', 'good');
       if (S.opt.peace) G.msg('Pace ' + Math.round(S.opt.peace / 60) + ' minute: nimeni nu te atacă până atunci.', 'info');
       G.msg('Alege un țăran, apoi o oaie sau o tufă de mure.', 'info');
@@ -102,13 +102,15 @@ var G = globalThis.G || (globalThis.G = {});
     G.msg('Continuăm de unde ai rămas.', 'info');
   };
   G.saveGame = function () {
+    if (G.S && G.S.opt && G.S.opt.online) return;
     if (!G.S || G.S.over || G.spectate) return;
     try {
       localStorage.setItem(SAVE, G.serialize());
       localStorage.setItem(SAVE + '_meta', JSON.stringify({ t: G.S.t, diff: G.S.diff, civ: G.S.players[G.me].civ, scen: G.S.scen ? G.S.scen.title || G.S.scen.id : '', when: Date.now(), cam: { x: G.cam.x, y: G.cam.y, z: G.cam.z } }));
     } catch (e) {}
   };
-  G.pause = function () { if (!G.running) return; G.paused = true; G.saveGame(); show('menu', true); };
+  // online nu există pauză (i-ar opri și pe ceilalți): meniul se deschide, jocul merge mai departe
+  G.pause = function () { if (!G.running) return; if (G.S.opt.online) { show('menu', true); return; } G.paused = true; G.saveGame(); show('menu', true); };
   G.resume = function () { G.paused = false; show('menu', false); show('help', false); };
   G.toStart = function () { G.saveGame(); G.toMenu(); };
   // meniul principal, fără salvare (după o misiune terminată nu e nimic de continuat)
@@ -143,22 +145,52 @@ var G = globalThis.G || (globalThis.G = {});
     if (S.scen && G.Camp && G.Camp.onEnd) { G.Camp.onEnd(win); return; }
     G.endCamp = null;
     G.Menu.endScreen(S, win);
-    $('eNext').style.display = 'none'; $('eRetry').style.display = ''; $('eRetry').textContent = 'Mai joacă o dată'; $('eCamp').style.display = 'none';
+    $('eNext').style.display = 'none'; $('eRetry').style.display = S.opt.online ? 'none' : ''; $('eRetry').textContent = 'Mai joacă o dată'; $('eCamp').style.display = 'none';
+    netWait('');
+    if (S.opt.online && G.Net) G.Net.ended();
     show('end', true);
   }
 
   var last = performance.now();
   // simularea merge în pași ficși de 0,05 s, la fel pe orice calculator (jocul online cere asta);
   // între doi pași, oamenii și proiectilele se desenează la mijlocul drumului, ca mișcarea să rămână lină
-  var STEP = 0.05, acc = 0;
+  var STEP = 0.05, acc = 0, waitT = 0;
+  // online: dacă un jucător întârzie, ceilalți văd pe cine așteaptă; gazda îl poate lăsa în grija calculatorului
+  function netWait(txt, host) {
+    var el = $('netWait'); if (!el) return;
+    el.style.display = txt ? '' : 'none'; if (!txt) return;
+    el.querySelector('span').textContent = txt;
+    el.querySelector('button').style.display = host ? '' : 'none';
+  }
+  function netWaitCheck(dt) {
+    var NT = G.Net, w = NT.canStep() ? [] : NT.waitingFor();
+    waitT = w.length ? waitT + dt : 0;
+    if (waitT < 1) { netWait(''); return; }
+    var names = w.map(function (i) { return NT.seats[i].name || 'un jucător'; }).join(', ');
+    netWait('Se așteaptă: ' + names + '…' + (waitT > 30 && NT.isHost() ? ' Nu mai răspunde.' : ''), waitT > 30 && NT.isHost());
+  }
+  G.netContinueWithout = function () { var NT = G.Net; NT.waitingFor().forEach(function (i) { NT.dropSeat(i); }); waitT = 0; };
   function frame(now) {
     var dt = Math.min(0.1, (now - last) / 1000);
     last = now;
     // filmul de început ține tot ecranul
     if (G.Cine && G.Cine.active) { G.Cine.tick(dt); requestAnimationFrame(frame); return; }
-    if (G.S && G.running && !G.paused) {
+    var NT = G.Net;
+    if (G.S && G.running && NT && NT.on && NT.catching) {
+      // online, după o pagină reîncărcată: jocul se reia din comenzile păstrate, cât de repede se poate
+      var c0 = performance.now();
+      while (G.running && NT.canStep() && performance.now() - c0 < 30) { NT.beforeTick(); G.update(STEP); endCheck(); }
+      if (!NT.canStep()) { NT.catching = false; acc = 0; }
+      netWait(NT.catching ? 'Se reia jocul… minutul ' + Math.floor(G.S.t / 60) : '');
+    } else if (G.S && G.running && !G.paused) {
       acc = Math.min(acc + dt * G.speed, STEP * 6);
-      while (acc >= STEP && G.running) { G.update(STEP); acc -= STEP; endCheck(); }
+      while (acc >= STEP && G.running) {
+        // online: la începutul fiecărei ture, doar dacă au sosit comenzile tuturor
+        if (NT && NT.on && !NT.canStep()) { acc = Math.min(acc, STEP); break; }
+        if (NT && NT.on) NT.beforeTick();
+        G.update(STEP); acc -= STEP; endCheck();
+      }
+      if (NT && NT.on) netWaitCheck(dt);
     } else acc = 0;
     if (G.demo && G.S && !G.running) {
       var simd = dt * 1.5;

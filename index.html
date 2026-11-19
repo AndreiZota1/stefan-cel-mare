@@ -175,6 +175,15 @@
   .spic.on { opacity: 1; }
   .spic img { width: 100%; height: 100%; object-fit: cover; transform-origin: 60% 40%; animation: kenburns 26s ease-out forwards; }
   .spic::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 60px #000c; }
+  #onlineBox h2 { margin: 0 0 6px; } #onlineBox .nsub { color: #d8c9a8; margin: 4px 0 10px; } #onlineBox .nor { text-align: center; color: #bfb39a; margin: 10px 0 6px; font-size: 13px; }
+  #onlineBox input, #onlineBox select { font: inherit; padding: 7px 8px; border-radius: 6px; border: 1px solid #9a7438; background: #1c140c; color: #f1e6cc; }
+  #onlineBox .nrow { display: flex; gap: 8px; align-items: center; margin: 6px 0 10px; } #onlineBox .nrow input { flex: 1; }
+  #onlineBox .row2 input { flex: 1; min-width: 0; } #onlineBox .row2 label { flex: 1; display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: #d8c9a8; }
+  #onlineBox .ncode { letter-spacing: 3px; color: #ffd75a; } #onlineBox .nerr { color: #ff8a7a; }
+  .nseats { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 14px; } .nseats td { padding: 4px 5px; border-bottom: 1px solid #ffffff14; } .nseats select { width: 100%; padding: 4px; }
+  .nseats .nrm { padding: 2px 8px; min-height: 0; } #onlineBox .btn { margin-top: 6px; }
+  #netWait { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 30; background: #1c140ce8; border: 1px solid #9a7438; border-radius: 10px; padding: 8px 14px; color: #f1e6cc; display: flex; gap: 10px; align-items: center; font-size: 14px; }
+  #netWait .btn { padding: 4px 10px; min-height: 0; }
   .credits { font-size: 11.5px; color: #a89a80; line-height: 1.45; margin: 10px 2px 6px; }
   #splash { background: #000 url('assets/poze/cine_titlu.webp') center / cover no-repeat; display: none; align-items: center; justify-content: center; }
   #splash.on { display: flex; }
@@ -303,12 +312,15 @@
       <button class="btn" id="bContinue" style="display:none">▶ Continuă jocul <small></small></button>
       <button class="btn big" id="bCamp">📜 Campanii <small>Mircea, Vlad, Ștefan, Mihai, Iancu și vecinii lor</small></button>
       <button class="btn big" id="bSkirmish">⚔️ Bătălie liberă <small>Alegi civilizația, adversarii, harta și epoca</small></button>
+      <button class="btn big" id="bOnline">🌐 Joc online <small>Joacă cu prietenii, pe internet</small></button>
       <button class="btn" id="bQuick">⚡ Joc rapid <small>Cu ultimele setări</small></button>
       <div class="row2"><button class="btn" id="bTree">🌳 Tehnologii</button><button class="btn" id="bMedals">🏅 Medalii</button><button class="btn" id="bHelp">❔ Cum se joacă</button><button class="btn" id="bFilm">🎬 Filmul</button></div>
     </div>
   </div>
 </div>
 
+<div id="online" class="ov" style="z-index:38"><div class="panel" id="onlineBox" style="max-width:620px"></div></div>
+<div id="netWait" style="display:none"><span></span><button class="btn">Continuă fără el</button></div>
 <div id="films" class="ov" style="z-index:40"><div class="panel" style="max-width:440px"><h2>Filmele</h2>
   <button class="btn big" id="fZugrav">🎨 Zugravul de la Moldovița <small>Filmul de început: o frescă prinde viață</small></button>
   <button class="btn big" id="fTrailer">⚔️ Trailerul <small>Carpații, oastea sultanului, domnii și bătăliile</small></button>
@@ -355,7 +367,7 @@
 <div id="say"></div>
 <div id="rotate"><div>📱</div>Întoarce telefonul pe orizontală</div>
 
-<script>var G = globalThis.G || (globalThis.G = {}); G.VER = '968c9dc3';</script>
+<script>var G = globalThis.G || (globalThis.G = {}); G.VER = '018e29e0';</script>
 <script src="js/data.js?v=b5e2c9c5"></script>
 <script src="js/map.js?v=9602b8a1"></script>
 <script src="js/path.js?v=e444ccd4"></script>
@@ -372,9 +384,10 @@
 <script src="js/gfx-terrain.js?v=1ba5657d"></script>
 <script src="js/terrain-gl.js?v=64062710"></script>
 <script src="js/gfx-sprites.js?v=f8de03dc"></script>
-<script src="js/render.js?v=31c1a482"></script>
+<script src="js/render.js?v=7b6cffc7"></script>
 <script src="js/ui.js?v=f3865f03"></script>
 <script src="js/input.js?v=58993dcd"></script>
+<script src="js/net.js?v=06c441ef"></script>
 <script src="js/trig.js?v=ea47f06a"></script>
 <script src="js/campaign.js?v=83fbdf29"></script>
 <script src="js/camp-stefan.js?v=4ff167d0" onerror="void 0"></script>
@@ -384,6 +397,7 @@
 <script src="js/menu.js?v=05aada83"></script>
 <script src="js/poze.js?v=cda1bcf8" onerror="void 0"></script>
 <script src="js/cinematic.js?v=7e266ca1"></script>
-<script src="js/main.js?v=0dff3ddf"></script>
+<script src="js/main.js?v=9452dd8d"></script>
+<script src="js/online.js?v=e55e1d00"></script>
 </body>
 </html>
