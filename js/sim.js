@@ -75,7 +75,7 @@ var G = globalThis.G || (globalThis.G = {});
       players: [], ai: {}, exp: null, ter: null, base: null, decor: [],
       map: { type: (opt.map && opt.map.type) || 'rau', season: (opt.map && opt.map.season) || (opt.mapSpec && opt.mapSpec.season) || 'vara' },
       opt: { victory: opt.victory || 'cucerire', peace: (opt.peace || 0) * 60, popMax: opt.popMax || G.MAXPOP, startAge: opt.startAge || 0,
-             reveal: opt.reveal || 'normal', res: opt.res || 'std', maxAge: opt.maxAge, noBuild: opt.noBuild || null, noUnits: opt.noUnits || null },
+             reveal: opt.reveal || 'normal', res: opt.res || 'std', maxAge: opt.maxAge, noBuild: opt.noBuild || null, noUnits: opt.noUnits || null, nomad: !!opt.nomad, daynight: !!opt.daynight },
       mkt: { f: 100, w: 100, s: 100 }, wonder: null, losMul: 1, night: 0, fog: 0, vars: {}, scen: opt.scen || null, winTeam: 0 };
     pl.forEach(function (p, i) { S.players.push(mkPlayer(i, Object.assign({ res: S.opt.res }, p))); });
     setTeams();
@@ -97,6 +97,13 @@ var G = globalThis.G || (globalThis.G = {});
       var bases = (gm.base || S.base || []).slice(), N = S.N, corners = [[N - 13, N - 13], [13, 13], [13, N - 13], [N - 13, 13]];
       for (var p = 0; p < S.players.length; p++) {
         var b = bases[p] || corners[p];
+        // nomazii: fără cetate, cu țărani și lemnul și piatra ei; o așază unde vor
+        if (opt.nomad) {
+          for (var nv = 0; nv < 4; nv++) { var np = nearestPassable(b[0] + Math.cos(nv * 1.6) * 2.5, b[1] + Math.sin(nv * 1.6) * 2.5) || [b[0], b[1]]; G.addUnit('vil', p, np[0], np[1]); }
+          var nh = nearestPassable(b[0], b[1] + 1) || [b[0], b[1]]; G.addUnit('hero', p, nh[0], nh[1]);
+          S.players[p].res.w += G.BLDS.cetate.cost.w; S.players[p].res.s += G.BLDS.cetate.cost.s || 0;
+          continue;
+        }
         clearArea(b[0] - 2, b[1] - 2, 4, 4);
         var tc = G.addBld('cetate', p, b[0] - 2, b[1] - 2, true);
         for (var i = 0; i < 3; i++) { var sp = freeSpot(tc, null); G.addUnit('vil', p, sp[0], sp[1]); }
@@ -1501,6 +1508,17 @@ var G = globalThis.G || (globalThis.G = {});
         if (left <= 0) { finishGame(G.ally(0, w.o) ? 1 : 2, S.players[w.o].team); return; }
       }
     }
+    if (vic === 'deal') {
+      var K = S.koth || (S.koth = { x: S.N / 2, y: S.N / 2, team: 0, o: -1, t0: 0 }), teams = {}, owner = -1;
+      forUnitsNear(K.x, K.y, 5, function (u) { if (u.dead || u.gin || !S.players[u.o].alive || Math.hypot(u.x - K.x, u.y - K.y) > 5) return; var tm = S.players[u.o].team; teams[tm] = (teams[tm] || 0) + 1; if (owner < 0) owner = u.o; });
+      var tlist = Object.keys(teams);
+      if (tlist.length === 1 && +tlist[0] !== K.team) { K.team = +tlist[0]; K.o = owner; K.t0 = S.t; K.last = 0; G.msg((G.ally(0, owner) ? (owner === 0 ? 'Ai luat' : 'Aliații au luat') : G.ppl(owner, true) + ' au luat') + ' monumentul din mijloc!', G.ally(0, owner) ? 'good' : 'alert', { x: K.x, y: K.y }); G.sfx('horn2'); }
+      if (K.team) {
+        var kl = 600 - (S.t - K.t0), km = Math.ceil(kl / 60);
+        if (K.last !== km && kl > 0 && km <= 5) { K.last = km; G.msg('Monumentul: mai sunt ' + km + (km === 1 ? ' minut' : ' minute') + ' pentru ' + (G.ally(0, K.o) ? 'tine' : G.ppl(K.o)) + '.', G.ally(0, K.o) ? 'good' : 'alert', { x: K.x, y: K.y }); }
+        if (kl <= 0) { finishGame(S.players[0].team === K.team ? 1 : 2, K.team); return; }
+      }
+    }
     if (vic === 'scenariu') { if (!S.players[0].alive) finishGame(2, 0); return; }
     if (!S.players[0].alive) { finishGame(2, 0); return; }
     var foes = 0;
@@ -1516,6 +1534,7 @@ var G = globalThis.G || (globalThis.G = {});
   G.update = function (dt) {
     if (!S || S.over) return;
     S.t += dt;
+    if (S.opt.daynight) { var dc = (S.t % 720) / 720, dn = dc < 0.62 ? 0 : dc < 0.7 ? (dc - 0.62) / 0.08 : dc < 0.92 ? 1 : 1 - (dc - 0.92) / 0.08; S.night = dn * 0.85; S.losMul = 1 - 0.3 * dn; }
     C.budget = 10 + S.players.length * 2;
     refreshLists();
     for (var i = 0; i < C.units.length; i++) { var u = C.units[i]; if (!u.dead) updUnit(u, dt); }

@@ -22,7 +22,19 @@ var G = globalThis.G || (globalThis.G = {});
     if (!tc && !S.scen && S.t > 300 && my.vils.length <= 2 && my.army.length + my.navy.length <= 2 && !my.blds.some(function (b) { return b.t === 'cetate'; })) {
       G.msg(G.ppl(pid, true) + ' cer pace și se predau.', G.enemy(0, pid) ? 'good' : 'alert'); G.defeat(pid); return;
     }
+    // nomazii: întâi cetatea, unde stau țăranii
+    if (!tc && S.opt.nomad && my.vils.length && !my.blds.some(function (b) { return b.t === 'cetate'; })) {
+      var cx = 0, cy = 0; my.vils.forEach(function (v) { cx += v.x; cy += v.y; }); cx /= my.vils.length; cy /= my.vils.length;
+      var pos = placeNear('cetate', cx, cy, 0, 12, true);
+      if (pos) { var nb = G.cmdPlace(pid, 'cetate', pos.tx, pos.ty, my.vils.slice()); if (nb) return; }
+    }
     if (tc && P.aiMode !== 'defend') { economy(); buildings(); naval(); palisade(); }
+    // Regele dealului: oastea liberă merge să țină monumentul
+    if (S.opt.victory === 'deal' && S.koth && S.koth.team !== P.team && S.t > (A.hill || 0)) {
+      A.hill = S.t + 25;
+      var hillers = my.army.filter(function (u) { return !u.task && !u.raid && G.UNITS[u.t].cls !== 'sie'; });
+      if (hillers.length >= Math.min(6, 2 + P.age * 2)) G.cmdMove(hillers, S.koth.x, S.koth.y, true);
+    }
     military();
   };
 

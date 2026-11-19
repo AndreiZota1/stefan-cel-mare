@@ -738,6 +738,8 @@ var G = globalThis.G || (globalThis.G = {});
       var o3 = { k: 'd', kd: dd.k, x: dd.x, y: dd.y, sc: 0.85 + G.hash2(Math.floor(dd.x * 7), Math.floor(dd.y * 7), 5) * 0.3, fl: G.hash2(Math.floor(dd.x * 3), Math.floor(dd.y * 3), 6) < 0.5 };
       if (/^(flowers|reed)/.test(dd.k)) drawDecor(o3); else list.push(o3);
     }
+    // Regele dealului: monumentul din mijloc
+    if (S.opt.victory === 'deal') { var K0 = S.koth || { x: S.N / 2, y: S.N / 2, team: 0, o: -1 }; if (exp[Math.floor(K0.y) * N + Math.floor(K0.x)]) list.push({ k: 'koth', x: K0.x, y: K0.y + 0.01, K: K0 }); }
     // pe sol: ogoare, ruine, morți, cioturi
     ground.forEach(function (b) { drawBld(b, sel[b.id]); });
     S.fx.forEach(function (f) {
@@ -797,7 +799,8 @@ var G = globalThis.G || (globalThis.G = {});
     });
     for (var j = 0; j < list.length; j++) {
       var o = list[j];
-      if (o.k === 'r') drawRes(o);
+      if (o.k === 'koth') drawKoth(o);
+      else if (o.k === 'r') drawRes(o);
       else if (o.k === 'd') drawDecor(o);
       else if (o.k === 'b') drawBld(o, sel[o.id]);
       else drawUnit(o, sel[o.id]);
@@ -992,6 +995,19 @@ var G = globalThis.G || (globalThis.G = {});
     return (snowC[v] = { c: c, w: o.w, h: o.h, ax: o.ax, ay: o.ay });
   }
   R.preloadNature = function () { for (var v = 0; v < 8; v++) natSprite('tree', v); ['gold', 'stone', 'berry'].forEach(function (k) { natSprite(k, 0); }); natSprite('sheep', 0); natSprite('sheep', 1); };
+  // monumentul din mijloc (Regele dealului): obelisc de piatră, cercul zonei, steagul celui care îl ține
+  function drawKoth(o) {
+    var p = R.w2s(o.x, o.y), z = cam.z, K = o.K, col = K.o >= 0 ? pcol(K.o).color : '#d8d0c0';
+    ctx.save(); ctx.globalAlpha = 0.35 + 0.1 * Math.sin(clock * 2); ctx.strokeStyle = col; ctx.lineWidth = 2 * z; ctx.setLineDash([6 * z, 6 * z]);
+    ctx.beginPath(); ctx.ellipse(p[0], p[1], 5 * 32 * z * 1.41, 5 * 16 * z * 1.41, 0, 0, 6.3); ctx.stroke(); ctx.restore();
+    ell(ctx, p[0], p[1] + 2 * z, 18 * z, 8 * z, 'rgba(0,0,0,0.25)');
+    ctx.fillStyle = '#8a8478'; ctx.beginPath(); ctx.moveTo(p[0] - 14 * z, p[1]); ctx.lineTo(p[0], p[1] + 7 * z); ctx.lineTo(p[0] + 14 * z, p[1]); ctx.lineTo(p[0], p[1] - 7 * z); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#c8c0b0'; ctx.beginPath(); ctx.moveTo(p[0] - 6 * z, p[1] - 2 * z); ctx.lineTo(p[0] - 3 * z, p[1] - 58 * z); ctx.lineTo(p[0], p[1] - 66 * z); ctx.lineTo(p[0], p[1] + 2 * z); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#9a9284'; ctx.beginPath(); ctx.moveTo(p[0] + 6 * z, p[1] - 2 * z); ctx.lineTo(p[0] + 3 * z, p[1] - 58 * z); ctx.lineTo(p[0], p[1] - 66 * z); ctx.lineTo(p[0], p[1] + 2 * z); ctx.closePath(); ctx.fill();
+    ln(ctx, p[0] + 2 * z, p[1] - 60 * z, p[0] + 2 * z, p[1] - 86 * z, '#4a3a2a', 1.4 * z);
+    ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(p[0] + 2 * z, p[1] - 86 * z); ctx.lineTo(p[0] + 18 * z, p[1] - 81 * z + Math.sin(clock * 4) * 1.5 * z); ctx.lineTo(p[0] + 2 * z, p[1] - 75 * z); ctx.closePath(); ctx.fill();
+    if (K.team) { var left = Math.max(0, 600 - (G.S.t - K.t0)), mm = Math.floor(left / 60), ss = Math.floor(left % 60); ctx.font = 'bold ' + Math.round(12 * Math.max(0.85, z)) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillText(mm + ':' + (ss < 10 ? '0' : '') + ss, p[0] + 1, p[1] - 92 * z + 1); ctx.fillStyle = '#fff2c8'; ctx.fillText(mm + ':' + (ss < 10 ? '0' : '') + ss, p[0], p[1] - 92 * z); ctx.textAlign = 'start'; }
+  }
   // vânatul: foaie animată (u/deer_all); doborât = ultimul cadru din „die”
   function drawAnimal(e, p, z, RD) {
     var ash = sheet2('u/' + e.t + '_all');

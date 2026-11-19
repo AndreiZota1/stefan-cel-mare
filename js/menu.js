@@ -47,7 +47,9 @@ var G = globalThis.G || (globalThis.G = {});
     html += '<label>Mărimea<select data-k="size">' + opt(0, 'Potrivită', cfg.size) + opt(72, 'Mică', cfg.size) + opt(96, 'Medie', cfg.size) + opt(120, 'Mare', cfg.size) + '</select></label>';
     html += '<label>Anotimpul<select data-k="season">' + opt('vara', '☀️ Vară', cfg.season) + opt('iarna', '❄️ Iarnă', cfg.season) + '</select></label>';
     html += '<label>Greutatea<select data-k="diff">' + Object.keys(G.DIFF).map(function (d) { return opt(d, G.DIFF[d].name, cfg.diff); }).join('') + '</select></label>';
-    html += '<label>Victoria<select data-k="victory">' + opt('cucerire', 'Cucerire', cfg.victory) + opt('minune', 'Minune (sau cucerire)', cfg.victory) + opt('regicid', 'Regicid: cade eroul, pierzi', cfg.victory) + '</select></label>';
+    html += '<label>Victoria<select data-k="victory">' + opt('cucerire', 'Cucerire', cfg.victory) + opt('minune', 'Minune (sau cucerire)', cfg.victory) + opt('regicid', 'Regicid: cade eroul, pierzi', cfg.victory) + opt('deal', 'Regele dealului: ține monumentul 10 minute', cfg.victory) + '</select></label>';
+    html += '<label>Începutul<select data-k="start">' + opt('cetate', 'Cu cetate', cfg.start) + opt('nomazi', 'Nomazi: fără cetate', cfg.start) + '</select></label>';
+    html += '<label>Ziua și noaptea<select data-k="daynight">' + opt(0, 'Doar zi', cfg.daynight) + opt(1, 'Zi și noapte', cfg.daynight) + '</select></label>';
     html += '<label>Începi în<select data-k="startAge">' + G.AGES.map(function (a, i) { return opt(i, a, cfg.startAge); }).join('') + '</select></label>';
     html += '<label>Resurse<select data-k="res">' + opt('std', 'Puține', cfg.res) + opt('med', 'Medii', cfg.res) + opt('mult', 'Multe', cfg.res) + '</select></label>';
     html += '<label>Limita de oameni<select data-k="popMax">' + [75, 100, 150, 200].map(function (n) { return opt(n, n, cfg.popMax); }).join('') + '</select></label>';
@@ -79,7 +81,7 @@ var G = globalThis.G || (globalThis.G = {});
     var mapT = c.map === 'rnd' ? MAPS[Math.floor(Math.random() * (MAPS.length - 1))][0] : c.map;
     var size = c.size || (players.length > 2 ? 96 : 72);
     G.startGame({ diff: c.diff, players: players, size: size, map: { type: mapT, season: c.season }, victory: c.victory, startAge: c.startAge, res: c.res,
-      popMax: c.popMax, peace: c.peace, reveal: c.reveal, aiBoth: !!G.spectate });
+      popMax: c.popMax, peace: c.peace, reveal: c.reveal, aiBoth: !!G.spectate, nomad: c.start === 'nomazi', daynight: +c.daynight === 1 });
   };
 
   // ---------- arborele tehnologiilor ----------
