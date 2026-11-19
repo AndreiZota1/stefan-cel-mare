@@ -374,7 +374,8 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
 
   // ===================== 6. Codrii Cosminului, 1497 =====================
   var ROUTE = [[50, 95], [54, 82], [48, 66], [52, 48], [46, 30], [47, 14], [46, 1]];
-  var TRAPS = [[57, 82], [45, 68], [55, 56], [49, 42], [43, 30], [50, 20]];
+  // locurile copacilor tăiați: pe marginea drumului, la două pătrățele de mijlocul lui
+  var TRAPS = [[56, 82], [46, 67], [52, 55], [52, 41], [44, 30], [49, 20]];
   M.st6 = {
     id: 'st6', title: 'Pădurea care cade', short: 'Cosmin', year: '1497', place: 'Codrii Cosminului', lon: 25.85, lat: 48.25,
     view: { lon: 24.2, lat: 48.6, z: 1.8 },
@@ -394,8 +395,10 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
     map: { N: 96, season: 'vara', seed: 1497, ground: 'grass', ops: [
       ['forest', [[0, 0], [96, 0], [96, 96], [0, 96]], 0.6],
       ['road', ROUTE, 3],
+      // poteca satului până la drumul mare (altfel pădurea e de netrecut)
+      ['road', [[72, 31], [62, 33], [53, 31], [47, 30]], 2],
       ['clear', 78, 30, 10], ['clear', 50, 92, 5]
-    ].concat(TRAPS.map(function (t) { return ['clear', t[0] + 0.5, t[1] + 0.5, 1.6]; })).concat([
+    ].concat(TRAPS.map(function (t) { return ['clear', t[0] + 0.5, t[1] + 0.5, 2.3]; })).concat([
       ['res', 'gold', 86, 20, 6], ['res', 'stone', 70, 20, 5], ['res', 'sheep', 74, 40, 6], ['res', 'berry', 88, 36, 6]
     ]) },
     startAge: 2, maxAge: 2, popMax: 110, keepHero: 'Ștefan a căzut în Codrii Cosminului.',
@@ -403,22 +406,28 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
       town(T, 0, 78, 30, 10);
       heroAt(T, 0, 74, 34);
       T.spawn(0, [['raz', 10], ['arc', 10], ['lcv', 6], ['kni', 4]], 72, 32);
-      TRAPS.forEach(function (t) { T.bld(0, 'capcana', t[0], t[1], false, 'cap'); });
+      TRAPS.forEach(function (t, i) { T.bld(0, 'capcana', t[0], t[1], false, 'cap'); T.reveal(t[0] + 0.5, t[1] + 0.5, 3); T.mark('cap' + i, t[0] + 0.5, t[1] + 0.5, '', '#ffd75a'); });
+      // polonii sosesc abia după 4 minute: până atunci nu sunt „învinși”
+      S.players[1].immortal = true;
+      // drumul mare se vede de la început
+      for (var r = 0; r < ROUTE.length - 1; r++) for (var k = 0; k <= 8; k++) T.reveal(ROUTE[r][0] + (ROUTE[r + 1][0] - ROUTE[r][0]) * k / 8, ROUTE[r][1] + (ROUTE[r + 1][1] - ROUTE[r][1]) * k / 8, 3);
       S.players[0].res = { f: 700, w: 400, g: 500, s: 100 };
     },
     start: function (S, T) {
-      T.obj('o1', 'Taie copacii de lângă drum: țăranii să pregătească cele 6 locuri (0/6).');
+      T.obj('o1', 'Taie copacii de lângă drum: trimite țăranii la cele 6 steaguri galbene (0/6).');
       T.obj('o2', 'Nu lăsa să scape mai mult de 12 poloni spre nord (scăpați: 0).');
       T.obj('o3', 'Înfrânge oastea regelui Ioan Albert.');
       T.say('stefan', 'Regele se întoarce acasă pe drumul ăsta. Nu va ajunge.', 'say1', 1);
       T.say('taran', 'Doamne, tăiem copacii pe jumătate. La un semn, cad toți deodată.', 'say2');
+      T.say('taran', 'Poteca din sat duce la drumul mare. Locurile sunt la steagurile galbene: trimite câte doi dintre noi la fiecare.', 'say6');
     },
     timer: function (S) { return Math.max(0, 240 - S.t); },
     tick: function (S, T) {
       var v = S.scen.vars;
       var armed = T.byTag('cap').filter(function (b) { return b.built; });
       var built = (v.used || 0) + armed.length;
-      if (built !== v.built) { v.built = built; T.obj('o1', 'Taie copacii de lângă drum: țăranii să pregătească cele 6 locuri (' + Math.min(6, built) + '/6).'); if (built >= 6) T.done('o1'); }
+      if (built !== v.built) { v.built = built; T.obj('o1', 'Taie copacii de lângă drum: trimite țăranii la cele 6 steaguri galbene (' + Math.min(6, built) + '/6).'); if (built >= 6) T.done('o1'); }
+      T.byTag('cap').forEach(function (b, i) { if (b.built) T.unmark('cap' + TRAPS.findIndex(function (t) { return t[0] === b.tx && t[1] === b.ty; })); });
       if (S.t >= 240 && !v.spawned) {
         v.spawned = 1;
         var u = T.spawn(1, [['cpl', 10], ['kni', 8], ['mil', 10], ['arc', 8], ['spr', 6]], 50, 92, 'pol').concat(T.spawn(1, [['hero', 1]], 51, 94, 'pol'));
@@ -437,9 +446,9 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
       if (v.esc !== v.escS) { v.escS = v.esc; T.obj('o2', 'Nu lăsa să scape mai mult de 12 poloni spre nord (scăpați: ' + (v.esc || 0) + ').'); if (v.esc > 12) T.lose('Prea mulți poloni au scăpat din pădure.'); }
       // capcanele: copacii cad peste dușmani
       armed.forEach(function (b) {
-        var hit = G.C.units.some(function (u) { return u.o === 1 && Math.hypot(u.x - b.x, u.y - b.y) < 2.4; });
+        var hit = G.C.units.some(function (u) { return u.o === 1 && Math.hypot(u.x - b.x, u.y - b.y) < 3.4; });
         if (!hit) return;
-        G.C.units.forEach(function (u) { if (u.o === 1 && Math.hypot(u.x - b.x, u.y - b.y) < 3) G.damage(u, G.UNITS[u.t].hero ? 30 : 45, null); });
+        G.C.units.forEach(function (u) { if (u.o === 1 && Math.hypot(u.x - b.x, u.y - b.y) < 3.8) G.damage(u, G.UNITS[u.t].hero ? 30 : 45, null); });
         T.boom(b.x, b.y, 1.8); G.sfx('collapse', b.x, b.y);
         S.decor.push({ k: 'log0', x: b.x - 0.6, y: b.y + 0.4 }, { k: 'log1', x: b.x + 0.5, y: b.y - 0.3 });
         v.used = (v.used || 0) + 1; T.vanish([b]);

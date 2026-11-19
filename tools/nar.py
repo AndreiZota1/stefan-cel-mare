@@ -135,7 +135,13 @@ def redo(key, keys):
             path = os.path.join(ROOT, 'js', 'nar', mid + '.js')
             lines = open(path, encoding='utf8').read().split('\n')
             pre = 'G.NAR[' + json.dumps(k) + '] = '
-            lines = [pre + '"data:audio/mpeg;base64,' + base64.b64encode(best).decode() + '";' if l.startswith(pre) else l for l in lines]
+            val = pre + '"data:audio/mpeg;base64,' + base64.b64encode(best).decode() + '";'
+            if any(l.startswith(pre) for l in lines):
+                lines = [val if l.startswith(pre) else l for l in lines]
+            else:  # replică nouă: se adaugă la sfârșit
+                while lines and not lines[-1].strip():
+                    lines.pop()
+                lines.append(val); lines.append('')
             open(path, 'w', encoding='utf8').write('\n'.join(lines))
             print(k, round(score, 2), flush=True)
 
