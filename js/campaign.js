@@ -189,6 +189,7 @@ G.NAR = G.NAR || {};
   var curC = 0, raf = 0;
   Camp.open = function () {
     if (!G.CAMPAIGNS.length) return;
+    if (G.Coloana) G.Coloana.set('poveste');
     show('camp', true); render();
   };
   function render() {
@@ -226,6 +227,7 @@ G.NAR = G.NAR || {};
       : '<button class="btn" id="stBack">Campania</button>' + (nextOf(id) ? '<button class="btn go" id="stNext">Misiunea următoare ▶</button>' : '')) + '</div>';
     $('storyBox').innerHTML = html;
     show('camp', false); show('story', true); show('end', false);
+    if (G.Coloana && ph === 'intro') G.Coloana.set('poveste');
     var sp = $('storyBox').querySelectorAll('.sp[data-p]');
     // pictura la început; harta (cu săgețile care pornesc atunci) la ultimul paragraf al poveștii
     var picOn = false;
@@ -252,7 +254,8 @@ G.NAR = G.NAR || {};
       var dur = texts[i] ? Math.max(4, texts[i].length / 14) : 4;
       if (src && G.Audio && G.Audio.on) {
         audio = new Audio(src); audio.volume = 0.95;
-        audio.onended = function () { if (para === i && i + 1 < sp.length) setTimeout(function () { if (para === i) playPara(i + 1); }, 500); };
+        if (G.Coloana) G.Coloana.setDuck(0.45);
+        audio.onended = function () { if (G.Coloana && i + 1 >= sp.length) G.Coloana.setDuck(1); if (para === i && i + 1 < sp.length) setTimeout(function () { if (para === i) playPara(i + 1); }, 500); };
         audio.play().catch(function () {});
       } else setTimeout(function () { if (para === i && i + 1 < sp.length && $('story').classList.contains('on')) playPara(i + 1); }, dur * 1000);
     }
@@ -273,7 +276,7 @@ G.NAR = G.NAR || {};
       raf = requestAnimationFrame(loop);
     })();
   };
-  function stopAudio() { if (audio) { try { audio.pause(); } catch (e) {} audio = null; } }
+  function stopAudio() { if (audio) { try { audio.pause(); } catch (e) {} audio = null; } if (G.Coloana) G.Coloana.setDuck(1); }
   function nextOf(id) {
     for (var i = 0; i < G.CAMPAIGNS.length; i++) { var c = G.CAMPAIGNS[i], j = c.scen.indexOf(id); if (j >= 0) return c.scen[j + 1] || null; }
     return null;

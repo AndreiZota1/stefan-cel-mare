@@ -1,0 +1,58 @@
+# Sunetele jocului
+
+Toate sunt de pe [Freesound](https://freesound.org), cu licența CC0 (domeniu public). Le mulțumim autorilor:
+
+- `amb_padure_0.mp3`: „Birds in the Slovenian Forest - Processed w/ Generated Noise”, de GammaGool — https://freesound.org/s/850507/
+- `amb_camp_0.mp3`: „Countryside during evening in Missouri in a field, some birds singing, slight wind.”, de felix.blume — https://freesound.org/s/665159/
+- `amb_mare_0.mp3`: „Sea waves on beach.m4a”, de vas_mous — https://freesound.org/s/669804/
+- `amb_rau_0.mp3`: „Rushing Stream River Water”, de RyanKingArt — https://freesound.org/s/726522/
+- `amb_vant_0.mp3`: „Winter Wind Mash-Up fast 2”, de a23spyro — https://freesound.org/s/329037/
+- `amb_noapte_0.mp3`: „Night ambience with crickets”, de KikeVilaplana — https://freesound.org/s/436528/
+- `amb_foc_0.mp3`: „Fire being started and crackling.wav”, de SavReese — https://freesound.org/s/595473/
+- `lup_0.mp3`: „Howling wolves”, de Kingcornz — https://freesound.org/s/378334/
+- `lup_1.mp3`: „Adult and young wolves howling far away”, de Sacha.Julien — https://freesound.org/s/753896/
+- `lup_2.mp3`: „Wolf howl”, de NaturesTemper — https://freesound.org/s/398430/
+- `corb_0.mp3`: „Unusual Crow Caw Call 2”, de qubodup — https://freesound.org/s/855096/
+- `corb_1.mp3`: „Crow Caw”, de qubodup — https://freesound.org/s/813115/
+- `corb_2.mp3`: „Hooded Crow: Cawing”, de Mish7913 — https://freesound.org/s/741366/
+- `oaie_0.mp3`: „bah bala oveja/baa bleat sheep.WAV”, de SergioJbs — https://freesound.org/s/669872/
+- `oaie_1.mp3`: „sheep 1”, de esperar — https://freesound.org/s/171152/
+- `oaie_2.mp3`: „sqeeeek_sheep.wav”, de sqeeeek — https://freesound.org/s/237103/
+- `cal_0.mp3`: „Horse”, de poodaddy69 — https://freesound.org/s/521246/
+- `cal_1.mp3`: „Mules - Mule; Neigh and Short Bray, Take 2”, de TheKingOfGeeks360 — https://freesound.org/s/868304/
+- `mistret_0.mp3`: „Pig.ogg”, de egomassive — https://freesound.org/s/536746/
+- `mistret_1.mp3`: „Pig - Grunt 2 - 96kHz.wav”, de JarredGibb — https://freesound.org/s/233170/
+- `bufnita_0.mp3`: „owl_hooting_000102_0145S3 002-070 000-002 007-015.wav”, de Gerent — https://freesound.org/s/558398/
+- `bufnita_1.mp3`: „owl_hooting_000102_0145S3 002-070 000-002 037-044.wav”, de Gerent — https://freesound.org/s/558397/
+- `sabie_0.mp3`: „Sword_Clash (7).wav”, de JohnBuhr — https://freesound.org/s/326868/
+- `sabie_1.mp3`: „Swords Clash - High Quality #3”, de Christopherderp — https://freesound.org/s/364531/
+- `sabie_2.mp3`: „Sword block combo.wav”, de ethanchase7744 — https://freesound.org/s/440069/
+- `sabie_3.mp3`: „Sword clash 1.wav”, de spycrah — https://freesound.org/s/471095/
+- `arc_0.mp3`: „Bow Release Hit”, de EminYILDIRIM — https://freesound.org/s/536068/
+- `arc_1.mp3`: „Arrow Loose and Flyby”, de saturdaysoundguy — https://freesound.org/s/394180/
+- `arc_2.mp3`: „Bow Release (Bow and Arrow) 4”, de Ali_6868 — https://freesound.org/s/384917/
+- `sageata_0.mp3`: „Arrow Impact”, de omerbhatti34 — https://freesound.org/s/521552/
+- `sageata_1.mp3`: „Arrow Impact”, de Twisted_Euphoria — https://freesound.org/s/205938/
+- `tun_0.mp3`: „Cannon Fires, Take 3, Quarter Speed, Debris”, de CHallSmith — https://freesound.org/s/870746/
+- `tun_1.mp3`: „Cannon explosion sound 4”, de SamsterBirdies — https://freesound.org/s/621003/
+- `muscheta_0.mp3`: „Musket Shot.wav”, de mlsulli — https://freesound.org/s/234869/
+- `muscheta_1.mp3`: „old musket bang.wav”, de bruno.auzet — https://freesound.org/s/538795/
+- `explozie_0.mp3`: „Experimental_Explosion_8”, de SignatureSoundsOrg — https://freesound.org/s/869468/
+- `explozie_1.mp3`: „Explosion 1.wav”, de Deganoth — https://freesound.org/s/165911/
+- `catapulta_0.mp3`: „Nerf Gun/Catapult Being Loaded and then Shot”, de sukondi — https://freesound.org/s/553906/
+- `moarte_0.mp3`: „Male Death Sound”, de Blankened — https://freesound.org/s/554443/
+- `moarte_1.mp3`: „male_hurt9.ogg”, de micahlg — https://freesound.org/s/413186/
+- `moarte_2.mp3`: „MaleDeathSound12.wav”, de Blankened — https://freesound.org/s/577033/
+- `topor_0.mp3`: „Wood Chop 9.wav”, de wavecal22 — https://freesound.org/s/537434/
+- `topor_1.mp3`: „Small_wooden_piece_chop-021.wav”, de Matislav — https://freesound.org/s/521452/
+- `topor_2.mp3`: „chop6.mp3”, de igroglaz — https://freesound.org/s/593859/
+- `tarnacop_0.mp3`: „Pickaxe #2.wav”, de abstraktgeneriert — https://freesound.org/s/233630/
+- `tarnacop_1.mp3`: „Stone hit”, de CamoMano — https://freesound.org/s/431019/
+- `ciocan_0.mp3`: „Hammer hitting nail.wav”, de LiezelDippenaar — https://freesound.org/s/707525/
+- `ciocan_1.mp3`: „Outside Hammer”, de sgrowe — https://freesound.org/s/342542/
+- `ciocan_2.mp3`: „Hammer on Wood”, de L.i.Z.e.L.l.E_+ — https://freesound.org/s/707864/
+- `clopot_0.mp3`: „Church Bell”, de LuzCuro — https://freesound.org/s/864202/
+- `bucium_0.mp3`: „war horn.wav”, de adharca — https://freesound.org/s/539956/
+- `bucium_1.mp3`: „medieval horn by kris klavenes .wav..wav”, de klavo1985 — https://freesound.org/s/402753/
+- `prabusire_0.mp3`: „Smash.ogg”, de egomassive — https://freesound.org/s/536777/
+- `prabusire_1.mp3`: „Wooden Ship Break”, de Kodack — https://freesound.org/s/257752/

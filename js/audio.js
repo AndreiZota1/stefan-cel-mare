@@ -19,6 +19,7 @@ var G = globalThis.G || (globalThis.G = {});
     master.gain.value = A.on ? 0.5 : 0;
     ambient();
     decodeVoices();
+    loadSamples();
     if (G.Music) G.Music.start(A.ac, master);
   };
   A.noiseBuf = function () { return noise; };
@@ -33,7 +34,7 @@ var G = globalThis.G || (globalThis.G = {});
     amb = { g: g };
     (function bird() {
       setTimeout(function () {
-        if (A.on && (G.running || G.cine) && !G.paused && A.ac) {
+        if (A.on && (G.running || G.cine) && !G.paused && A.ac && !(SB.amb_padure && SB.amb_padure[0])) {
           var t = A.ac.currentTime, n = 2 + ((Math.random() * 3) | 0), base = 2200 + Math.random() * 1600;
           for (var i = 0; i < n; i++) {
             var o = A.ac.createOscillator(), gg = A.ac.createGain(), t0 = t + i * (0.09 + Math.random() * 0.05);
@@ -77,6 +78,106 @@ var G = globalThis.G || (globalThis.G = {});
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.22, t + 0.12); g.gain.setValueAtTime(0.22, t + dur - 0.15); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(f1); f1.connect(g); g.connect(master); o.start(t); lfo.start(t); o.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
   }
+
+  // ---------- sunetele adevărate (js/sunete.js: înregistrări CC0 de pe Freesound), încărcate după prima atingere ----------
+  var SB = {}, sbLoading = false, live = 0;
+  function loadSamples() {
+    if (sbLoading || !A.ac) return; sbLoading = true;
+    function go() {
+      var S = G.SUNETE || {};
+      Object.keys(S).forEach(function (k) {
+        SB[k] = [];
+        S[k].forEach(function (uri, i) {
+          var bin = atob(uri.split(',')[1]), arr = new Uint8Array(bin.length);
+          for (var j = 0; j < bin.length; j++) arr[j] = bin.charCodeAt(j);
+          A.ac.decodeAudioData(arr.buffer, function (b) { SB[k][i] = b; if (k.indexOf('amb_') === 0) ambLoops(); }, function () {});
+        });
+      });
+    }
+    if (G.SUNETE) go(); else { var sc = document.createElement('script'); sc.src = 'js/sunete.js'; sc.onload = go; document.head.appendChild(sc); }
+  }
+  // o înregistrare: una dintre variante, cu altă înălțime puțin, așezată stânga-dreapta după locul de pe ecran
+  function playSample(k, x, y, vol, rate) {
+    var L = SB[k]; if (!L || !A.ac) return false;
+    var list = L.filter(Boolean); if (!list.length) return false;
+    if (live > 14) return true;
+    var b = list[(Math.random() * list.length) | 0], src = A.ac.createBufferSource(), g = A.ac.createGain(), end = g;
+    src.buffer = b; src.playbackRate.value = (rate || 1) * (0.94 + Math.random() * 0.12);
+    var v = vol === undefined ? 0.6 : vol;
+    if (x !== undefined && G.R && G.R.w2s) {
+      var p = G.R.w2s(x, y), W = G.R.W || 1, H = G.R.H || 1, dx = (p[0] - W / 2) / (W / 2), dy = (p[1] - H / 2) / (H / 2), d = Math.sqrt(dx * dx + dy * dy);
+      v *= d < 1 ? 1 : Math.max(0.25, 1.4 - d * 0.4);
+      if (G.cam) v *= Math.max(0.55, Math.min(1.1, G.cam.z));
+      if (A.ac.createStereoPanner) { var pn = A.ac.createStereoPanner(); pn.pan.value = Math.max(-0.85, Math.min(0.85, dx * 0.8)); g.connect(pn); end = pn; }
+    }
+    g.gain.value = v; src.connect(g); end.connect(master);
+    live++; src.onended = function () { live--; };
+    src.start(A.ac.currentTime + 0.005);
+    return true;
+  }
+  A.sample = playSample;
+  A.hasSamples = function () { return !!(SB.sabie && SB.sabie[0]); };
+
+  // ---------- fundalul: se aude ce e pe ecran (pădurea, câmpul, marea, râul, iarna, noaptea, focul) ----------
+  var AMB = { amb_padure: 0.7, amb_camp: 0.55, amb_mare: 0.85, amb_rau: 0.6, amb_vant: 0.6, amb_noapte: 0.5, amb_foc: 0.6 }, ambG = {}, ambBus = null, envNow = { forest: 0, night: 0 };
+  function ambLoops() {
+    if (!A.ac) return;
+    if (!ambBus) { ambBus = A.ac.createGain(); ambBus.gain.value = 0.6; ambBus.connect(master); }
+    Object.keys(AMB).forEach(function (k) {
+      if (ambG[k] || !SB[k] || !SB[k][0]) return;
+      var src = A.ac.createBufferSource(), g = A.ac.createGain(); src.buffer = SB[k][0]; src.loop = true; g.gain.value = 0;
+      src.connect(g); g.connect(ambBus); src.start(A.ac.currentTime + Math.random() * 0.5);
+      ambG[k] = g;
+    });
+    if (amb && amb.g) amb.g.gain.setTargetAtTime(0, A.ac.currentTime, 0.5);
+  }
+  function active() { return A.on && A.ac && G.S && (G.running || G.demo || G.cine) && !G.paused; }
+  function onScreen(x, y, m) { var p = G.R.w2s(x, y); return p[0] > -m && p[0] < G.R.W + m && p[1] > -m && p[1] < G.R.H + m; }
+  setInterval(function () {
+    if (!A.ac || !ambBus) return;
+    var t = {}; Object.keys(AMB).forEach(function (k) { t[k] = 0; });
+    if (active() && G.R && G.R.s2w) {
+      var S = G.S, N = S.N, W = G.R.W, H = G.R.H, n = 0, water = 0, i, j;
+      for (i = 0; i < 9; i++) for (j = 0; j < 6; j++) {
+        var w = G.R.s2w((i + 0.5) * W / 9, (j + 0.5) * H / 6), tx = Math.floor(w[0]), ty = Math.floor(w[1]);
+        if (tx < 0 || ty < 0 || tx >= N || ty >= N) continue;
+        n++; if (S.ter[ty * N + tx] === 2) water++;
+      }
+      var c = G.R.s2w(W / 2, H / 2), rad = Math.max(W, H) / (64 * G.cam.z), trees = 0, fires = 0;
+      for (i = 0; i < S.ents.length; i++) { var e = S.ents[i]; if (e.k === 'r' && e.t === 'tree' && !e.dead && Math.abs(e.x - c[0]) + Math.abs(e.y - c[1]) < rad) trees++; }
+      G.C.blds.forEach(function (b) { if (!b.dead && b.built && b.hp < (b.mhp || 1) * 0.55 && onScreen(b.x, b.y, 60)) fires++; });
+      var forest = Math.min(1, trees / (rad * rad * 0.7)), wf = n ? water / n : 0, sea = S.map && (S.map.type === 'mare' || S.map.type === 'lac');
+      var winter = S.map && S.map.season === 'iarna', night = Math.min(1, (S.night || 0) * 1.4), day = 1 - night;
+      envNow.forest = forest; envNow.night = night;
+      if (winter) { t.amb_vant = 0.55 + forest * 0.25; t.amb_padure = forest * 0.12 * day; }
+      else { t.amb_padure = (0.2 + forest * 0.8) * day; t.amb_camp = (1 - forest) * 0.7 * day; }
+      t.amb_noapte = night * (winter ? 0.15 : 0.85);
+      if (sea) t.amb_mare = Math.min(1, wf * 2.2); else t.amb_rau = Math.min(1, wf * 3.2);
+      t.amb_foc = Math.min(1, fires * 0.3);
+    }
+    var now = A.ac.currentTime;
+    Object.keys(AMB).forEach(function (k) { if (ambG[k]) ambG[k].gain.setTargetAtTime(t[k] * AMB[k], now, 1.0); });
+  }, 500);
+  A.ambInfo = function () { var o = {}; Object.keys(ambG).forEach(function (k) { o[k] = +ambG[k].gain.value.toFixed(2); }); o.forest = +envNow.forest.toFixed(2); return o; };
+  // animalele de pe ecran se aud din când în când; corbii în păduri și după bătălii, bufnițele noaptea
+  var lastDeathT = -99;
+  A.noteDeath = function () { lastDeathT = A.ac ? A.ac.currentTime : 0; };
+  setInterval(function () {
+    if (!active() || !A.hasSamples() || !G.R) return;
+    var S = G.S, near = {};
+    for (var i = 0; i < S.ents.length && i < 6000; i++) {
+      var e = S.ents[i]; if (e.dead) continue;
+      var kind = e.k === 'r' ? (e.t === 'wolf' ? 'lup' : e.t === 'sheep' ? 'oaie' : e.t === 'boar' ? 'mistret' : null) : e.k === 'u' && G.UNITS[e.t] && G.UNITS[e.t].cls === 'cav' ? 'cal' : null;
+      if (kind && !near[kind] && onScreen(e.x, e.y, 0) && G.C.vis[Math.floor(e.y) * S.N + Math.floor(e.x)]) near[kind] = e;
+    }
+    var r = Math.random(), recent = A.ac.currentTime - lastDeathT < 20;
+    if (near.lup && r < 0.25) playSample('lup', near.lup.x, near.lup.y, 0.45);
+    else if (near.oaie && r < 0.2) playSample('oaie', near.oaie.x, near.oaie.y, 0.3);
+    else if (near.mistret && r < 0.16) playSample('mistret', near.mistret.x, near.mistret.y, 0.35);
+    else if (envNow.night > 0.4 && r < 0.14) playSample('bufnita', undefined, undefined, 0.22);
+    else if ((recent || envNow.forest > 0.2) && r < (recent ? 0.35 : 0.1)) playSample('corb', undefined, undefined, 0.2);
+    else if (near.cal && r < 0.06) playSample('cal', near.cal.x, near.cal.y, 0.25);
+  }, 3000);
 
   // ---------- vocile: G.VOCI (Moldova) și G.VOCI_CIV[civ] (celelalte, în js/voci_<civ>.js) ----------
   var vbuf = {}, vlast = {}, vsrc = null, vtime = 0;
@@ -139,7 +240,11 @@ var G = globalThis.G || (globalThis.G = {});
     vsrc = src;
   };
 
-  var GAP = { chop: 0.12, mine: 0.12, hit: 0.07, arrow: 0.06, thud: 0.12, build: 0.15, death: 0.15, gun: 0.08, catapult: 0.15 };
+  var GAP = { chop: 0.12, mine: 0.12, hit: 0.09, arrow: 0.08, thud: 0.12, build: 0.15, death: 0.25, gun: 0.1, catapult: 0.15 };
+  // numele efectului -> înregistrarea și tăria ei
+  var SMAP = { chop: ['topor', 0.4], mine: ['tarnacop', 0.36], build: ['ciocan', 0.36], hit: ['sabie', 0.4], thud: ['sageata', 0.42], arrow: ['arc', 0.3],
+    cannon: ['tun', 0.85], boom: ['explozie', 0.55], collapse: ['prabusire', 0.75], death: ['moarte', 0.28], howl: ['lup', 0.6], gun: ['muscheta', 0.5],
+    bell: ['clopot', 0.55], horn: ['bucium', 0.7], horn2: ['bucium', 0.6], age: ['bucium', 0.6] };
   var LOCAL = { chop: 1, mine: 1, hit: 1, arrow: 1, thud: 1, build: 1, death: 1, cannon: 1, boom: 1, collapse: 1, gun: 1, catapult: 1 };
   G.sfx = function (name, x, y, civ) {
     if (!A.on || !A.ac || (!G.running && !G.cine) || G.paused) return;
@@ -150,7 +255,13 @@ var G = globalThis.G || (globalThis.G = {});
     var now = A.ac.currentTime;
     if (lastAt[name] && now - lastAt[name] < (GAP[name] || 0.05)) return;
     lastAt[name] = now;
-    var t = now + 0.01;
+    var t = now + 0.01, sm = SMAP[name];
+    if (name === 'death' && A.noteDeath) A.noteDeath();
+    if (sm && playSample(sm[0], x, y, sm[1])) {
+      if (name === 'horn') setTimeout(function () { G.voice(null, Math.random() < 0.35 ? 'oto' : 'alert'); }, 1700);
+      if (name === 'age') playSample('clopot', undefined, undefined, 0.35);
+      return;
+    }
     switch (name) {
       case 'chop': burst(t, 0.07, 0.25, 'bandpass', 900, 3); tone('square', 180, t, 0.04, 0.05); break;
       case 'mine': burst(t, 0.05, 0.18, 'bandpass', 3200, 4); tone('triangle', 1700 + Math.random() * 300, t, 0.08, 0.06); break;

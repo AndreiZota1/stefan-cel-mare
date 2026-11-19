@@ -47,7 +47,7 @@ var G = globalThis.G || (globalThis.G = {});
   Mu.toggle = function () {
     Mu.on = !Mu.on;
     try { localStorage.setItem('scm_music', Mu.on ? '1' : '0'); } catch (e) {}
-    if (out) out.gain.setTargetAtTime(Mu.on ? 0.16 : 0, ac.currentTime, 0.4);
+    if (out) out.gain.setTargetAtTime(Mu.on && !Mu.quiet ? 0.16 : 0, ac.currentTime, 0.4);
   };
   Mu.setMood = function (m) {
     if (!ac || m === Mu.mood) return;
@@ -156,8 +156,10 @@ var G = globalThis.G || (globalThis.G = {});
     deg = Math.max(0, Math.min(11, deg + d));
     return deg;
   }
+  // când cântă coloana sonoră (piesele adevărate), muzica compusă pe loc tace
+  Mu.setQuiet = function (q) { Mu.quiet = !!q; if (out && ac) out.gain.setTargetAtTime(Mu.on && !Mu.quiet ? 0.16 : 0, ac.currentTime, 0.4); };
   function schedule() {
-    if (!ac || !Mu.on) return;
+    if (!ac || !Mu.on || Mu.quiet) return;
     var horizon = ac.currentTime + 0.5;
     while (next < horizon) {
       var t = next, bat = Mu.mood === 'battle';

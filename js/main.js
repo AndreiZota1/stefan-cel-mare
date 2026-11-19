@@ -78,6 +78,7 @@ var G = globalThis.G || (globalThis.G = {});
     afterLoad(null);
     if (G.Voci && G.Voci.load) G.S.players.forEach(function (P) { G.Voci.load(P.civ); });
     if (G.Music && G.Music.setCiv) { G.Music.setCiv(G.S.players[0].civ); if (G.Music.setAge) G.Music.setAge(G.S.players[0].age); }
+    if (G.Coloana) G.Coloana.set('joc', G.S.players[0].civ);
     if (!o.scen) {
       var S = G.S, me = S.players[0], foes = S.players.filter(function (P) { return G.enemy(0, P.id); }), fr = S.players.filter(function (P) { return P.id && G.ally(0, P.id); });
       G.msg('Ești ' + G.CIVS[me.civ].name + '. Te înfrunți cu: ' + foes.map(function (P) { return G.CIVS[P.civ].name; }).join(', ') + (fr.length ? '. Aliați: ' + fr.map(function (P) { return G.CIVS[P.civ].name; }).join(', ') : '') + '.', 'good');
@@ -96,6 +97,7 @@ var G = globalThis.G || (globalThis.G = {});
     afterLoad(meta && meta.cam);
     if (G.Voci && G.Voci.load) G.S.players.forEach(function (P) { G.Voci.load(P.civ); });
     if (G.Music && G.Music.setCiv) { G.Music.setCiv(G.S.players[0].civ); if (G.Music.setAge) G.Music.setAge(G.S.players[0].age); }
+    if (G.Coloana) G.Coloana.set('joc', G.S.players[0].civ);
     if (G.S.scen && G.Camp && G.Camp.loadNar) G.Camp.loadNar(G.S.scen.id, function () {});
     G.msg('Continuăm de unde ai rămas.', 'info');
   };
@@ -118,6 +120,7 @@ var G = globalThis.G || (globalThis.G = {});
   };
 
   function refreshStart() {
+    if (G.Coloana && !G.Cine.active) G.Coloana.set('tema');
     var meta = null;
     try { meta = JSON.parse(localStorage.getItem(SAVE + '_meta')); } catch (e) {}
     var cb = $('bContinue');
@@ -132,6 +135,7 @@ var G = globalThis.G || (globalThis.G = {});
     var S = G.S;
     if (!S.over || $('end').classList.contains('on')) return;
     var win = S.over === 1;
+    if (G.Coloana) G.Coloana.set(win ? 'victorie' : 'infrangere');
     G.running = false;
     document.body.classList.remove('playing');
     try { localStorage.removeItem(SAVE); localStorage.removeItem(SAVE + '_meta'); } catch (e) {}
@@ -214,6 +218,12 @@ var G = globalThis.G || (globalThis.G = {});
     if ($('fZugrav')) $('fZugrav').addEventListener('click', function () { film('zugravul'); });
     if ($('fTrailer')) $('fTrailer').addEventListener('click', function () { film('trailer'); });
     if ($('fClose')) $('fClose').addEventListener('click', function () { show('films', false); });
+    var firstTouch = function () {
+      document.removeEventListener('pointerdown', firstTouch, true); document.removeEventListener('keydown', firstTouch, true);
+      if (G.Audio.on) G.Audio.unlock();
+      if (G.Coloana && !G.running && !(G.Cine && G.Cine.active)) G.Coloana.set('tema');
+    };
+    document.addEventListener('pointerdown', firstTouch, true); document.addEventListener('keydown', firstTouch, true);
     var seen = false; try { seen = !!localStorage.getItem('scm_film'); } catch (e) {}
     if (G.Cine && !seen && !navigator.webdriver && !G.spectate) {
       show('splash', true);

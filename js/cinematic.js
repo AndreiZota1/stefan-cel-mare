@@ -172,6 +172,7 @@ var G = globalThis.G || (globalThis.G = {});
     if (Cine.active) return;
     opt = opt || {};
     SHOTS = FILMS[opt.film] || FILMS.zugravul;
+    Cine.film = FILMS[opt.film] ? opt.film : 'zugravul';
     onEnd = opt.onEnd || null;
     Cine.active = true; G.cine = true; G.demo = false;
     if (G.Audio.on) G.Audio.unlock();
@@ -206,6 +207,7 @@ var G = globalThis.G || (globalThis.G = {});
     Cine.active = false; G.cine = false;
     if (src) { try { src.stop(); } catch (e) {} src = null; }
     if (G.Music && G.Music.setMood) G.Music.setMood('peace');
+    if (G.Coloana) G.Coloana.setDuck(1);
     window.removeEventListener('resize', resize);
     document.removeEventListener('keydown', Cine._stopKey);
     var sk = document.getElementById('cineSkip'); if (sk) sk.remove();
@@ -225,6 +227,13 @@ var G = globalThis.G || (globalThis.G = {});
     var s = SHOTS[shot], b = s.line ? bufs[s.line] : null;
     shotT = 0; shotDur = Math.max(s.min, b ? b.duration + (s.quick ? 0.7 : 1.6) : s.min);
     if (s.mood && G.Music && G.Music.setMood) G.Music.setMood(s.mood);
+    // coloana sonoră: trailerul are piesa lui; filmul de început trece din liniște în luptă, iar titlul vine cu tema
+    if (G.Coloana) {
+      if (Cine.film === 'trailer') { if (shot === 0) G.Coloana.set('trailer'); }
+      else if (s.k === 'title') G.Coloana.set('tema');
+      else if (s.mood) G.Coloana.set(s.mood === 'battle' ? 'film_lupta' : 'film');
+      G.Coloana.setDuck(b ? 0.5 : 1);
+    }
     if (s.prep) prep(s.prep);
     if (s.k === 'game') { if (!scene || scene.name !== s.scene) prep(s.scene); while (prepQ.length) prepQ.shift()(); sceneT = 0; }
     if (s.k === 'title' && G.sfx) setTimeout(function () { G.sfx('age'); }, 600);
@@ -297,7 +306,7 @@ var G = globalThis.G || (globalThis.G = {});
     var m = Math.max(0, Math.min(1, (p - 0.32) / 0.45)); m = m * m * (3 - 2 * m);
     if (m > 0) { g.globalAlpha = m; drawPic(imgs[s.img2], null, e, 1, s.kf); g.globalAlpha = 1; }
     Cine.shake = 0;
-    if (p > 0.45 && !s._sfx) { s._sfx = 1; if (G.Music && G.Music.setMood) G.Music.setMood('battle'); if (G.sfx) G.sfx('horn2'); }
+    if (p > 0.45 && !s._sfx) { s._sfx = 1; if (G.Music && G.Music.setMood) G.Music.setMood('battle'); if (G.Coloana) G.Coloana.set('film_lupta'); if (G.sfx) G.sfx('horn2'); }
     if (s.flashOut && p > 0.9) { g.fillStyle = 'rgba(255,248,235,' + Math.min(1, (p - 0.9) / 0.1) + ')'; g.fillRect(0, 0, cv.width, cv.height); }
   }
   // portretul: fundal din aceeași pictură, încețoșat; chipul în dreapta, numele în stânga

@@ -173,6 +173,7 @@
   .spic.on { opacity: 1; }
   .spic img { width: 100%; height: 100%; object-fit: cover; transform-origin: 60% 40%; animation: kenburns 26s ease-out forwards; }
   .spic::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 60px #000c; }
+  .credits { font-size: 11.5px; color: #a89a80; line-height: 1.45; margin: 10px 2px 6px; }
   #splash { background: #000 url('assets/poze/cine_titlu.webp') center / cover no-repeat; display: none; align-items: center; justify-content: center; }
   #splash.on { display: flex; }
   #splash::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, #0006 0%, #000c 75%); }
@@ -329,6 +330,9 @@
   <div class="panel">
     <h2>Cum se joacă</h2>
     <ul id="helpList"></ul>
+    <p class="credits">Muzica: Kevin MacLeod (incompetech.com), licența Creative Commons Attribution 4.0 — „Noble Race”, „Clash Defiant”, „Five Armies”, „Crusade”, „Village Consort” și altele (lista: docs/CREDITE-MUZICA.md).
+    Sunete: Freesound, domeniu public (CC0). Texturi: ambientCG, Poly Haven (CC0). Copaci: EZ-Tree (MIT). Picturi: generate pentru joc.
+    Proiect de pasionat, fără legătură cu seria Age of Empires.</p>
     <button class="btn" id="helpClose">Am înțeles</button>
   </div>
 </div>
@@ -356,6 +360,8 @@
 <script src="js/voci.js" onerror="void 0"></script>
 <script src="js/audio.js"></script>
 <script src="js/music.js"></script>
+<script src="js/muzica.js" onerror="void 0"></script>
+<script src="js/coloana.js"></script>
 <script src="assets/sprites.js"></script>
 <script src="assets/baked.js" onerror="void 0"></script>
 <script src="js/tex.js"></script>
