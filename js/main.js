@@ -177,6 +177,7 @@ var G = globalThis.G || (globalThis.G = {});
     $('bQuick').addEventListener('click', function () { G.Menu.startSkirmish(); });
     $('bTree').addEventListener('click', function () { G.Menu.openTree(); });
     if ($('bMedals')) $('bMedals').addEventListener('click', function () { G.Menu.openMedals(); });
+    if ($('bChat')) $('bChat').addEventListener('click', function () { G.UI.openChat(); });
     if (G.Camp && G.Camp.open) $('bCamp').addEventListener('click', G.Camp.open); else $('bCamp').style.display = 'none';
     $('mTree').addEventListener('click', function () { G.Menu.openTree(); });
     $('eRetry').addEventListener('click', function () { show('end', false); if (G.lastStart) G.startGame(JSON.parse(JSON.stringify(G.lastStart))); });

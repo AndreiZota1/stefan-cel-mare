@@ -1125,11 +1125,13 @@ var G = globalThis.G || (globalThis.G = {});
       ctx.beginPath(); ctx.moveTo(top[0], top[1] - 2); ctx.lineTo(top[0] + n * 32 * z + 3, top[1] + n * 16 * z); ctx.lineTo(top[0], top[1] + n * 32 * z + 2); ctx.lineTo(top[0] - n * 32 * z - 3, top[1] + n * 16 * z); ctx.closePath(); ctx.stroke();
     }
     var dx = top[0] - s.ax * z, dy = top[1] - s.ay * z, dw = s.w * z, dh = s.h * z;
-    if (b.built) ctx.drawImage(s.c, dx, dy, dw, dh);
-    // ogorul care se golește: pământul se vede tot mai mult prin grâu
-    if (b.built && G.BLDS[b.t].farm && b.food !== undefined) {
-      var fl0 = 1 - Math.max(0, b.food) / G.farmMax(b.o);
-      if (fl0 > 0.05) { ctx.fillStyle = 'rgba(96,68,40,' + (fl0 * 0.55).toFixed(3) + ')'; ctx.beginPath(); ctx.moveTo(top[0], top[1] + 2 * z); ctx.lineTo(top[0] + n * 32 * z - 3 * z, top[1] + n * 16 * z); ctx.lineTo(top[0], top[1] + n * 32 * z - 2 * z); ctx.lineTo(top[0] - n * 32 * z + 3 * z, top[1] + n * 16 * z); ctx.closePath(); ctx.fill(); }
+    if (b.built) {
+      ctx.drawImage(s.c, dx, dy, dw, dh);
+      // ogorul care se golește: pământul se vede tot mai mult prin grâu
+      if (G.BLDS[b.t].farm && b.food !== undefined) {
+        var fl0 = 1 - Math.max(0, b.food) / G.farmMax(b.o);
+        if (fl0 > 0.05) { ctx.fillStyle = 'rgba(96,68,40,' + (fl0 * 0.55).toFixed(3) + ')'; ctx.beginPath(); ctx.moveTo(top[0], top[1] + 2 * z); ctx.lineTo(top[0] + n * 32 * z - 3 * z, top[1] + n * 16 * z); ctx.lineTo(top[0], top[1] + n * 32 * z - 2 * z); ctx.lineTo(top[0] - n * 32 * z + 3 * z, top[1] + n * 16 * z); ctx.closePath(); ctx.fill(); }
+      }
     }
     else {
       // fundația și clădirea care „crește”
@@ -1157,6 +1159,10 @@ var G = globalThis.G || (globalThis.G = {});
         ctx.moveTo(hx + Math.cos(a) * 7 * z, hy + Math.sin(a) * 7 * z); ctx.lineTo(ex, ey); ctx.lineTo(ex + nx, ey + ny); ctx.lineTo(hx + Math.cos(a) * 7 * z + nx, hy + Math.sin(a) * 7 * z + ny); ctx.closePath(); ctx.fill();
       }
       ell(ctx, hx, hy, 2.2 * z, 2.2 * z, '#3a2a18');
+    }
+    if (b.built && b.t === 'casa' && z > 0.55 && (b.id % 3) !== 0) {
+      var hx0 = dx + dw * 0.56, hy0 = dy + dh * (G.S.players[b.o].civ === 'tat' ? 0.12 : 0.1);
+      for (var hk = 0; hk < 2; hk++) { var hph = (clock * 0.22 + hk / 2 + b.id * 0.13) % 1; ctx.globalAlpha = 0.28 * (1 - hph); ell(ctx, hx0 + hph * 9 * z, hy0 - hph * 26 * z, (2.5 + hph * 5) * z, (2 + hph * 4) * z, '#d8d4cc'); ctx.globalAlpha = 1; }
     }
     if (b.built && b.t === 'fierarie' && s.chimney) {
       for (var k = 0; k < 3; k++) {
@@ -1288,9 +1294,12 @@ var G = globalThis.G || (globalThis.G = {});
       bakedFrame(ctx, sh, ua[0], ua[1], u.dir8 || 0, p[0], p[1], z * USCALE * (d.hero ? 1.08 : 1) / sh.B.k, pcol(u.o).color);
       if (u.relic) { ctx.fillStyle = '#e9c24a'; ctx.strokeStyle = '#6a4a10'; ctx.lineWidth = 1; ctx.fillRect(p[0] - 3 * z, p[1] - 38 * z, 6 * z, 5 * z); ctx.strokeRect(p[0] - 3 * z, p[1] - 38 * z, 6 * z, 5 * z); }
       if (u.carry && u.carry.n > 0.5) {
-        var cc = { w: '#7a5130', f: '#b8433a', g: '#e6c24a', s: '#a7a59e' }[u.carry.r], bk = (u.dir8 || 0) > 4 ? 1 : -1;
-        ctx.fillStyle = cc; ctx.strokeStyle = 'rgba(20,12,6,0.7)'; ctx.lineWidth = 0.8;
-        ctx.beginPath(); ctx.ellipse(p[0] + bk * 3.5 * z, p[1] - 16 * z, 2.2 * z, 1.8 * z, 0, 0, 6.3); ctx.fill(); ctx.stroke();
+        var bk = (u.dir8 || 0) > 4 ? 1 : -1, cx0 = p[0] + bk * 3.5 * z, cy0 = p[1] - 16 * z, cr = u.carry.r;
+        ctx.strokeStyle = 'rgba(20,12,6,0.75)'; ctx.lineWidth = 0.8;
+        if (cr === 'w') { ctx.save(); ctx.translate(cx0, cy0); ctx.rotate(-0.5 * bk); ctx.fillStyle = '#7a5130'; ctx.fillRect(-5 * z, -1.5 * z, 10 * z, 3 * z); ctx.strokeRect(-5 * z, -1.5 * z, 10 * z, 3 * z); ctx.fillStyle = '#d8b07a'; ctx.beginPath(); ctx.ellipse(5 * z, 0, 1 * z, 1.5 * z, 0, 0, 6.3); ctx.fill(); ctx.restore(); }
+        else if (cr === 'f') { ctx.fillStyle = '#9a6a38'; ctx.beginPath(); ctx.ellipse(cx0, cy0, 3 * z, 2.2 * z, 0, 0, 6.3); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#c84a3a'; ctx.beginPath(); ctx.arc(cx0 - z, cy0 - 1.6 * z, 1.1 * z, 0, 6.3); ctx.fill(); ctx.fillStyle = '#e0b84a'; ctx.beginPath(); ctx.arc(cx0 + z, cy0 - 1.4 * z, 1 * z, 0, 6.3); ctx.fill(); }
+        else if (cr === 'g') { ctx.fillStyle = '#c8a050'; ctx.beginPath(); ctx.ellipse(cx0, cy0, 2.4 * z, 2.6 * z, 0, 0, 6.3); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#f2d060'; ctx.beginPath(); ctx.arc(cx0, cy0 - 2.4 * z, 1.1 * z, 0, 6.3); ctx.fill(); }
+        else { ctx.fillStyle = '#a7a59e'; ctx.beginPath(); ctx.moveTo(cx0 - 2.6 * z, cy0 + 1.6 * z); ctx.lineTo(cx0 - 2 * z, cy0 - 1.8 * z); ctx.lineTo(cx0 + 1.4 * z, cy0 - 2.4 * z); ctx.lineTo(cx0 + 2.8 * z, cy0 + 0.6 * z); ctx.lineTo(cx0 + 0.8 * z, cy0 + 2 * z); ctx.closePath(); ctx.fill(); ctx.stroke(); }
       }
     } else drawUnitAt(ctx, u, civ, p[0], p[1], z * 1.1 * (d.hero ? 1.1 : 1));
     // convertirea: o rază aurie de la călugăr la cel convertit, tot mai puternică

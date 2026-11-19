@@ -301,6 +301,16 @@ var G = globalThis.G || (globalThis.G = {});
     if (G.STRIGATE) play();
     else { var sc = document.createElement('script'); sc.src = 'js/strigate.js'; sc.onload = play; document.head.appendChild(sc); }
   };
+  // anunțul mare de la trecerea într-o epocă nouă
+  var AGE_SUB = ['', 'Clădirile tale se schimbă: piatră în loc de lemn. Noi oșteni, tehnologii și turnuri.', 'Cetăți, universitate, fortăreață și unitatea ta unică.', 'Piatră cioplită și aur: țara ta e un imperiu. Oștenii cei mai buni.', 'Praful de pușcă și minunea. Ultima epocă.'];
+  UI.ageBanner = function (age) {
+    var el = document.getElementById('ageBan'); if (!el) return;
+    var P = G.S.players[0];
+    el.querySelector('.r').textContent = G.CIVS[P.civ].flag + '  EPOCA ' + G.AGE_ROMAN[age] + '  ' + G.CIVS[P.civ].flag;
+    el.querySelector('.n').textContent = G.AGES[age];
+    el.querySelector('.s').textContent = AGE_SUB[age] || '';
+    el.classList.remove('on'); void el.offsetWidth; el.classList.add('on');
+  };
   UI.openChat = function () {
     var ch = document.getElementById('chat'); if (!ch || !G.S) return;
     ch.style.display = 'block'; ch.value = ''; ch.focus();

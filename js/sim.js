@@ -1372,7 +1372,7 @@ var G = globalThis.G || (globalThis.G = {});
     });
     if (T.ageUp) {
       P.age = T.ageUp; P.st.ageT[P.age] = S.t;
-      if (o === 0) { G.msg('Ai intrat în ' + G.AGES[P.age] + '!', 'good'); G.sfx('age'); }
+      if (o === 0) { G.msg('Ai intrat în ' + G.AGES[P.age] + '!', 'good'); G.sfx('age'); if (G.UI && G.UI.ageBanner) G.UI.ageBanner(P.age); }
       else G.msg(G.ppl(o, true) + ' au intrat în ' + G.AGES[P.age] + '.', G.enemy(0, o) ? 'warn' : 'info');
     } else if (o === 0) { G.msg(T.name + ': gata.', 'info'); G.sfx('built'); }
   }

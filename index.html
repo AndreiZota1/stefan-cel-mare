@@ -133,6 +133,12 @@
   .md { background: #00000035; border-radius: 9px; padding: 8px; text-align: center; opacity: 0.45; filter: grayscale(1); }
   .md.on { opacity: 1; filter: none; } .md.new { box-shadow: 0 0 0 2px #e9c24a; } .md i { display: block; font-style: normal; font-size: 30px; } .md b { display: block; font-size: 13px; color: #fff2c8; } .md small { color: #c8b890; font-size: 11px; }
   .mdnew { margin: 8px 0; padding: 8px 12px; border-radius: 8px; background: #3a2a0a; color: #ffe28a; font-weight: 600; }
+  #ageBan { position: absolute; left: 0; right: 0; top: 22%; text-align: center; pointer-events: none; z-index: 44; display: none; }
+  #ageBan.on { display: block; animation: ageban 4.6s ease forwards; }
+  #ageBan .r { font: 700 22px Georgia, serif; color: #e9c24a; letter-spacing: 6px; text-shadow: 0 2px 8px #000; }
+  #ageBan .n { font: 700 54px Georgia, serif; color: #fff2c8; text-shadow: 0 3px 14px #000, 0 0 30px rgba(233,194,74,0.45); }
+  #ageBan .s { font: 500 17px sans-serif; color: #eadcbc; text-shadow: 0 2px 6px #000; margin-top: 6px; }
+  @keyframes ageban { 0% { opacity: 0; transform: scale(0.92); } 12% { opacity: 1; transform: scale(1); } 78% { opacity: 1; } 100% { opacity: 0; transform: scale(1.03); } }
   #chat { display: none; position: absolute; left: 50%; bottom: 210px; transform: translateX(-50%); width: min(520px, 80vw); padding: 8px 12px; font-size: 15px; border-radius: 8px; border: 1px solid #c9a26a; background: rgba(20,14,8,0.92); color: #fff2c8; z-index: 40; outline: none; }
   .civlook { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 6px; } .civlook img { width: 44px; height: 44px; background: #00000030; border-radius: 6px; }
   .grid2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 12px; margin: 10px 0 4px; }
@@ -239,11 +245,13 @@
   <div id="plist"></div>
   <button class="tb" id="bFull" title="Ecran complet">⛶</button>
   <button class="tb" id="bSpeed" title="Viteza jocului">1×</button>
+  <button class="tb" id="bChat" title="Mesaje, strigăte, coduri (Enter)">💬</button>
   <button class="tb" id="bMusic" title="Muzica">🎵</button>
   <button class="tb" id="bSound" title="Sunet">🔊</button>
   <button class="tb" id="bMenu" title="Pauză">☰</button>
 </div>
 <div id="msgs"></div>
+<div id="ageBan"><div class="r"></div><div class="n"></div><div class="s"></div></div>
 <input id="chat" type="text" maxlength="80" autocomplete="off" spellcheck="false" placeholder="Scrie un mesaj, un strigăt (1–12) sau un cod secret, apoi Enter">
 <div id="tip"></div>
 <div id="quick" class="hud">

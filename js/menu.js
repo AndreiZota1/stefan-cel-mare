@@ -89,7 +89,7 @@ var G = globalThis.G || (globalThis.G = {});
   M.openTree = function (civ) { treeCiv = civ || treeCiv || (G.S && G.S.players[0] ? G.S.players[0].civ : cfg.civ); renderTree(); show('tree', true); };
   function renderTree() {
     var civ = treeCiv, C = G.CIVS[civ];
-    var blds = ['cetate', 'cazarma', 'poligon', 'grajd', 'atelier', 'fortareata', 'manastire', 'targ', 'fierarie', 'universitate', 'joagar', 'mina', 'moara'];
+    var blds = ['cetate', 'cazarma', 'poligon', 'grajd', 'atelier', 'fortareata', 'port', 'manastire', 'targ', 'fierarie', 'universitate', 'joagar', 'mina', 'moara'];
     var html = '<h2>Arborele tehnologiilor</h2><div class="treeciv">' + G.CIV_LIST.map(function (c) { return '<button class="' + (c === civ ? 'on' : '') + '" data-tc="' + c + '">' + G.CIVS[c].flag + ' ' + esc(G.CIVS[c].name) + '</button>'; }).join('') + '</div>';
     html += '<div class="tree"><div class="trow head"><div class="tb"></div>' + G.AGES.map(function (a, i) { return '<div class="tage">' + G.AGE_ROMAN[i] + '<small>' + esc(a.replace('Epoca ', '')) + '</small></div>'; }).join('') + '</div>';
     blds.forEach(function (bt) {
