@@ -1263,6 +1263,11 @@ var G = globalThis.G || (globalThis.G = {});
         ctx.beginPath(); ctx.ellipse(p[0] + bk * 3.5 * z, p[1] - 16 * z, 2.2 * z, 1.8 * z, 0, 0, 6.3); ctx.fill(); ctx.stroke();
       }
     } else drawUnitAt(ctx, u, civ, p[0], p[1], z * 1.1 * (d.hero ? 1.1 : 1));
+    // convertirea: o rază aurie de la călugăr la cel convertit, tot mai puternică
+    if (u.task && u.task.k === 'conv' && u.task.ch > 0) {
+      var cvt = G.getE(u.task.id);
+      if (cvt) { var cq = R.w2s(cvt.x, cvt.y), ca = Math.min(1, u.task.ch / 6) * (0.55 + 0.25 * Math.sin(clock * 9)); ctx.save(); ctx.globalAlpha = ca; ctx.strokeStyle = '#ffe28a'; ctx.lineWidth = 2 * z; ctx.setLineDash([4 * z, 4 * z]); ctx.lineDashOffset = -clock * 30; ctx.beginPath(); ctx.moveTo(p[0], p[1] - 22 * z); ctx.lineTo(cq[0], cq[1] - 16 * z); ctx.stroke(); ctx.setLineDash([]); ell(ctx, cq[0], cq[1] - 16 * z, 7 * z * (0.8 + 0.2 * Math.sin(clock * 7)), 7 * z * (0.8 + 0.2 * Math.sin(clock * 7)), 'rgba(255,226,138,0.35)'); ctx.restore(); }
+    }
     if (d.carry && u.gar && u.gar.length) { ctx.font = 'bold ' + Math.round(11 * Math.max(0.8, z)) + 'px sans-serif'; ctx.textAlign = 'center'; var lbl = '⚑' + u.gar.length, lw = ctx.measureText(lbl).width + 8; ctx.fillStyle = 'rgba(20,14,8,0.75)'; ctx.fillRect(p[0] - lw / 2, p[1] - 52 * z - 12, lw, 15); ctx.fillStyle = '#fff'; ctx.fillText(lbl, p[0], p[1] - 52 * z); ctx.textAlign = 'start'; }
     // dâra din spatele corăbiei care merge
     if (d.naval && u.mv > 0) {

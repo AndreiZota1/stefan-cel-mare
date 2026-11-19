@@ -104,6 +104,11 @@ var G = globalThis.G || (globalThis.G = {});
       mine = mine.filter(function (u) { return full.indexOf(u) < 0; }); if (!mine.length) return;
     }
     if (!e) { G.cmdMove(mine, w[0], w[1]); mark(w[0], w[1]); ack(mine); return; }
+    if (e.k === 'u' && G.enemy(0, e.o) && G.convertible(e) && mine.some(function (u) { return G.UNITS[u.t].heal; })) {
+      var monksC = mine.filter(function (u) { return G.UNITS[u.t].heal; }); G.cmdConvert(monksC, e);
+      var restC = mine.filter(function (u) { return !G.UNITS[u.t].heal; }); if (restC.length) G.cmdAttack(restC, e);
+      mark(e.x, e.y, 'rgba(255,230,120,0.95)'); ack(mine, 'atk'); return;
+    }
     if (e.k !== 'r' && G.enemy(0, e.o)) { G.cmdAttack(mine, e); mark(e.x, e.y, RED); ack(mine, 'atk'); return; }
     // oamenii aleși urcă pe corabia de transport atinsă
     if (e.k === 'u' && e.o === 0 && G.UNITS[e.t].carry && mine.some(function (u) { return !G.isNaval(u); })) { G.cmdBoard(mine.filter(function (u) { return !G.isNaval(u); }), e); mark(e.x, e.y, YEL); ack(mine); return; }

@@ -542,7 +542,11 @@ var G = globalThis.G || (globalThis.G = {});
     if (u.scan > 0) return;
     u.scan = 0.5 + Math.random() * 0.2;
     var st = ust(u);
-    if (d.heal) { var w = findWounded(u, st.los); if (w) setTask(u, { k: 'heal', id: w.id, auto: 1 }); return; }
+    if (d.heal) {
+      var w = findWounded(u, st.los); if (w) { setTask(u, { k: 'heal', id: w.id, auto: 1 }); return; }
+      if (!u.rech || u.rech <= S.t) { var cv = convTarget(u, 6); if (cv) setTask(u, { k: 'conv', id: cv.id, auto: 1 }); }
+      return;
+    }
     if (!st.atk) return;
     var e = findEnemy(u, st.los * S.losMul);
     if (e) setTask(u, { k: 'atk', id: e.id, auto: 1 });
@@ -997,6 +1001,43 @@ var G = globalThis.G || (globalThis.G = {});
     e.hp = Math.min(ustT(e.o, e.t).hp, e.hp + st.heal * healMul(u.o) * dt);
     if ((u.hfx = (u.hfx || 0) - dt) <= 0) { u.hfx = 0.8; S.fx.push({ k: 'heal', x: e.x, y: e.y, t: S.t }); }
   }
+  // ---------- convertirea („Wololo”): călugărul cântă câteva clipe și dușmanul trece de partea lui ----------
+  function convertible(e) { var d = G.UNITS[e.t]; return e.k === 'u' && !d.hero && d.cls !== 'sie' && !d.naval && d.cls !== 'mon'; }
+  G.convertible = convertible;
+  function convTarget(u, r) {
+    var best = null, bd = r * r, en = C.en[u.o];
+    forUnitsNear(u.x, u.y, r, function (e) {
+      if (e.dead || e.gin || !en[e.o] || !convertible(e)) return;
+      var d = (e.x - u.x) * (e.x - u.x) + (e.y - u.y) * (e.y - u.y) - (G.UNITS[e.t].cls === 'cav' ? 6 : 0);
+      if (d < bd) { bd = d; best = e; }
+    });
+    return best;
+  }
+  G.cmdConvert = function (units, e) { units.forEach(function (u) { if (G.UNITS[u.t].heal && convertible(e)) setTask(u, { k: 'conv', id: e.id }); }); };
+  function doConv(u, T, dt) {
+    var e = getE(T.id);
+    if (!e || e.gin || !G.enemy(u.o, e.o) || !convertible(e)) { finish(u, T); return; }
+    if (u.rech && u.rech > S.t) { if (T.auto) { finish(u, T); return; } u.why = 'se odihnește după ultima convertire'; return; }
+    if (T.auto && G.dist(u, e) > 9) { finish(u, T); return; }
+    var r = approach(u, e, 4, dt);
+    if (r === 'fail') { finish(u, T); return; }
+    if (!r) { T.ch = 0; return; }
+    faceTo(u, e.x - u.x, e.y - u.y); u.wk = 0.25; u.sw = 0.3;
+    if (!T.ch) { T.ch = 0.001; G.sfx('convert', u.x, u.y, S.players[u.o].civ); }
+    T.ch += dt;
+    // după 4 secunde, șanse tot mai mari; după 10 secunde, sigur
+    if (T.ch >= 4 && (Math.random() < dt * 0.3 || T.ch >= 10)) {
+      var from = e.o;
+      e.o = u.o; e.task = null; e.path = null; e.carry = null; e.conv = S.t;
+      if (C.hero[from] === e.id) C.hero[from] = 0;
+      S.fx.push({ k: 'aura', x: e.x, y: e.y, t: S.t });
+      S.players[u.o].st.conv = (S.players[u.o].st.conv || 0) + 1;
+      if (u.o === 0) G.msg('Călugărul a adus de partea ta: ' + G.ename(e) + '!', 'good', { x: e.x, y: e.y });
+      else if (from === 0) G.msg('Un călugăr dușman ți-a luat un om: ' + G.ename(e) + '!', 'alert', { x: e.x, y: e.y });
+      u.rech = S.t + 20; S.dirty = 1;
+      finish(u, T);
+    }
+  }
   function doRelic(u, T, dt) {
     var e = getE(T.id);
     if (u.relic) { goStore(u); return; }
@@ -1114,6 +1155,7 @@ var G = globalThis.G || (globalThis.G = {});
       case 'ret': doRet(u, T, dt); break;
       case 'bld': doBld(u, T, dt); break;
       case 'heal': doHeal(u, T, dt); break;
+      case 'conv': doConv(u, T, dt); break;
       case 'relic': doRelic(u, T, dt); break;
       case 'gar': doGar(u, T, dt); break;
       case 'trade': doTrade(u, T, dt); break;

@@ -141,7 +141,7 @@ var G = globalThis.G || (globalThis.G = {});
 
   var GAP = { chop: 0.12, mine: 0.12, hit: 0.07, arrow: 0.06, thud: 0.12, build: 0.15, death: 0.15, gun: 0.08, catapult: 0.15 };
   var LOCAL = { chop: 1, mine: 1, hit: 1, arrow: 1, thud: 1, build: 1, death: 1, cannon: 1, boom: 1, collapse: 1, gun: 1, catapult: 1 };
-  G.sfx = function (name, x, y) {
+  G.sfx = function (name, x, y, civ) {
     if (!A.on || !A.ac || !G.running || G.paused) return;
     if (LOCAL[name] && x !== undefined) {
       var p = G.R.w2s(x, y);
@@ -162,6 +162,13 @@ var G = globalThis.G || (globalThis.G = {});
       case 'boom': burst(t, 0.35, 0.35, 'lowpass', 700, 1, 150); break;
       case 'collapse': burst(t, 0.9, 0.35, 'lowpass', 600, 1, 80); break;
       case 'death': tone('sine', 220, t, 0.18, 0.06, 90); break;
+      // cântarea călugărului: ison bisericesc (ortodocși), cânt gregorian (catolici), melismă (derviși)
+      case 'convert': {
+        var st2 = civ === 'oto' || civ === 'tat' ? [294, 330, 311, 294, 262, 294] : civ === 'ung' || civ === 'pol' ? [262, 294, 330, 294, 262] : [196, 220, 233, 220, 196];
+        if (!(civ === 'oto' || civ === 'tat')) tone('sine', st2[0] / 2, t, 1.9, 0.035);
+        st2.forEach(function (f, i) { tone('triangle', f, t + i * 0.32, 0.36, 0.045, civ === 'oto' || civ === 'tat' ? f * 1.06 : f); });
+        break;
+      }
       case 'howl': tone('sine', 360, t, 0.55, 0.06, 640); tone('sine', 640, t + 0.55, 1.1, 0.055, 430); tone('sine', 720, t + 0.05, 0.5, 0.02, 1280); break;
       case 'select': tone('sine', 660, t, 0.04, 0.05); break;
       case 'click': tone('sine', 880, t, 0.03, 0.05); break;
