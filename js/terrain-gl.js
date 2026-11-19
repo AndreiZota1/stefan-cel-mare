@@ -36,15 +36,7 @@ void main() {
   gl_Position = vec4(X * 2.0 / uVp.x - 1.0, 1.0 - Y * 2.0 / uVp.y, 1.0 - 2.0 * (c + 8.0) / (2.0 * uXf.w + 24.0), 1.0);
 }`;
 
-  var COMMON = `#version 300 es
-precision highp float;
-precision highp sampler2D;
-precision mediump sampler2DArray;
-in vec3 vP;
-out vec4 oC;
-uniform vec4 uMap;   // N, iarnă, uscăciune (stepă), verdeață (codri)
-uniform vec4 uMisc;  // timp, RF, latura grilei fine (FW), mare (1) sau râu (0)
-uniform sampler2D uNz, uNL, uH;
+  var LIGHT = `
 const vec3 SUN = vec3(${SUN[0].toFixed(4)}, ${SUN[1].toFixed(4)}, ${SUN[2].toFixed(4)});
 const vec3 SUNC = vec3(1.0, 0.871, 0.658) * 3.3;
 const vec3 SKYC = vec3(0.855, 0.896, 1.0) * 1.7;
@@ -60,9 +52,86 @@ vec3 aces(vec3 c) {
   c = a / b;
   return clamp(mat3(1.60475, -0.10208, -0.00327, -0.53108, 1.10813, -0.07276, -0.07367, -0.00605, 1.07602) * c, 0.0, 1.0);
 }
-vec2 fineUV(vec2 p) { return (p * uMisc.y + 0.5) / uMisc.z; }
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 `;
+  var COMMON = `#version 300 es
+precision highp float;
+precision highp sampler2D;
+precision mediump sampler2DArray;
+in vec3 vP;
+out vec4 oC;
+uniform vec4 uMap;   // N, iarnă, uscăciune (stepă), verdeață (codri)
+uniform vec4 uMisc;  // timp, RF, latura grilei fine (FW), mare (1) sau râu (0)
+uniform sampler2D uNz, uNL, uH;
+` + LIGHT + `
+vec2 fineUV(vec2 p) { return (p * uMisc.y + 0.5) / uMisc.z; }
+`;
+
+  // ---------- firele de iarbă: smocuri de câte 3 fire, pictate în bucățile de teren ----------
+  // Nu au nevoie de liste: fiecare instanță își calculează locul din numărul ei (o grilă peste pătrățelele bucății),
+  // iar locul, înălțimea, aplecarea și culoarea vin din zgomot. Cresc doar unde terenul e iarbă.
+  var VS_GRASS = `#version 300 es
+precision highp float;
+precision highp sampler2D;
+layout(location=0) in vec3 aB;   // x: colțul de jos (-1, 1) sau vârful (0); y: 0 jos, 1 sus; z: firul din smoc
+uniform sampler2D uH, uT0, uT1, uNL, uNz;
+uniform vec4 uXf, uVp, uMap, uMisc;
+uniform vec4 uG;                 // x0, y0, coloane (pătrățele), celule pe latura unui pătrățel
+out vec3 vC;
+` + LIGHT + `
+void main() {
+  float cpt = uG.w; int cols = int(uG.z * cpt + 0.5), id = gl_InstanceID, row = id / cols;
+  vec2 base = uG.xy + vec2(float(id - row * cols), float(row)) / cpt;
+  float h1 = hash(base * 1.37 + 0.11), h2 = hash(base * 2.71 + 3.7), h4 = hash(base * 3.33 + 1.9);
+  vec2 p = base + vec2(h1, h2) / cpt;
+  float Nm = uMap.x, winter = uMap.y, dry = uMap.z;
+  vec2 tq = p / Nm, fu = (p * uVp.z + 0.5) / uMisc.z;
+  vec4 t0 = textureLod(uT0, tq, 0.0), t1 = textureLod(uT1, tq, 0.0);
+  vec4 n1 = textureLod(uNz, p * 0.019, 0.0), n2 = textureLod(uNz, p * 0.071 + 0.31, 0.0), n3 = textureLod(uNz, p * 0.29 + 0.57, 0.0);
+  vec4 L0 = textureLod(uNL, fu, 0.0);
+  float hgt = textureLod(uH, fu, 0.0).r;
+  vec3 nn = vec3(L0.r * 2.0 - 1.0, L0.g * 2.0 - 1.0, 0.0); nn.z = sqrt(max(0.02, 1.0 - dot(nn.xy, nn.xy)));
+  // unde crește: nu pe pământ, nisip, stâncă, apă; rar sub copaci; deloc lângă clădiri, la mal și pe pante abrupte
+  float bare = max(max(t0.r * 1.1, t0.g), max(t0.b * 1.25, t1.r * 1.6));
+  float g = 1.0 - smoothstep(0.2, 0.48, bare + (n3.x - 0.5) * 0.28);
+  g *= 1.0 - 0.65 * smoothstep(0.3, 0.7, t1.b);
+  g *= 1.0 - smoothstep(0.2, 0.55, t1.a + (n3.y - 0.5) * 0.2);
+  g *= 1.0 - 0.45 * t0.a;
+  g *= smoothstep(0.1, 0.2, hgt) * (1.0 - smoothstep(0.22, 0.38, 1.0 - nn.z));
+  float clump = textureLod(uNz, p * 1.31 + 0.77, 0.0).w;
+  float dens = mix(0.45, 1.0, smoothstep(0.3, 0.7, n2.y)) * mix(0.55, 1.1, smoothstep(0.3, 0.7, clump)) * (winter > 0.5 ? 0.1 : 1.0);
+  if (h4 > g * dens) { gl_Position = vec4(0.0, 0.0, 2.0, 1.0); vC = vec3(0.0); return; }
+  // firul: aplecat într-o parte, mai lung pe stepă și în pâlcurile dese
+  float bi = aB.z, a = hash(base + bi * 1.73) * 6.2832;
+  vec2 dir = vec2(cos(a), sin(a)), side = vec2(-dir.y, dir.x);
+  vec2 off = (vec2(hash(base + bi * 5.1), hash(base + bi * 7.9)) - 0.5) * (0.7 / cpt);
+  float tall = mix(0.035, 0.09, hash(base + bi * 3.3)) * (1.0 + dry * 0.8) * mix(0.6, 1.45, n2.y * n2.y) * mix(0.8, 1.2, clump) * (winter > 0.5 ? 0.8 : 1.0);
+  float lean = mix(0.15, 0.6, hash(base + bi * 9.7)), w = 0.013;
+  vec2 xy = p + off + side * aB.x * w * (1.0 - aB.y) + dir * lean * tall * aB.y * aB.y;
+  float hh = hgt + tall * aB.y * (1.0 - 0.3 * lean * lean) * 2.449;
+  float k = uXf.x;
+  float X = (xy.x - xy.y) * 32.0 * k + uXf.y, Y = ((xy.x + xy.y) * 16.0 - hh * 16.0) * k + uXf.z;
+  float c = xy.x + xy.y + hh / 3.0;
+  gl_Position = vec4(X * 2.0 / uVp.x - 1.0, 1.0 - Y * 2.0 / uVp.y, 1.0 - 2.0 * (c + 8.0) / (2.0 * uXf.w + 24.0) - 0.00003, 1.0);
+  // culoarea: verde de pajiște, pai pe stepă și iarna, câteva fire uscate peste tot
+  float hv = hash(base + bi * 2.2);
+  vec3 green = hv < 0.5 ? mix(vec3(0.028, 0.07, 0.018), vec3(0.06, 0.125, 0.026), hv * 2.0) : mix(vec3(0.06, 0.125, 0.026), vec3(0.085, 0.15, 0.04), hv * 2.0 - 1.0);
+  vec3 straw = mix(vec3(0.25, 0.2, 0.09), vec3(0.42, 0.35, 0.17), hash(base + bi * 4.4));
+  float dryness = sat(dry * smoothstep(0.32, 0.68, n1.y) * 1.1 + smoothstep(2.2, 4.2, hgt) * 0.25 + winter);
+  if (hash(base + bi * 6.6) < 0.05) dryness = max(dryness, 0.75);
+  vec3 alb = mix(green, straw, dryness) * (0.85 + 0.3 * n2.z);
+  // rădăcina în umbra celorlalte fire, vârful prinde lumina; lumina ca la sol
+  float ndl = max(dot(nn, SUN), 0.0) * mix(0.55, 1.0, aB.y);
+  vec3 hemi = mix(GNDC, SKYC, nn.z * 0.5 + 0.5);
+  vec3 tip = mix(vec3(1.0), vec3(1.1, 1.14, 1.0), aB.y);
+  vC = alb * tip / 3.14159 * (SUNC * 1.12 * ndl * L0.a + hemi * 0.78 * (0.25 + 0.75 * L0.b) * mix(0.3, 1.0, aB.y));
+}`;
+  var FS_GRASS = `#version 300 es
+precision highp float;
+in vec3 vC;
+out vec4 oC;
+` + LIGHT + `
+void main() { oC = vec4(srgb(aces(vC)), 1.0); }`;
 
   var FS_TER = COMMON + `
 uniform sampler2D uT0, uT1;
@@ -86,7 +155,6 @@ void lay(float L, float sc, vec2 p, float w) {
 void main() {
   vec2 p = vP.xy; float h = vP.z;
   gdx = dFdx(p); gdy = dFdy(p);
-  float fwf = max(length(vec2(gdx.x, gdy.x)) * 7.0, 0.001);
   float Nm = uMap.x, winter = uMap.y;
   vec4 L0 = texture(uNL, fineUV(p));
   vec3 Nn = vec3(L0.r * 2.0 - 1.0, L0.g * 2.0 - 1.0, 0.0); Nn.z = sqrt(max(0.02, 1.0 - dot(Nn.xy, Nn.xy)));
@@ -134,19 +202,6 @@ void main() {
   OVER(7.0, 0.21, wRock * (1.0 - wGrav))
   OVER(8.0, 0.3, wGrav)
   OVER(14.0, 0.4, under)
-  // flori de câmp (doar vara, pe iarbă)
-  float meadow = (1.0 - max(max(wDirt, wSand), max(wRock, wForest))) * (1.0 - shore) * (1.0 - wMarsh) * (1.0 - winter) * (1.0 - wWorn);
-  if (meadow > 0.2) {
-    vec2 fc = p * 7.0, ci = floor(fc), cf = fract(fc);
-    float hs = hash(ci), dens = smoothstep(0.66, 0.9, n2.z) * smoothstep(0.4, 0.7, n1.z) * 0.28;
-    if (hs < dens) {
-      vec2 cc = vec2(hash(ci + 1.7), hash(ci + 9.3)) * 0.6 + 0.2;
-      float fw = fwf, d = length(cf - cc), m = (1.0 - smoothstep(0.07, 0.07 + fw * 1.5, d)) * (1.0 - smoothstep(0.12, 0.35, fw)) * meadow;
-      float pick = fract(hs * 17.0);
-      vec3 fl = pick < 0.4 ? vec3(0.7, 0.03, 0.02) : pick < 0.55 ? vec3(0.8, 0.78, 0.7) : pick < 0.82 ? vec3(0.8, 0.62, 0.04) : vec3(0.3, 0.18, 0.6);
-      A = mix(A, fl, m);
-    }
-  }
   // iarna: zăpadă peste tot, mai subțire pe cărări și sub copaci; stânca abruptă rămâne goală
   if (winter > 0.5) {
     float sn = (1.0 - mix(smoothstep(0.42, 0.62, slope), smoothstep(0.1, 0.26, slope + (n3.y - 0.5) * 0.12), wRock)) * (1.0 - under) * (1.0 - shore * 0.3);
@@ -158,13 +213,16 @@ void main() {
     accA = mix(accA, vec3(0.8, 0.83, 0.88) * (0.92 + 0.08 * n3.y), wRock > 0.5 ? 0.15 : 0.5);
     A = mix(a0, accA, sn); Nd = mix(n0, accN * 0.6, sn);
   }
+  // sub firele de iarbă, solul stă în umbra lor
+  float grassy = (1.0 - max(max(max(wDirt, wSand), max(wRock, wWorn)), max(max(wFor * 0.65, wMarsh * 0.45), max(under, shore)))) * (1.0 - winter);
+  A *= mix(1.0, 0.62, grassy);
   // iarna, stânca e rece și cenușie (mușchiul doarme sub ger)
   if (winter > 0.5) { float lr = dot(A, vec3(0.3, 0.55, 0.15)); A = mix(A, vec3(lr) * vec3(0.95, 0.98, 1.05), wRock * 0.65); }
   // pădurea face umbră pe sol; nisipul și pământul de la mal sunt ude
   A *= mix(1.0, 0.72, wFor * (1.0 - winter * 0.5));
   A *= mix(1.0, 0.62, shore * (1.0 - under) * (1.0 - winter));
   // variație mare de culoare, ca să nu fie o singură pastă verde
-  A *= 0.86 + 0.28 * n1.w;
+  A *= 0.93 + 0.14 * n1.w;
   A = mix(A, A * vec3(1.08, 1.0, 0.82), smoothstep(0.55, 0.8, n1.y) * 0.5 * (1.0 - winter));
   // lumina: soarele (cu umbrele munților) și cerul (cu ocluzia văilor)
   vec3 Nf = normalize(vec3(Nn.xy + Nd.xy * 0.55, Nn.z));
@@ -245,9 +303,9 @@ void main() {
     try {
       cv = document.createElement('canvas');
       var dpr = Math.min(window.devicePixelRatio || 1, 2);
-      gl = cv.getContext('webgl2', { alpha: true, premultipliedAlpha: true, antialias: dpr < 1.5, depth: true, stencil: false, preserveDrawingBuffer: false, powerPreference: 'high-performance' });
+      gl = cv.getContext('webgl2', { alpha: true, premultipliedAlpha: true, antialias: false, depth: true, stencil: false, preserveDrawingBuffer: false, powerPreference: 'high-performance' });
       if (!gl) throw new Error('fără WebGL2');
-      P.ter = compile(VS, FS_TER); P.wat = compile(VS, FS_WAT); P.fog = compile(VS, FS_FOG);
+      P.ter = compile(VS, FS_TER); P.wat = compile(VS, FS_WAT); P.fog = compile(VS, FS_FOG); P.grass = compile(VS_GRASS, FS_GRASS);
       aniso = gl.getExtension('EXT_texture_filter_anisotropic');
       // peticul de grilă: (PS+1)² vârfuri, desenat de câte ori trebuie, mutat cu un decalaj pe instanță
       var v = new Float32Array((PS + 1) * (PS + 1) * 2), k = 0, i, j;
@@ -264,6 +322,12 @@ void main() {
       B.inst = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, B.inst); gl.bufferData(gl.ARRAY_BUFFER, 8 * 1024, gl.DYNAMIC_DRAW);
       gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0); gl.vertexAttribDivisor(1, 1);
       B.idx = gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, B.idx); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+      gl.bindVertexArray(null);
+      // un smoc: 3 fire, fiecare un triunghi subțire
+      var gv = new Float32Array(27); for (var b3 = 0; b3 < 3; b3++) gv.set([-1, 0, b3, 1, 0, b3, 0, 1, b3], b3 * 9);
+      B.gvao = gl.createVertexArray(); gl.bindVertexArray(B.gvao);
+      B.gv = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, B.gv); gl.bufferData(gl.ARRAY_BUFFER, gv, gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
       gl.bindVertexArray(null);
       TX.nz = noiseTex(); TX.wn = waveTex();
       cv.addEventListener('webglcontextlost', function (e) { e.preventDefault(); T.ok = false; T.failed = true; });
@@ -595,9 +659,35 @@ void main() {
     }
     return false;
   }
+  // ținta cu netezire a marginilor (firele de iarbă sunt mai subțiri decât un pixel)
+  function chunkFBO() {
+    if (B.fbo !== undefined) return !!B.fbo;
+    try {
+      var sm = Math.min(4, gl.getParameter(gl.MAX_SAMPLES) || 0); if (sm < 2) { B.fbo = null; return false; }
+      B.fbo = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, B.fbo);
+      var rc = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, rc); gl.renderbufferStorageMultisample(gl.RENDERBUFFER, sm, gl.RGBA8, CS, CS);
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, rc);
+      var rd = gl.createRenderbuffer(); gl.bindRenderbuffer(gl.RENDERBUFFER, rd); gl.renderbufferStorageMultisample(gl.RENDERBUFFER, sm, gl.DEPTH_COMPONENT24, CS, CS);
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, rd);
+      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) B.fbo = null;
+    } catch (e) { B.fbo = null; }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return !!B.fbo;
+  }
+  function drawGrass(V, k, cx, cy, t) {
+    var r = chunkTiles(k, cx, cy), cpt = 8, cols = r[1] - r[0] + 1, rows = r[3] - r[2] + 1;
+    if (cols <= 0 || rows <= 0) return;
+    gl.useProgram(P.grass.p);
+    var u = P.grass.u, bind = setCommon(P.grass, V, t);
+    bind('uT0', TX.t0); bind('uT1', TX.t1);
+    gl.uniform4f(u.uG, r[0], r[2], cols, cpt);
+    gl.bindVertexArray(B.gvao);
+    gl.drawArraysInstanced(gl.TRIANGLES, 0, 9, cols * cpt * rows * cpt);
+  }
   function genChunk(k, cx, cy, t) {
     var c = document.createElement('canvas'); c.width = c.height = CS;
-    var V = { k: k, dx: offX(k) - cx * CS, dy: offY(k) - cy * CS, vw: CS, vh: CS };
+    var V = { k: k, dx: offX(k) - cx * CS, dy: offY(k) - cy * CS, vw: CS, vh: CS }, ms = chunkFBO();
+    if (ms) gl.bindFramebuffer(gl.FRAMEBUFFER, B.fbo);
     gl.viewport(0, 0, CS, CS); gl.enable(gl.SCISSOR_TEST); gl.scissor(0, 0, CS, CS);
     gl.clearColor(0, 0, 0, 0); gl.clearDepth(1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS); gl.depthMask(true); gl.disable(gl.BLEND);
@@ -608,7 +698,13 @@ void main() {
     gl.uniform3fv(P.ter.u.uGain, gainArr);
     gl.uniform1f(P.ter.u.uFlat, 0);
     drawPatches(visible(V, patches));
+    if (T.grass !== false) drawGrass(V, k, cx, cy, t);
     gl.disable(gl.SCISSOR_TEST);
+    if (ms) {
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, B.fbo); gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+      gl.blitFramebuffer(0, 0, CS, CS, 0, 0, CS, CS, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
     c.getContext('2d').drawImage(cv, 0, cv.height - CS, CS, CS, 0, 0, CS, CS);
     return c;
   }
