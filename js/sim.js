@@ -335,7 +335,8 @@ var G = globalThis.G || (globalThis.G = {});
   }
   G.bstT = bstT;
   G.bst = function (b) { return bstT(b.o, b.t); };
-  G.maxHp = function (e) { return e.k === 'u' ? ustT(e.o, e.t).hp : e.k === 'b' ? bstT(e.o, e.t).hp : 0; };
+  // e.hpMax: o clădire anume dintr-o misiune poate fi mai tare decât altele de felul ei (zidurile groase ale Neamțului)
+  G.maxHp = function (e) { return e.k === 'u' ? ustT(e.o, e.t).hp : e.k === 'b' ? (e.hpMax || bstT(e.o, e.t).hp) : 0; };
   function gmul(o, kind) {
     var m = C.gm[o][kind]; if (m) return m;
     m = S.players[o].gm;

@@ -16,6 +16,7 @@ const rows = [];
 
 // eroul la adăpost: în cea mai apropiată cetate, fortăreață sau turn; fără ele, în spatele oastei, departe de dușmani
 function safeHero(h, st) {
+  h.noAi = true;
   if (h.gin) return;
   if (h.hp < G.maxHp(h) * 0.5) st.heroLow++;
   const homes = G.C.blds.filter(b => b.o === 0 && !b.dead && b.built && G.BLDS[b.t].gar && (b.t === 'cetate' || b.t === 'fortareata' || b.t === 'turn'));
@@ -44,7 +45,7 @@ function play(id, diff) {
       if (g.tick) g.tick(ctx);
       // eroul: dacă misiunea se pierde odată cu el, un om atent îl ține la adăpost (în cetate, sau în spatele oastei)
       const h = G.heroOf(0);
-      if (h && m.keepHero && !(g.heroFree && g.heroFree(ctx))) safeHero(h, st);
+      if (h && m.keepHero && !(g.heroFree && g.heroFree(ctx))) safeHero(h, st); else if (h) delete h.noAi;
       // oameni care au un drum, dar nu se mișcă de mult (blocați)
       G.C.units.forEach(u => { if (u.o === 0 && u.path && u.path.length) { const k = Math.round(u.x * 2) + ',' + Math.round(u.y * 2); if (u._bk === k) { u._bs = (u._bs || 0) + 1; if (u._bs === 20) st.stuck++; } else { u._bk = k; u._bs = 0; } } });
     }

@@ -326,7 +326,8 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
     setup: function (S, T) {
       // cetatea, apărată de garnizoană
       T.wall(0, 40, 54, 58, 54, [8]); T.wall(0, 58, 55, 58, 72); T.wall(0, 40, 72, 57, 72); T.wall(0, 40, 55, 40, 71, [7]);
-      T.bld(0, 'fortareata', 47, 61, true, 'neamt');
+      // zidurile groase ale Neamțului: fortăreața ține de două ori mai mult decât una obișnuită
+      var nf = T.bld(0, 'fortareata', 47, 61, true, 'neamt'); nf.hpMax = nf.mhp = nf.hp = nf.hp * 2;
       T.bld(0, 'turn', 42, 56, true); T.bld(0, 'turn', 55, 56, true); T.bld(0, 'turn', 42, 69, true); T.bld(0, 'turn', 55, 69, true);
       T.spawn(0, [['arc', 8], ['mil', 6]], 49, 66, 'garnizoana');
       T.spawn(0, [['can', 2]], 46, 58, 'garnizoana');
@@ -338,7 +339,7 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
       town(T, 1, 50, 88, 0, 'tabara');
       T.bld(1, 'casa', 44, 84, true); T.bld(1, 'casa', 56, 84, true); T.bld(1, 'casa', 44, 92, true); T.bld(1, 'casa', 56, 92, true);
       heroAt(T, 1, 50, 82);
-      T.spawn(1, [['mil', 16], ['arc', 10], ['ien', 8], ['kni', 4], ['can', 3], ['treb', 2]], 50, 79, 'asediu');
+      T.spawn(1, [['mil', 16], ['arc', 10], ['ien', 8], ['kni', 4], ['can', 2], ['treb', 1]], 50, 79, 'asediu');
       S.players[0].res = { f: 700, w: 600, g: 400, s: 150 };
     },
     start: function (S, T) {
@@ -355,11 +356,13 @@ G.CAMPAIGNS = G.CAMPAIGNS || [];
       // asalturi asupra cetății, din două în două minute
       if (S.t >= 60 && S.t >= (v.next || 60)) {
         v.next = S.t + 120;
-        var f = T.get('neamt'), all = T.byTag('asediu').filter(function (u) { return !u.task || !u.wave; });
+        // tunurile și trebușetele intră în luptă abia după ce le așază (minutul 5)
+        var f = T.get('neamt'), all = T.byTag('asediu').filter(function (u) { return (!u.task || !u.wave) && (S.t >= 300 || G.UNITS[u.t].cls !== 'sie'); });
         var n = Math.ceil(all.length * 0.5), go = all.slice(0, n);
         if (f) go.forEach(function (u) { if (G.UNITS[u.t].onlyBld || G.UNITS[u.t].cls === 'sie') G.cmdAttack([u], f); else T.attackMove([u], 49, 63); u.wave = 1; });
         if (go.length) T.say('parcalab', 'Turcii atacă zidurile!', 'say4');
       }
+      if (S.t >= 270 && !v.guns) { v.guns = 1; T.say('parcalab', 'Doamne, își așază tunurile! Dacă le dărâmăm, zidurile țin.', 'say8'); }
       // întăriri pentru sultan până la ciumă
       if (S.t < 600 && S.t >= (v.reinf || 180)) { v.reinf = S.t + 180; T.spawn(1, [['mil', 5], ['arc', 3]], 50, 92, 'asediu'); }
       if (S.t >= 600 && !v.plague) { v.plague = 1; T.debuff(1, 0.75, 900); T.say('narator', 'Ciuma și foametea bântuie tabăra otomană. Sultanul își pierde oamenii.', 'say5'); }

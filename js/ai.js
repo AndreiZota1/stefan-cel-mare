@@ -54,7 +54,8 @@ var G = globalThis.G || (globalThis.G = {});
     my = { fishers: [], navy: [], vils: [], army: [], mons: [], blds: [], cnt: {}, built: {}, uc: {}, hero: null, gat: { f: 0, w: 0, g: 0, s: 0 }, byR: { f: [], w: [], g: [], s: [] }, idle: [], builders: {}, siege: 0, cls: {} };
     tc = null;
     C.units.forEach(function (u) {
-      if (u.dead || u.o !== pid) return;
+      // u.noAi: unitatea nu e a AI-ului (robotul de test își ține singur eroul la adăpost)
+      if (u.dead || u.o !== pid || u.noAi) return;
       var d = G.UNITS[u.t];
       if (u.t === 'vil') {
         my.vils.push(u);
